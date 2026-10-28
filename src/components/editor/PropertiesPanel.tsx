@@ -205,7 +205,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             <Toggle checked={asBoolean(element, 'showAvatars', true)} onChange={(value) => prop('showAvatars', value)} label="Show avatars" />
             <Toggle checked={asBoolean(element, 'showBadges', true)} onChange={(value) => prop('showBadges', value)} label="Show Kick identity badges" />
             <Field label="Text direction"><select value={asString(element, 'direction', 'auto')} onChange={(event) => prop('direction', event.target.value)}><option value="auto">Auto Persian / English</option><option value="rtl">RTL</option><option value="ltr">LTR</option></select></Field>
-            <Toggle checked={asBoolean(element, 'scrolling')} onChange={(value) => prop('scrolling', value)} label="Scrolling behavior" description="Overflow scroll is clipped to this widget." />
+            <Toggle checked={asBoolean(element, 'scrolling', true)} onChange={(value) => prop('scrolling', value)} label="Pin newest message to the bottom" description="On: the feed fills from the bottom like a stream chat. Off: messages stack from the top and older lines clip away." />
             <Field label="Message entrance"><select value={asString(element, 'entrance', 'ornamental')} onChange={(event) => prop('entrance', event.target.value)}><option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="ornamental">Ornamental reveal</option></select></Field>
             <Field label="Message removal"><select value={asString(element, 'exit', 'fade')} onChange={(event) => prop('exit', event.target.value)}><option value="fade">Fade</option><option value="slide">Slide</option><option value="scale">Scale</option></select></Field>
           </Section>
@@ -252,7 +252,16 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             {(element.type === 'viewerCount' || element.type === 'sessionFollowers' || element.type === 'latestFollower') && <div className="integration-card"><Radio /><div><strong>Official Kick live data</strong><p>{element.type === 'viewerCount' ? 'Polled from GET /public/v1/users/livestreams at a controlled interval.' : 'Updated only by verified channel.followed webhook events. Session follows are not a historical total.'}</p></div></div>}
             <Field label="Label"><input value={asString(element, 'label')} onChange={(event) => prop('label', event.target.value)} /></Field>
             {element.type === 'counter' && <Field label="Value"><NumberInput value={asNumber(element, 'value')} onChange={(value) => prop('value', value)} /></Field>}
-            {element.type === 'countdown' && <Field label="Minutes"><NumberInput value={asNumber(element, 'minutes', 10)} min={0} max={1440} onChange={(value) => prop('minutes', value)} /></Field>}
+            {element.type === 'countdown' && (
+              <>
+                <Field label="Target time" hint="Absolute deadline. Survives OBS restarts and overlay reloads.">
+                  <input type="datetime-local" value={asString(element, 'targetAt')} onChange={(event) => prop('targetAt', event.target.value)} />
+                </Field>
+                <Field label="Fallback minutes" hint="Used only when no target time is set. A bare duration restarts when the overlay reloads.">
+                  <NumberInput value={asNumber(element, 'minutes', 10)} min={0} max={1440} onChange={(value) => prop('minutes', value)} />
+                </Field>
+              </>
+            )}
             {element.type === 'supporter' && <Field label="Placeholder"><input value={asString(element, 'value')} onChange={(event) => prop('value', event.target.value)} /></Field>}
             <Field label="Text color"><ColorInput value={asString(element, 'color', '#ffffff')} onChange={(value) => prop('color', value)} /></Field>
             <Field label="Accent color"><ColorInput value={asString(element, 'accentColor', '#8b5cf6')} onChange={(value) => prop('accentColor', value)} /></Field>

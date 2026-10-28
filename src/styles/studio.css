@@ -243,3 +243,15 @@ body.runtime-root .app-shell::before { display: none; }
   border: 1px solid var(--hairline-strong); color: var(--gold-300); font-size: var(--text-2xs);
 }
 @media (max-width: 900px) { .library-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* --- Chat metadata ------------------------------------------------------ */
+.chat-widget.chat-scroll { justify-content: flex-end; }
+.chat-widget.chat-stack { justify-content: flex-start; }
+.chat-time { color: #B9A9C4; font-size: .62em; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.chat-badge {
+  font-size: .56em; font-weight: 700; letter-spacing: .04em; line-height: 1;
+  padding: 3px 6px; border-radius: 999px; flex: 0 0 auto;
+  border: 1px solid rgba(216, 173, 85, .45); color: #F0D9A6; background: rgba(216, 173, 85, .14);
+  text-transform: uppercase;
+}
+.countdown-widget.countdown-done strong { color: var(--gold-300); }

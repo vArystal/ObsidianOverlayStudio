@@ -14,6 +14,9 @@ interface LiveDataState {
 
 const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null }
 const LiveContext = createContext<LiveDataState>(initial)
+/** Exported so tests can inject a live snapshot without opening a real SSE stream. */
+export const LiveDataContext = LiveContext
+export type { LiveDataState }
 export const useLiveData = () => useContext(LiveContext)
 
 export function LiveDataProvider({ config, children }: { config: LiveIntegrationConfig | null; children: ReactNode }) {

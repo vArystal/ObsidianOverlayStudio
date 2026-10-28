@@ -11,9 +11,9 @@ const num = (element: OverlayElement, key: string, fallback = 0) => Number(eleme
 const bool = (element: OverlayElement, key: string, fallback = false) => Boolean(element.props[key] ?? fallback)
 
 const sampleMessages = [
-  { id: 'sample-1', username: 'Roya', content: 'سلام! قاب جدید فوق‌العاده‌ست ✨', createdAt: new Date().toISOString(), color: '#f1d89a', avatar: 'ر' },
-  { id: 'sample-2', username: 'ArashGG', content: 'برای راند بعدی آماده‌ایم!', createdAt: new Date().toISOString(), color: '#67e8f9', avatar: 'A' },
-  { id: 'sample-3', username: 'NovaSky', content: 'That Persian frame is so clean.', createdAt: new Date().toISOString(), color: '#c4b5fd', avatar: 'N' },
+  { id: 'sample-1', username: 'Roya', content: 'سلام! قاب جدید فوق‌العاده‌ست ✨', createdAt: new Date().toISOString(), color: '#f1d89a', avatar: 'ر', badges: [{ type: 'subscriber', text: 'SUB', count: 6 }] },
+  { id: 'sample-2', username: 'ArashGG', content: 'برای راند بعدی آماده‌ایم!', createdAt: new Date().toISOString(), color: '#67e8f9', avatar: 'A', badges: [{ type: 'vip', text: 'VIP' }] },
+  { id: 'sample-3', username: 'NovaSky', content: 'That Persian frame is so clean.', createdAt: new Date().toISOString(), color: '#c4b5fd', avatar: 'N', badges: [{ type: 'moderator', text: 'MOD' }] },
 ]
 
 function colorWithOpacity(hex: string, opacity: number) {
@@ -58,13 +58,20 @@ function ChatWidget({ element, runtime }: { element: OverlayElement; runtime: bo
     : sampleMessages.slice(0, max)
   if (runtime && !messages.length) return null
   return (
-    <div className="chat-widget premium-chat" dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily', 'Vazirmatn, Tahoma, sans-serif'), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
+    <div className={`chat-widget premium-chat ${bool(element, 'scrolling', true) ? 'chat-scroll' : 'chat-stack'}`} dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily', 'Vazirmatn, Tahoma, sans-serif'), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
       {!runtime && <div className="preview-chip">نمونه نمایشی · SAMPLE ONLY</div>}
       {messages.map((message, index) => (
         <div className={`chat-message live-message entrance-${text(element, 'entrance', 'ornamental')} ${'exiting' in message && message.exiting ? `message-exit-${text(element, 'exit', 'fade')}` : ''}`} key={message.id} style={{ animationDelay: `${index * 60}ms` }}>
           {bool(element, 'showAvatars', true) && <span className="chat-avatar" style={{ background: message.color }}>{typeof message.avatar === 'string' && message.avatar.length < 3 ? message.avatar : message.username[0]}</span>}
           <span className="chat-copy">
-            <span className="chat-meta">{bool(element, 'showUsernames', true) && <strong style={{ color: message.color }}>{message.username}</strong>}{'test' in message && message.test && <small className="test-event-mark">TEST</small>}</span>
+            <span className="chat-meta">
+              {bool(element, 'showTimestamps') && <small className="chat-time">{messageTime(message.createdAt)}</small>}
+              {bool(element, 'showUsernames', true) && <strong style={{ color: message.color }}>{message.username}</strong>}
+              {bool(element, 'showBadges', true) && ('badges' in message ? message.badges : []).slice(0, 3).map((badge: { type: string; text: string; count?: number }) => (
+                <span className="chat-badge" key={`${badge.type}-${badge.text}`} title={badge.type}>{badge.text || badge.type}{badge.count ? ` ×${badge.count}` : ''}</span>
+              ))}
+              {'test' in message && message.test && <small className="test-event-mark">TEST</small>}
+            </span>
             <span>{message.content}</span>
           </span>
         </div>
@@ -74,10 +81,33 @@ function ChatWidget({ element, runtime }: { element: OverlayElement; runtime: bo
 }
 
 function Countdown({ element }: { element: OverlayElement }) {
-  const initial = Math.max(0, Math.round(num(element, 'minutes', 10) * 60)); const [remaining, setRemaining] = useState(initial)
-  useEffect(() => { setRemaining(initial); const timer = window.setInterval(() => setRemaining((value) => Math.max(0, value - 1)), 1000); return () => window.clearInterval(timer) }, [initial])
-  const formatted = useMemo(() => `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`, [remaining])
-  return <div className="metric-widget countdown-widget" style={{ color: text(element, 'color', '#fff8e7') }}><small>{text(element, 'label', 'شروع استریم تا')}</small><strong>{formatted}</strong></div>
+  // An absolute target survives OBS restarts; a bare duration cannot, so it is documented as
+  // restarting with the overlay and the inspector says so next to the field.
+  const targetAt = text(element, 'targetAt', '')
+  const minutes = Math.max(0, num(element, 'minutes', 10))
+  const target = useMemo(() => {
+    const parsed = targetAt ? new Date(targetAt).getTime() : Number.NaN
+    return Number.isNaN(parsed) ? Date.now() + minutes * 60_000 : parsed
+  }, [targetAt, minutes])
+  const [remaining, setRemaining] = useState(() => Math.max(0, Math.round((target - Date.now()) / 1000)))
+  useEffect(() => {
+    const tick = () => setRemaining(Math.max(0, Math.round((target - Date.now()) / 1000)))
+    tick()
+    const timer = window.setInterval(tick, 1000)
+    return () => window.clearInterval(timer)
+  }, [target])
+  const hours = Math.floor(remaining / 3600)
+  const formatted = hours > 0
+    ? `${hours}:${Math.floor((remaining % 3600) / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
+    : `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
+  return <div className={`metric-widget countdown-widget ${remaining === 0 ? 'countdown-done' : ''}`} style={{ color: text(element, 'color', '#fff8e7') }}><small>{text(element, 'label', 'شروع استریم تا')}</small><strong>{formatted}</strong></div>
+}
+
+/** Wall-clock for a chat line. Invalid or missing timestamps render nothing rather than a fake time. */
+function messageTime(createdAt: string | undefined) {
+  if (!createdAt) return ''
+  const date = new Date(createdAt)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
 function alertCopy(event: LiveOverlayEvent | null, element: OverlayElement) {
@@ -131,7 +161,15 @@ function ElementContent({ element, runtime, testAlertNonce }: { element: Overlay
     case 'frame': return <div className="standalone-frame" />
     case 'counter': return <div className="metric-widget" style={{ color: text(element, 'color', '#fff8e7') }}><small>{text(element, 'label')}</small><strong key={text(element, 'value')} className="number-transition">{text(element, 'value', '0')}</strong></div>
     case 'countdown': return <Countdown element={element} />
-    case 'viewerCount': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={live.viewer.count ?? 'offline'} className="number-transition">{live.viewer.status === 'live' ? live.viewer.count : text(element, 'offlineText', 'آفلاین')}</strong><em>{runtime ? live.viewer.status : 'LIVE API PREVIEW'}</em></div>
+    case 'viewerCount': {
+      // Four states must stay distinguishable: a stale cached count is not the same as offline,
+      // and an API failure must never be rendered as zero viewers.
+      const status = live.viewer.status
+      const known = (status === 'live' || status === 'stale') && typeof live.viewer.count === 'number'
+      const value = known ? live.viewer.count : status === 'offline' ? text(element, 'offlineText', 'آفلاین') : text(element, 'unavailableText', 'Unavailable')
+      const caption = !runtime ? 'LIVE API PREVIEW' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
+      return <div className={`metric-widget live-metric viewer-${status}`} style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></div>
+    }
     case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>events received this connection</em></div>
     case 'latestFollower': return <div className="supporter-widget" style={{ color: text(element, 'color', '#fff8e7') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{runtime ? live.latestFollower?.username || text(element, 'emptyText') : 'Roya · TEST PREVIEW'}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
     case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <div className="supporter-widget" style={{ color: text(element, 'color') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
