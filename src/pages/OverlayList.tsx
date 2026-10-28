@@ -94,7 +94,9 @@ export function OverlayList() {
           <section className="overlay-grid" aria-label="Saved overlays">
             {filtered.map((overlay) => (
               <article className="overlay-card" key={overlay.id}>
-                <button className="overlay-thumbnail" onClick={() => navigate(`/overlays/editor/${overlay.id}`)}>
+                {/* The thumbnail is the card's edit affordance, but it contains only decorative marks,
+                    so without a name a screen reader announces an unlabelled button. */}
+                <button className="overlay-thumbnail" aria-label={`Edit ${overlay.name}`} onClick={() => navigate(`/overlays/editor/${overlay.id}`)}>
                   <div className="thumbnail-stage" style={{ aspectRatio: `${overlay.width}/${overlay.height}` }}>
                     <div className="thumbnail-grid" />
                     {overlay.elements.slice(-6).map((element) => (
