@@ -34,6 +34,18 @@ Open → create overlay → add text, viewer count and chat → edit geometry �
 reload it → feed it a garbage URL → no page errors. Reproducible: `node scripts/probes/cp8-journey-probe.mjs`
 (`SITE=http://localhost:4319` to run against a local build instead of production).
 
+## Re-verified after CP10/CP11 (bundle `index-7DKdpXkL.js`)
+
+The frame-budget and stream-repair work touched the runtime's rendering and its transport, so the earlier
+evidence was re-run rather than assumed:
+
+- Journey: 14/14 on production, no failures (`node scripts/probes/cp8-journey-probe.mjs`).
+- Accessibility: axe re-run on library, editor and integrations. The first pass found a **critical**
+  unlabelled button (`.overlay-thumbnail`, whose content is only decorative spans), now named
+  `Edit <overlay name>` with a test; the second pass is 0 violations on all three surfaces.
+- Deploy parity: the deployed bundle hash equals the local build, and CI succeeded for the commit.
+- Backend: `/api/setup` answers normally and the events route emits `ready`, metric and `heartbeat` frames.
+
 ## Open item: one organic Kick event has never arrived
 
 The pipeline is built, deployed and hardened, and every ingress rejection is proven live. What is not
