@@ -77,11 +77,27 @@ Verified on 2026-10-28 after the last secret landed:
   webhooks against)
 * `POST /api/webhooks/kick` without signature headers → `401 {"error":"missing_headers"}`
 
-`grep` on Kick's docs plus a live probe: Kick returns `401 invalid_client` for a
-`client_credentials` token request. That is expected for user-context OAuth apps and is not
-evidence of a wrong secret; the secret is only proven during the callback's
-authorization-code exchange. No live connection is claimed until the channel owner
-authorizes, so `state` will read `CONNECTED` only after that.
+### The `invalid_client` 401, diagnosed
+
+The first authorization attempt died at the token exchange with
+`{"error":"invalid_client","error_description":"Client authentication failed"}`. Cause: the
+value bound as `KICK_CLIENT_SECRET` was **byte-identical to `KICK_CLIENT_ID`** (same 26
+characters, shared prefix 26), so Kick received the client ID twice and authenticated
+nothing. `KICK_CLIENT_ID` itself is fine: the authorize screen accepts it.
+
+Two things now prevent a repeat:
+
+* `/api/setup` returns `state: "MISCONFIGURED"` plus
+  `problems: ["KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET"]` instead of a clean bill of health.
+* The callback wraps the token request and answers with an HTML page naming the real cause
+  and the fix, instead of bubbling a generic `internal_error`.
+
+Control tests against `id.kick.com` (useful when debugging this again): a garbage
+client/secret pair and the real pair both return `401 invalid_client` for
+`grant_type=client_credentials`, and adding any `scope` returns `400 invalid_scope` **even
+for the garbage pair**, so Kick validates `scope` before client authentication. Neither
+response tells you whether the credentials are good. Only the `authorization_code` exchange
+with a real code does, so do not read a `client_credentials` 401 as proof of a bad secret.
 
 ### Why Pages and not Workers
 

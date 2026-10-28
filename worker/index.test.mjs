@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFileSync } from 'node:fs'
-import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, resetPublicKeyCache, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
+import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
 
 const ORIGIN = 'https://varystal.github.io'
 const API = 'https://obsidian-overlay-api.test.workers.dev'
@@ -283,6 +283,31 @@ test('a stale viewer number is refreshed lazily (Pages has no cron) and a failur
   assert.equal(metric.status, 'stale')
   assert.equal(metric.count, 137)
   assert.ok(connection.runtimeKey)
+})
+
+test('a secret that is really the client ID is reported as misconfiguration, and the callback says so instead of a bare 401', async () => {
+  assert.deepEqual(configProblems({ KICK_CLIENT_ID: 'abc123', KICK_CLIENT_SECRET: 'abc123' }), ['KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET'])
+  assert.deepEqual(configProblems({ KICK_CLIENT_ID: 'abc123', KICK_CLIENT_SECRET: 'realsecret' }), [])
+
+  const { env } = makeEnv()
+  env.KICK_CLIENT_ID = '01M6SAMEVALUE'
+  env.KICK_CLIENT_SECRET = '01M6SAMEVALUE'
+  assert.equal(env.KICK_CLIENT_SECRET === env.KICK_CLIENT_ID, true)
+  const setup = await (await handleRequest(new Request('https://api.test/api/setup'), env)).json()
+  assert.equal(setup.state, 'MISCONFIGURED')
+  assert.deepEqual(setup.problems, ['KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET'])
+  assert.ok(setup.callbackUrl.endsWith('/api/auth/kick/callback'))
+
+  // callback with a Kick 401 for /oauth/token must explain the real cause
+  const start = await handleRequest(new Request(`https://api.test/api/auth/kick/start?return_to=${encodeURIComponent(`${ORIGIN}/#/integrations`)}`), env)
+  assert.equal(start.status, 302)
+  const state = new URL(start.headers.get('location')).searchParams.get('state')
+  env.fetchImpl = async () => new Response(JSON.stringify({ error: 'invalid_client', error_description: 'Client authentication failed' }), { status: 401, headers: { 'content-type': 'application/json' } })
+  const cb = await handleRequest(new Request(`https://api.test/api/auth/kick/callback?code=abc&state=${state}`), env)
+  const page = await cb.text()
+  assert.equal(cb.status, 400)
+  assert.match(page, /invalid_client/)
+  assert.match(page, /Client ID saved as the Client Secret/)
 })
 
 test('cron refreshes viewer count from the official channels endpoint', async () => {

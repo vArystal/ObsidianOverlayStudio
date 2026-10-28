@@ -227,6 +227,25 @@ function missingConfig(env) {
   return missing
 }
 
+/**
+ * Mistakes that are not "missing" but still guarantee a failed token exchange.
+ * The one that actually bit us: the Client Secret was pasted as the Client ID, so
+ * Kick answered `invalid_client` and the cause looked like a generic Kick rejection.
+ */
+export function configProblems(env) {
+  const problems = []
+  const id = String(env.KICK_CLIENT_ID || '').trim()
+  const secret = String(env.KICK_CLIENT_SECRET || '').trim()
+  if (id && secret && id.toLowerCase() === secret.toLowerCase()) problems.push('KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET')
+  return problems
+}
+
+const escapeHtml = (value) => String(value).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))
+
+const htmlPage = (request, env, status, title, body) => new Response(
+  `<!doctype html><meta charset="utf-8"><title>${escapeHtml(title)}</title><body style="font-family:system-ui;padding:32px;max-width:680px;margin:auto;background:#1b0b0f;color:#f5e9df;line-height:1.6"><h1 style="font-size:19px;color:#e8c37a">${escapeHtml(title)}</h1><pre style="white-space:pre-wrap;font-family:inherit">${escapeHtml(body)}</pre></body>`,
+  { status, headers: { 'content-type': 'text/html; charset=utf-8', ...corsHeaders(request, env) } })
+
 const redirectUri = (env) => `${String(env.PUBLIC_API_URL).replace(/\/$/, '')}/api/auth/kick/callback`
 export const webhookUrl = (env) => `${String(env.PUBLIC_API_URL).replace(/\/$/, '')}/api/webhooks/kick`
 
@@ -476,9 +495,11 @@ export async function handleRequest(request, env, ctx = {}) {
   if (request.method === 'GET' && path === '/api/health') return json(request, env, 200, { ok: true, service: 'overlay-integration-api', runtime: 'cloudflare-workers', time: new Date().toISOString() })
 
   if (request.method === 'GET' && path === '/api/setup') {
+    const problems = configProblems(env)
     return json(request, env, 200, {
-      state: missing.length ? 'SETUP_REQUIRED' : 'DISCONNECTED',
+      state: missing.length ? 'SETUP_REQUIRED' : problems.length ? 'MISCONFIGURED' : 'DISCONNECTED',
       missing,
+      problems,
       requiredScopes: REQUIRED_SCOPES,
       events: SUBSCRIBED_EVENTS,
       callbackUrl: redirectUri(env),
@@ -518,8 +539,19 @@ export async function handleRequest(request, env, ctx = {}) {
     }
     await run(env, 'DELETE FROM oauth_states WHERE state = ?', state)
 
-    const tokens = await tokenRequest(fetchImpl, { clientId: env.KICK_CLIENT_ID, clientSecret: env.KICK_CLIENT_SECRET, redirectUri: redirectUri(env) },
-      { grant_type: 'authorization_code', code, code_verifier: pending.verifier })
+    let tokens
+    try {
+      tokens = await tokenRequest(fetchImpl, { clientId: env.KICK_CLIENT_ID, clientSecret: env.KICK_CLIENT_SECRET, redirectUri: redirectUri(env) },
+        { grant_type: 'authorization_code', code, code_verifier: pending.verifier })
+    } catch (error) {
+      const reason = String(error?.message || error)
+      const hint = configProblems(env).includes('KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET')
+        ? 'This deployment has the Client ID saved as the Client Secret, so Kick cannot authenticate the app. Paste the real Client Secret from the Kick developer page as KICK_CLIENT_SECRET, then redeploy.'
+        : /invalid_client/.test(reason)
+          ? 'Kick rejected the app credentials. Re-copy the Client Secret from the Kick developer page. Regenerating a secret invalidates the previous one.'
+          : 'Kick rejected the token exchange. Confirm the Redirect URL registered in the Kick app matches this exact callback URL.'
+      return htmlPage(request, env, 400, 'Kick token exchange failed', `${reason}\n\n${hint}`)
+    }
     const accessToken = tokens.access_token
     if (!accessToken) return text(request, env, 502, 'Kick did not return an access token')
     const user = await kickApi(fetchImpl, accessToken, '/public/v1/users').then((b) => (b.data ?? [])[0] ?? null).catch(() => null)
