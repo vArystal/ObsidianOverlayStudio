@@ -145,6 +145,16 @@ describe('viewer metric honesty', () => {
     expect(el.querySelector('.live-metric strong')?.textContent).toBe('Unavailable')
     expect(el.querySelector('.live-metric em')?.textContent).toBe('KICK API UNREACHABLE')
   })
+
+  it('says not connected, not unreachable, when no Kick connection is attached at all', () => {
+    const el = render(
+      <LiveDataContext.Provider value={{ state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false }}>
+        <ElementRenderer element={createElement('viewerCount')} runtime />
+      </LiveDataContext.Provider>,
+    ).container
+    expect(el.querySelector('.live-metric strong')?.textContent).toBe('Not connected')
+    expect(el.querySelector('.live-metric em')?.textContent).toBe('KICK NOT CONNECTED')
+  })
 })
 
 describe('element capability sweep', () => {

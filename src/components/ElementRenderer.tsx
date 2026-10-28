@@ -166,8 +166,11 @@ function ElementContent({ element, runtime, testAlertNonce }: { element: Overlay
       // and an API failure must never be rendered as zero viewers.
       const status = live.viewer.status
       const known = (status === 'live' || status === 'stale') && typeof live.viewer.count === 'number'
-      const value = known ? live.viewer.count : status === 'offline' ? text(element, 'offlineText', 'آفلاین') : text(element, 'unavailableText', 'Unavailable')
-      const caption = !runtime ? 'LIVE API PREVIEW' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
+      // "No Kick connection attached" and "the Kick API failed" are different problems with different
+      // fixes; showing UNREACHABLE for an unconnected overlay sends the operator hunting a broken API.
+      const connected = live.configured !== false
+      const value = known ? live.viewer.count : status === 'offline' ? text(element, 'offlineText', 'آفلاین') : text(element, 'unavailableText', connected ? 'Unavailable' : 'Not connected')
+      const caption = !runtime ? 'LIVE API PREVIEW' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
       return <div className={`metric-widget live-metric viewer-${status}`} style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></div>
     }
     case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>events received this connection</em></div>

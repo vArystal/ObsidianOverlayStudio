@@ -35,7 +35,10 @@ function decorationFor(type: ElementType, preset?: DecorationPresetId) {
 }
 
 const base = (type: ElementType, index: number): OverlayElement => ({
-  id: uid(type), type, name: ELEMENT_LABELS[type], x: 96 + (index % 5) * 28, y: 96 + (index % 5) * 28,
+  // A 28px cascade buries the layer below it: a 420x180 element added on top leaves a 28px sliver
+  // of the one underneath, which is not selectable on canvas. A 120px stride keeps the top edge of
+  // every earlier layer reachable while still clustering new work near the top left.
+  id: uid(type), type, name: ELEMENT_LABELS[type], x: 96 + (index % 6) * 120, y: 96 + (index % 6) * 120,
   width: 420, height: 180, rotation: 0, opacity: 1, visible: true, locked: false,
   includeInOutput: true, maintainAspectRatio: false, animation: createAnimation(), decoration: decorationFor(type), props: {},
 })

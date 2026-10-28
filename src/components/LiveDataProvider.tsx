@@ -10,9 +10,11 @@ interface LiveDataState {
   sessionFollowerCount: number
   alerts: LiveOverlayEvent[]
   lastEventAt: string | null
+  /** False when no Kick connection is attached at all, which is not the same as a failed API call. */
+  configured?: boolean
 }
 
-const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null }
+const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false }
 const LiveContext = createContext<LiveDataState>(initial)
 /** Exported so tests can inject a live snapshot without opening a real SSE stream. */
 export const LiveDataContext = LiveContext
@@ -27,7 +29,7 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
     if (!config || !config.runtimeKey) { setData(initial); return }
     let cancelled = false
     const backend = config.backendUrl.replace(/\/$/, '')
-    setData((value) => ({ ...value, state: 'connecting' }))
+    setData((value) => ({ ...value, state: 'connecting', configured: true }))
     const loadState = () => fetch(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/state`)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Runtime unavailable')))
       .then((state) => {
