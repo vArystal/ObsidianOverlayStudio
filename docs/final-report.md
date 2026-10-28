@@ -1,12 +1,14 @@
 # OBSIDIAN OVERLAY STUDIO — transformation report
 
-Date: 2026-10-28. Baseline audited at `13a43a0`, final state `e593f5a`, eight checkpoints, all pushed to
+Date: 2026-10-28. Baseline audited at `13a43a0`, final state `a7dafc4`, eleven checkpoints, all pushed to
 `main` and to the deploying branch `arena/35be064d-jubilant-octo-lamp`.
 
-- Frontend: https://varystal.github.io/jubilant-octo-lamp — bundle `index-DGoVjmNI.js`
-- Backend: https://obsidian-overlay-api.pages.dev (Cloudflare Pages Functions + D1)
-- Tests: **117 passing** (70 vitest, 28 legacy server, 19 Pages worker), `tsc -b` and `vite build` clean
-- Code: 50 files, +2536 / −102 lines, 9 commits, per-phase notes in `docs/checkpoint-cp0..cp8.md`
+- Frontend: https://varystal.github.io/jubilant-octo-lamp — bundle `index-CFT5hws7.js` (matches the local
+  build byte for byte, so there is no deployment drift)
+- Backend: https://obsidian-overlay-api.pages.dev (Cloudflare Pages Functions + D1), redeployed with the
+  CP11 heartbeat, verified live
+- Tests: **128 passing** (80 vitest, 28 legacy server, 20 Pages worker), `tsc -b` and `vite build` clean
+- Per-phase notes in `docs/checkpoint-cp0..cp11.md`
 
 ## What each checkpoint changed, and how it was proven
 
@@ -21,6 +23,9 @@ Date: 2026-10-28. Baseline audited at `13a43a0`, final state `e593f5a`, eight ch
 | CP6 OBS runtime | "Open output" only resolved in the authoring browser | Snapshot carried in the URL, size-annotated | Published URL renders 3/3 elements in a clean profile; scaling exact at 1080p/720p/900×1600 |
 | CP7 quality | Invalid tablist, two contrast failures, API naming a foreign origin, crash detail in 500s | Real tabs with arrow keys, contrast fixes, strict CORS, scrubbed errors | axe 3 → **0** violations on all three surfaces |
 | CP8 regression | New layers buried earlier ones; unconnected overlays blamed the Kick API | 120px cascade, "KICK NOT CONNECTED" state | 14/14 journey checks on production |
+| CP9 first run | A browser with empty storage opened Integrations to a red ERROR badge and a dead Connect button | Backend origin compiled into the bundle, unconfigured builds report NOT_CONFIGURED without a request, durable signed-event receipts shown | Production: badge DISCONNECTED, real webhook endpoint, zero console errors |
+| CP10 frame budget | Idle glow and sparkle repainted every frame: 47fps with 46 janky frames in a 33-layer overlay | Effects moved to their own compositor layers (opacity/transform only), paint containment, colour helper no longer crashes on a theme without colours | 60fps local, 59.8fps production, p95 16.8ms, 0 janky frames |
+| CP11 stream repair | A fatal SSE close never retried, a silently dead channel was undetectable, and a state poll could relabel a dead stream | Backoff 1s..30s with error escalation, single-flight retries, 150s stall watchdog, real `heartbeat` events instead of invisible SSE comments | 45s injected outage: 5 retries, gaps 2s/5s/10s, recovered with no reload; pre-fix bundle: 0 retries |
 
 ## The journey, measured on production (14/14)
 
@@ -32,9 +37,13 @@ reload it → feed it a garbage URL → no page errors. Reproducible: `node scri
 ## Open item: one organic Kick event has never arrived
 
 The pipeline is built, deployed and hardened, and every ingress rejection is proven live. What is not
-proven is the happy path, because no genuinely signed delivery has ever reached the server:
-`last_event_at` is NULL, `event_counts` is `{}`, and the rows labelled TEST EVENT came from the app's own
-test button, which does not touch the webhook route.
+proven is the happy path, because no genuinely signed delivery has ever reached the server. Re-checked at
+21:20 Tehran on 2026-10-28: `last_event_at` is NULL, `event_counts` is `{}`, `processed` holds 0 rows, and
+all 61 rows in `events` are `metric.viewer.updated` frames the backend generated itself. The rows labelled
+TEST EVENT came from the app's own test button, which does not touch the webhook route.
+
+The read side is therefore proven against the real Kick API (viewer status refreshed, channel identity,
+subscriptions registered) while the write side waits for Kick to send something.
 
 This cannot be forced from this side by design: a valid delivery requires Kick to sign a payload with a
 key only Kick holds. One action closes it: post a single message in `kick.com/arystal/chat` (or have
