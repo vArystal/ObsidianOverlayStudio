@@ -255,3 +255,11 @@ body.runtime-root .app-shell::before { display: none; }
   text-transform: uppercase;
 }
 .countdown-widget.countdown-done strong { color: var(--gold-300); }
+
+/* --- Publish size verdict ---------------------------------------------- */
+.publish-size { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5;
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; }
+.publish-size svg { width: 16px; height: 16px; flex: 0 0 auto; margin-top: 2px; }
+.publish-size.ok { color: var(--gold-100); background: rgba(216, 173, 85, .10); border: 1px solid rgba(216, 173, 85, .28); }
+.publish-size.warn { color: #F4D9A0; background: rgba(214, 138, 42, .14); border: 1px solid rgba(214, 138, 42, .38); }
+.publish-size.blocked { color: #FFC9C9; background: rgba(190, 60, 60, .16); border: 1px solid rgba(190, 60, 60, .42); }

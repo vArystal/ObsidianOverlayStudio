@@ -90,7 +90,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
       </div>
       {props.selectedIsTestable && <button className="toolbar-button test-button" onClick={props.onTest}><Zap /> Test widget</button>}
       <div className="toolbar-spacer" />
-      <button className="toolbar-button" onClick={props.onCopyUrl}><Copy /> Copy OBS URL</button>
+      <button className="toolbar-button" onClick={props.onCopyUrl} title="Publish this composition and copy its OBS browser source URL"><Copy /> Publish</button>
       <button className="primary-button compact" onClick={props.onSave}><Save /> Save</button>
     </div>
   )

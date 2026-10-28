@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
+import { AlertTriangle, Check, ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
 import { Canvas } from '../components/editor/Canvas'
 import { CanvasControls } from '../components/editor/CanvasControls'
@@ -10,6 +10,7 @@ import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
 import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
+import { LAYER_MAX_EDGE, LAYER_TARGET_BYTES, optimizeImage, snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
 import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
@@ -45,6 +46,7 @@ export function OverlayEditor() {
   const [actualScale, setActualScale] = useState(0.5)
   const [testAlertNonce, setTestAlertNonce] = useState(0)
   const [publishUrl, setPublishUrl] = useState('')
+  const [publishVerdict, setPublishVerdict] = useState<{ level: 'ok' | 'warn' | 'blocked'; message: string } | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null)
   const interactionStart = useRef<Overlay | null>(null)
 
@@ -253,22 +255,26 @@ export function OverlayEditor() {
     const audio = target === 'alert-sound'
     const valid = audio ? ['audio/mpeg', 'audio/wav', 'audio/ogg'].includes(file.type) : VALID_IMAGE_TYPES.includes(file.type)
     if (!valid) return setNotice(audio ? 'Use MP3, WAV, or OGG audio.' : 'Use PNG, JPEG, or WebP images.')
-    if (file.size > 2 * 1024 * 1024) return setNotice('File is too large. Maximum size is 2 MB.')
+    if (file.size > (audio ? 8 : 12) * 1024 * 1024) return setNotice(audio ? 'Audio must be under 8 MB.' : 'Image must be under 12 MB; larger files are downscaled, not stored raw.')
     try {
-      const data = await readFile(file)
+      if (audio) {
+        const data = await readFile(file)
+        if (!elementId) return
+        const current = overlayRef.current?.elements.find((item) => item.id === elementId)
+        patchElementById(elementId, { props: { ...(current?.props ?? {}), soundSrc: data, soundName: file.name } })
+        return
+      }
+      const optimized = await optimizeImage(file, { maxEdge: LAYER_MAX_EDGE, targetBytes: LAYER_TARGET_BYTES })
       if (!elementId) return
       if (target === 'image') {
-        const image = new Image()
-        image.onload = () => {
-          const current = overlayRef.current?.elements.find((item) => item.id === elementId)
-          const ratio = image.naturalWidth / image.naturalHeight
-          patchElementById(elementId, { width: current?.width ?? 360, height: (current?.width ?? 360) / ratio, maintainAspectRatio: true, props: { ...(current?.props ?? {}), src: data, alt: file.name } })
-        }
-        image.src = data
+        const current = overlayRef.current?.elements.find((item) => item.id === elementId)
+        const width = current?.width ?? 360
+        patchElementById(elementId, { width, height: Math.round(width / (optimized.width / optimized.height)), maintainAspectRatio: true, props: { ...(current?.props ?? {}), src: optimized.dataUrl, alt: file.name } })
       } else {
         const current = overlayRef.current?.elements.find((item) => item.id === elementId)
-        patchElementById(elementId, { props: { ...(current?.props ?? {}), [target === 'alert-image' ? 'imageSrc' : 'soundSrc']: data, ...(audio ? { soundName: file.name } : {}) } })
+        patchElementById(elementId, { props: { ...(current?.props ?? {}), imageSrc: optimized.dataUrl } })
       }
+      setNotice(optimized.note)
     } catch (error) {
       setNotice(error instanceof Error ? error.message : 'Upload failed')
     }
@@ -276,31 +282,29 @@ export function OverlayEditor() {
 
   async function uploadAsset(file: File) {
     if (!VALID_IMAGE_TYPES.includes(file.type)) return setNotice('Use PNG, JPEG, or WebP images.')
-    if (file.size > 2 * 1024 * 1024) return setNotice('File is too large. Maximum size is 2 MB.')
+    if (file.size > 12 * 1024 * 1024) return setNotice('Image must be under 12 MB; larger files are downscaled, not stored raw.')
     const current = overlayRef.current
     if (!current) return
     try {
-      const data = await readFile(file)
-      const image = new Image()
-      image.onload = () => {
-        const element = createElement('image', current.elements.length)
-        element.name = file.name.replace(/\.[^.]+$/, '') || 'Image'
-        element.props = { ...element.props, src: data, alt: file.name }
-        element.height = element.width / (image.naturalWidth / image.naturalHeight)
-        const next = clampElement(element, current.width, current.height)
-        commit((value) => ({ ...value, elements: [...value.elements, next] }))
-        setSelectedId(next.id)
-        setMobilePanel('right')
-      }
-      image.src = data
+      const optimized = await optimizeImage(file, { maxEdge: LAYER_MAX_EDGE, targetBytes: LAYER_TARGET_BYTES })
+      const element = createElement('image', current.elements.length)
+      element.name = file.name.replace(/\.[^.]+$/, '') || 'Image'
+      element.props = { ...element.props, src: optimized.dataUrl, alt: file.name }
+      element.height = Math.round(element.width / (optimized.width / optimized.height))
+      const next = clampElement(element, current.width, current.height)
+      commit((value) => ({ ...value, elements: [...value.elements, next] }))
+      setSelectedId(next.id)
+      setMobilePanel('right')
+      setNotice(optimized.note)
     } catch { setNotice('Could not read that image.') }
   }
 
   async function uploadBackground(file: File) {
-    if (!VALID_IMAGE_TYPES.includes(file.type) || file.size > 2 * 1024 * 1024) return setNotice('Planning backgrounds must be PNG, JPEG, or WebP under 2 MB.')
+    if (!VALID_IMAGE_TYPES.includes(file.type) || file.size > 12 * 1024 * 1024) return setNotice('Planning backgrounds must be PNG, JPEG, or WebP under 12 MB; larger files are downscaled.')
     try {
-      const data = await readFile(file)
-      commit((current) => ({ ...current, settings: { ...current.settings, backgroundImage: data } }))
+      const optimized = await optimizeImage(file)
+      commit((current) => ({ ...current, settings: { ...current.settings, backgroundImage: optimized.dataUrl } }))
+      setNotice(optimized.note)
     } catch { setNotice('Could not read that background.') }
   }
 
@@ -356,6 +360,10 @@ export function OverlayEditor() {
     const current = overlayRef.current
     if (!current) return
     let published: Overlay = { ...current, publishedAt: new Date().toISOString() }
+    // Refuse before registering a live runtime: a URL the browser cannot open makes the whole
+    // publish meaningless, and a silent success would send the user to OBS with a dead source.
+    const preview = snapshotBudget(encodeOverlaySnapshot(published).length)
+    if (preview.level === 'blocked') return setNotice(preview.message)
     let liveRegistration = ''
     if (published.live) {
       try {
@@ -374,7 +382,9 @@ export function OverlayEditor() {
     setOverlay(result.value)
     setDirty(false)
     const snapshot = encodeOverlaySnapshot(result.value)
+    const verdict = snapshotBudget(snapshot.length)
     const url = buildHashUrl(`/overlay/${result.value.publicId}?snapshot=${snapshot}`)
+    setPublishVerdict(verdict)
     setPublishUrl(url)
     await copyText(url)
     if (liveRegistration) setNotice(`Published with stable server-backed live runtime${liveRegistration}`)
@@ -470,13 +480,14 @@ export function OverlayEditor() {
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
         {notice && <div className="toast">{notice}</div>}
         {publishUrl && (
-          <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPublishUrl('') }}>
+          <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setPublishUrl(''); setPublishVerdict(null) } }}>
             <section className="publish-modal" role="dialog" aria-modal="true" aria-labelledby="publish-title">
-              <button className="modal-close" onClick={() => setPublishUrl('')}><X /></button>
+              <button className="modal-close" onClick={() => { setPublishUrl(''); setPublishVerdict(null) }}><X /></button>
               <div className="modal-icon"><Copy /></div>
               <h2 id="publish-title">OBS snapshot URL copied</h2>
               <p>This transparent output contains your current saved composition. Use these exact Browser Source dimensions:</p>
               <div className="resolution-recommendation"><span>Width <strong>{overlay.width}</strong></span><span>Height <strong>{overlay.height}</strong></span></div>
+              {publishVerdict && <p className={`publish-size ${publishVerdict.level}`}>{publishVerdict.level === 'warn' ? <AlertTriangle /> : publishVerdict.level === 'ok' ? <Check /> : <Info />}{publishVerdict.message}</p>}
               <label className="url-field"><span>Browser Source URL</span><textarea readOnly value={publishUrl} onFocus={(event) => event.target.select()} /></label>
               <button className="primary-button full" onClick={async () => { await copyText(publishUrl); setNotice('URL copied') }}><Copy /> Copy URL again</button>
               <div className="publish-warning"><Info /><p><strong>Transparent OBS output:</strong> the secret-sanitized composition is embedded as a static fallback. With an attached, authenticated integration, Publish also registers this overlay’s stable server-backed live ID. A localhost URL works only while this machine’s dev server is running; production OAuth, webhooks, and remote OBS clients require public HTTPS. Snapshot URLs and embedded media cannot be revoked.</p></div>
