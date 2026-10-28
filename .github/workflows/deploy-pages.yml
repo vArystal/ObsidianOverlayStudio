@@ -69,5 +69,10 @@ jobs:
           test -n "$asset_path"
           curl --fail --silent --show-error --retry 5 --retry-delay 2 "${PAGE_URL}${asset_path}" --output app.js
           google-chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=8000 \
-            --dump-dom "${PAGE_URL}${cache_bust}#/overlays" > rendered.html
+            --enable-logging=stderr --dump-dom "${PAGE_URL}${cache_bust}#/overlays" > rendered.html 2> browser-console.log
           grep -q 'Your overlays' rendered.html
+          google-chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=8000 \
+            --enable-logging=stderr --dump-dom "${PAGE_URL}${cache_bust}#/integrations" > integrations.html 2>> browser-console.log
+          grep -q 'Live integrations' integrations.html
+          grep -q 'Donation provider' integrations.html
+          ! grep -E 'Uncaught|TypeError|ReferenceError|Minified React error' browser-console.log
