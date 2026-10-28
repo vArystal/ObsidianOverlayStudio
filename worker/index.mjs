@@ -28,6 +28,11 @@ export const SUBSCRIBED_EVENTS = [
 ]
 const MAX_BODY_BYTES = 256 * 1024
 const WEBHOOK_MAX_AGE_MS = 10 * 60_000
+/** A signed delivery dated in the future buys an attacker time; allow only clock skew. */
+const WEBHOOK_FUTURE_SKEW_MS = 60_000
+/** Bound how often a hostile sender can make us refetch Kick's public key. */
+const KEY_REFRESH_COOLDOWN_MS = 60_000
+const SUPPORTED_WEBHOOK_VERSIONS = new Set(['1'])
 const SSE_WINDOW_MS = 25_000
 const SSE_POLL_MS = 2_000
 
@@ -287,6 +292,7 @@ export function connectionPayload(connection) {
     sessionFollowerCount: Number(connection.session_follower_count || 0),
     lastEventAt: connection.last_event_at || null,
     lastEventType: connection.last_event_type || null,
+    eventCounts: (() => { try { return JSON.parse(connection.event_counts || '{}') } catch { return {} } })(),
     updatedAt: connection.updated_at || null,
     webhookError: connection.webhook_error || null,
   }
@@ -430,50 +436,60 @@ function sseStream(env, runtimeKey, connection) {
 
 async function handleWebhook(request, env) {
   const rawBody = await request.text()
-  if (rawBody.length > MAX_BODY_BYTES) return json(request, env, 413, { error: 'payload_too_large' })
+  if (byteLength(rawBody) > MAX_BODY_BYTES) return json(request, env, 413, { error: 'payload_too_large' })
   const messageId = headerValue(request.headers, 'Kick-Event-Message-Id')
   const timestamp = headerValue(request.headers, 'Kick-Event-Message-Timestamp')
   const signature = headerValue(request.headers, 'Kick-Event-Signature')
   const eventType = headerValue(request.headers, 'Kick-Event-Type')
   const version = headerValue(request.headers, 'Kick-Event-Version')
   if (!messageId || !timestamp || !signature || !eventType || !version) return json(request, env, 401, { error: 'missing_headers' })
+  if (!SUPPORTED_WEBHOOK_VERSIONS.has(String(version))) return json(request, env, 400, { error: 'unsupported_version' })
   const sentAt = Date.parse(timestamp)
-  if (!Number.isFinite(sentAt) || Math.abs(Date.now() - sentAt) > WEBHOOK_MAX_AGE_MS) return json(request, env, 401, { error: 'stale_timestamp' })
+  if (!Number.isFinite(sentAt) || Date.now() - sentAt > WEBHOOK_MAX_AGE_MS || sentAt - Date.now() > WEBHOOK_FUTURE_SKEW_MS) {
+    return json(request, env, 401, { error: 'stale_timestamp' })
+  }
 
   const fetchImpl = env.fetchImpl || fetch
   let publicKeyPem = await cachedPublicKey(env, false, fetchImpl)
   let valid = await verifyKickSignature({ signature, messageId, timestamp, rawBody, publicKeyPem })
-  if (!valid) {
+  if (!valid && mayForcePublicKeyRefresh()) {
     publicKeyPem = await cachedPublicKey(env, true, fetchImpl)
     valid = await verifyKickSignature({ signature, messageId, timestamp, rawBody, publicKeyPem })
   }
   if (!valid) return json(request, env, 401, { error: 'invalid_signature' })
 
-  const seen = await one(env, 'SELECT message_id FROM processed WHERE message_id = ?', messageId)
-  if (seen) return noContent(request, env)
+  // Claim the delivery atomically. Two concurrent copies of the same delivery used to slip past a
+  // SELECT-then-INSERT window and both queue an event, double counting follows.
+  const now = new Date().toISOString()
+  const claim = await run(env, 'INSERT OR IGNORE INTO processed (message_id, at) VALUES (?, ?)', messageId, now)
+  if (Number(claim?.meta?.changes ?? 0) === 0) return noContent(request, env)
 
   let payload
-  try { payload = JSON.parse(rawBody) } catch { return json(request, env, 400, { error: 'malformed_json' }) }
+  try { payload = JSON.parse(rawBody) } catch {
+    // A signed body we cannot parse is the sender's bug, but the id must not stay burned in case
+    // Kick retries a corrected payload with the same message id.
+    await run(env, 'DELETE FROM processed WHERE message_id = ?', messageId).catch(() => null)
+    return json(request, env, 400, { error: 'malformed_json' })
+  }
   const broadcasterId = payload.broadcaster?.user_id
-  if (!broadcasterId) return json(request, env, 400, { error: 'missing_broadcaster' })
-
-  const connection = await one(env, 'SELECT * FROM connections WHERE account_user_id = ?', Number(broadcasterId))
-  if (!connection) {
-    await run(env, 'INSERT OR IGNORE INTO processed (message_id, at) VALUES (?, ?)', messageId, new Date().toISOString())
-    return json(request, env, 202, { accepted: true, reason: 'unknown_broadcaster' })
+  if (!broadcasterId) {
+    await run(env, 'DELETE FROM processed WHERE message_id = ?', messageId).catch(() => null)
+    return json(request, env, 400, { error: 'missing_broadcaster' })
   }
 
-  const now = new Date().toISOString()
-  const event = normalizeEvent({ id: messageId, type: eventType, payload, receivedAt: now })
-  await run(env, 'INSERT OR IGNORE INTO processed (message_id, at) VALUES (?, ?)', messageId, now)
+  const connection = await one(env, 'SELECT * FROM connections WHERE account_user_id = ?', Number(broadcasterId))
+  if (!connection) return json(request, env, 202, { accepted: true, reason: 'unknown_broadcaster' })
 
+  const event = normalizeEvent({ id: messageId, type: eventType, payload, receivedAt: now })
   const keys = await runtimeKeysFor(env, connection.id)
   for (const key of keys) {
     await run(env, 'INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)',
       connection.id, key, messageId, eventType, JSON.stringify(event), now)
   }
 
-  const patch = { last_event_at: now, last_event_type: eventType }
+  const counts = (() => { try { return JSON.parse(connection.event_counts || '{}') } catch { return {} } })()
+  counts[eventType] = Number(counts[eventType] || 0) + 1
+  const patch = { last_event_at: now, last_event_type: eventType, event_counts: JSON.stringify(counts) }
   if (eventType === 'chat.message.sent') patch.last_chat_user = payload.sender?.username ?? null
   if (eventType === 'channel.followed') {
     patch.last_follower = JSON.stringify(person(payload.follower))
@@ -490,7 +506,21 @@ async function handleWebhook(request, env) {
 }
 
 let publicKeyCache = { pem: null, at: 0 }
-export function resetPublicKeyCache() { publicKeyCache = { pem: null, at: 0 } }
+let forcedKeyRefreshAt = 0
+export function resetPublicKeyCache() { publicKeyCache = { pem: null, at: 0 }; forcedKeyRefreshAt = 0 }
+
+/**
+ * Every invalid signature used to trigger an outbound refetch of Kick's public key, so an attacker
+ * could burn our request budget and get us rate limited by sending garbage. A forced refresh is
+ * allowed once per cooldown instead; the cached key still verifies genuine deliveries meanwhile.
+ */
+export function mayForcePublicKeyRefresh(now = Date.now()) {
+  if (now - forcedKeyRefreshAt < KEY_REFRESH_COOLDOWN_MS) return false
+  forcedKeyRefreshAt = now
+  return true
+}
+
+const byteLength = (text) => new TextEncoder().encode(text).length
 export async function cachedPublicKey(env, force = false, fetchImpl = fetch) {
   if (!force && publicKeyCache.pem && Date.now() - publicKeyCache.at < 60 * 60_000) return publicKeyCache.pem
   const body = await kickFetch(fetchImpl, `${API_BASE}/public/v1/public-key`, { headers: { accept: 'application/json' } })
@@ -524,7 +554,12 @@ export async function handleRequest(request, env, ctx = {}) {
       followerTotal: FOLLOWER_TOTAL,
       webhook: { state: 'SETUP_REQUIRED', endpoint: webhookUrl(env), subscriptions: [], error: null },
       donation: { state: 'SETUP_REQUIRED', message: 'No donation provider connected.' },
-      runtime: 'cloudflare-workers',
+      runtime: 'cloudflare-pages',
+      // This route reports server configuration only, so DISCONNECTED here must not be read as
+      // "there is no connection": an owner with a live connection gets that answer from the
+      // authenticated status route, which is the only one that can tell whose connection it is.
+      connectionStateKnown: false,
+      note: 'Configuration probe. Whether this owner has an active Kick connection is answered by the authenticated /api/integrations/kick status route.',
     })
   }
 

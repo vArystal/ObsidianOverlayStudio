@@ -170,9 +170,75 @@ test('webhook signature, replay and dedupe rules', async () => {
   assert.equal(queued[0].type, 'channel.followed')
   assert.equal(JSON.parse(queued[0].payload).data.follower.username, 'new_follower')
 
-  const row = sqlite.prepare('SELECT session_follower_count, last_follower FROM connections').get()
+  const row = sqlite.prepare('SELECT session_follower_count, last_follower, event_counts FROM connections').get()
   assert.equal(row.session_follower_count, 1, 'duplicates must not double count')
   assert.equal(JSON.parse(row.last_follower).username, 'new_follower')
+  assert.deepEqual(JSON.parse(row.event_counts), { 'channel.followed': 1 }, 'a redelivery must not inflate the durable counter')
+
+  // A second type proves the counter is per-type, not a single shared number.
+  const chatBody = JSON.stringify({ message_id: 'km_1', content: 'salam', created_at: new Date().toISOString(), sender: { user_id: 9, username: 'chatter' }, broadcaster: { user_id: 42 } })
+  const chatId = '01JCHAT0000000000001'
+  const chatTs = new Date().toISOString()
+  const chatHeaders = { 'Kick-Event-Message-Id': chatId, 'Kick-Event-Message-Timestamp': chatTs, 'Kick-Event-Signature': await sign(keys.privateKey, chatId, chatTs, chatBody), 'Kick-Event-Type': 'chat.message.sent', 'Kick-Event-Version': '1', 'content-type': 'application/json' }
+  assert.equal((await handleRequest(req('/api/webhooks/kick', { method: 'POST', body: chatBody, headers: chatHeaders }), env)).status, 204)
+  const after = JSON.parse(sqlite.prepare('SELECT event_counts FROM connections').get().event_counts)
+  assert.deepEqual(after, { 'channel.followed': 1, 'chat.message.sent': 1 })
+  assert.equal(sqlite.prepare('SELECT last_event_type FROM connections').get().last_event_type, 'chat.message.sent')
+})
+
+test('webhook hardening: byte cap, version, clock skew and the key-refresh budget', async () => {
+  const keys = await keypair()
+  const { env } = makeEnv()
+  await connect(env, keys)
+  const inner = env.fetchImpl
+  let keyFetches = 0
+  env.fetchImpl = async (url, options) => {
+    if (String(url).endsWith('/public/v1/public-key')) keyFetches += 1
+    return inner(url, options)
+  }
+  const headersFor = async (body, overrides = {}) => {
+    const messageId = `msg_${Math.random().toString(36).slice(2)}`
+    const timestamp = new Date().toISOString()
+    const signature = await sign(keys.privateKey, messageId, timestamp, body)
+    return { 'Kick-Event-Message-Id': messageId, 'Kick-Event-Message-Timestamp': timestamp, 'Kick-Event-Signature': signature, 'Kick-Event-Type': 'channel.followed', 'Kick-Event-Version': '1', 'content-type': 'application/json', ...overrides }
+  }
+
+  // 200k accented characters = ~400 KB of UTF-8 while staying under 300k UTF-16 units, so a cap
+  // measured in string length lets it through while a byte cap stops it.
+  const oversized = JSON.stringify({ broadcaster: { user_id: 42 }, note: 'é'.repeat(200_000) })
+  assert.ok(oversized.length < 300_000)
+  assert.ok(oversized.length > 200_000)
+  const tooBig = await handleRequest(req('/api/webhooks/kick', { method: 'POST', body: oversized, headers: await headersFor(oversized) }), env)
+  assert.equal(tooBig.status, 413)
+
+  const body = JSON.stringify({ follower: { user_id: 7, username: 'x' }, broadcaster: { user_id: 42 } })
+  const wrongVersion = await handleRequest(req('/api/webhooks/kick', { method: 'POST', body, headers: await headersFor(body, { 'Kick-Event-Version': '2' }) }), env)
+  assert.equal(wrongVersion.status, 400)
+  assert.equal((await wrongVersion.json()).error, 'unsupported_version')
+
+  const future = new Date(Date.now() + 5 * 60_000).toISOString()
+  const preplayed = await handleRequest(req('/api/webhooks/kick', { method: 'POST', body, headers: await headersFor(body, { 'Kick-Event-Message-Timestamp': future }) }), env)
+  assert.equal(preplayed.status, 401, 'a timestamp far in the future must be refused')
+
+  // Warm the key cache with one genuine delivery, then measure what junk costs.
+  const genuine = await handleRequest(req('/api/webhooks/kick', { method: 'POST', body, headers: await headersFor(body) }), env)
+  assert.equal(genuine.status, 204)
+  const warm = keyFetches
+  assert.equal(warm, 1, 'the first delivery fills the key cache exactly once')
+
+  // A sender with a bad signature may force at most one public-key refetch per cooldown; without
+  // the budget every junk delivery spent an outbound Kick request.
+  for (let i = 0; i < 3; i += 1) {
+    const h = await headersFor(body, { 'Kick-Event-Signature': 'AAAA' })
+    assert.equal((await handleRequest(req('/api/webhooks/kick', { method: 'POST', body, headers: h }), env)).status, 401)
+  }
+  assert.equal(keyFetches - warm, 1, 'three junk deliveries may force only one refetch')
+  const afterBudget = keyFetches
+  for (let i = 0; i < 2; i += 1) {
+    const h = await headersFor(body, { 'Kick-Event-Signature': 'BBBB' })
+    assert.equal((await handleRequest(req('/api/webhooks/kick', { method: 'POST', body, headers: h }), env)).status, 401)
+  }
+  assert.equal(keyFetches, afterBudget, 'the cooldown must hold for every later junk delivery')
 })
 
 test('webhook verification accepts a real RSA signature and rejects tampering', async () => {

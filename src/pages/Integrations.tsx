@@ -93,6 +93,7 @@ export function Integrations() {
                   <article><Activity /><span><small>Last event</small><strong>{connection.lastEventType || 'None received'}</strong><em>{connection.lastEventAt ? new Date(connection.lastEventAt).toLocaleTimeString() : 'Waiting'}</em></span></article>
                 </div>
                 <div className="scope-list"><h3>Granted permissions</h3>{connection.scopes?.map((scope: string) => <span key={scope}><Check />{scope}</span>)}{status?.missingScopes?.map((scope) => <span className="missing" key={scope}><AlertTriangle />{scope}</span>)}</div>
+                {!status?.missingScopes?.length && <p className="integration-note">The status route reports the scopes Kick actually granted this connection.</p>}
                 <div className="integration-actions"><button className="secondary-button" disabled={busy} onClick={() => action('/api/integrations/kick/resubscribe')}><RefreshCw /> Resubscribe webhooks</button><button className="danger-button" disabled={busy} onClick={disconnect}><Unplug /> Disconnect & revoke</button></div>
               </>
             ) : (

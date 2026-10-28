@@ -22,6 +22,9 @@ CREATE TABLE IF NOT EXISTS connections (
   last_event_at          TEXT,
   last_event_type        TEXT,
   last_chat_user         TEXT,
+  -- Durable per-type receipt counters. Event rows are pruned after an hour, so without
+  -- this there is no way to prove later whether a real delivery ever arrived.
+  event_counts           TEXT NOT NULL DEFAULT '{}',
   updated_at             TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_connections_management ON connections(management_hash);
