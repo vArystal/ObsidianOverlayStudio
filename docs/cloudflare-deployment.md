@@ -1,0 +1,161 @@
+# Kick integration on Cloudflare Workers (free tier)
+
+The editor stays on GitHub Pages. Kick OAuth, tokens and webhooks need a public HTTPS
+backend, so this repo ships one that runs entirely on the Cloudflare free plan:
+Workers + D1 only. No Durable Objects, Queues, R2, paid add-ons or custom domain.
+
+Frontend is unchanged: `src/lib/integration.ts` already talks to this exact route
+surface (`/api/auth/kick/start`, `/api/auth/kick/callback`, `/api/auth/session`,
+`/api/integrations/kick`, `/api/overlays/publish`, `/api/runtime/:key/state`,
+`/api/runtime/:key/events`, `/api/webhooks/kick`). You only paste the Worker URL into
+**Integrations → Integration server → Backend URL**.
+
+## 1. What the official Kick API actually supports
+
+Verified against `https://api.kick.com/swagger/doc.yaml`, the KickDevDocs repo
+(`KickEngineering/KickDevDocs`), and `docs.kick.com`.
+
+| Requirement | Official source | Status |
+| --- | --- | --- |
+| Chat messages | webhook `chat.message.sent` | supported, real time |
+| Current viewer count + live/offline | `GET /public/v1/channels` → `data[].stream.viewer_count`, `stream.is_live` (scope `channel:read`; polled every minute by cron) | supported |
+| Livestream started/ended | webhook `livestream.status.updated`, `livestream.metadata.updated` | supported |
+| Latest follower | webhook `channel.followed` | supported |
+| Subscriptions | webhook `channel.subscription.new`, `.renewal`, `.gifts` | supported |
+| Kicks / gifted kicks | webhook `kicks.gifted` | supported |
+| Subscriber totals | `GET /public/v1/channels` → `active_subscribers_count` | supported (not a follower count) |
+| **Total follower count** | **none** | **not supported by any public endpoint** |
+| Follow count on this connection | count of real `channel.followed` webhooks since you connected | supported, clearly labelled |
+
+`GET /public/v1/channels` returns `active_subscribers_count`,
+`active_gifted_subscribers_count`, `canceled_subscribers_count`, channel metadata and a
+`stream` object. `GET /public/v1/users` returns only `email`, `name`, `profile_picture`,
+`user_id`. There is no follower total anywhere in the public API, so the editor shows
+"none received" plus a session follow count instead of a made-up number. Fabricating
+that metric would break the rule that nothing is invented.
+
+## 2. Required Kick Developer credentials
+
+1. Create an app at <https://kick.com/settings/developer> (Kick Developer settings).
+2. Copy the **Client ID** and **Client Secret**.
+3. Add the redirect URL exactly:
+   `https://<your-worker>.workers.dev/api/auth/kick/callback`
+   (it must equal `PUBLIC_API_URL` + `/api/auth/kick/callback`; mismatches fail at the
+   authorize step with `Invalid request`).
+4. Requested scopes: `user:read channel:read events:subscribe` (`REQUIRED_SCOPES` in
+   `worker/index.mjs`). Kick shows these on the consent screen.
+5. Webhook subscriptions are created by the Worker itself during the callback through
+   `POST /public/v1/events/subscriptions`, so you do not register a webhook URL in the
+   Kick dashboard. The endpoint to allow, if Kick asks, is
+   `https://<your-worker>.workers.dev/api/webhooks/kick`.
+
+Unverified Kick apps have a 1,000-subscription cap on `chat.message.sent`; a single
+channel uses one subscription per event type, so this does not matter here.
+
+## 3. Deploy the Worker (one time, free plan)
+
+```bash
+npm install -g wrangler           # or: npx wrangler@latest
+wrangler login                    # free Cloudflare account, no card needed
+wrangler d1 create obsidian-overlay
+# copy database_id into worker/wrangler.toml
+
+wrangler d1 execute obsidian-overlay --remote --file=worker/schema.sql
+# local testing only, optional:
+wrangler d1 execute obsidian-overlay --local --file=worker/schema.sql
+```
+
+Set the three secrets (never in git, never in the frontend bundle):
+
+```bash
+wrangler secret put KICK_CLIENT_ID
+wrangler secret put KICK_CLIENT_SECRET
+wrangler secret put ENCRYPTION_KEY        # openssl rand -base64 32
+```
+
+Edit `worker/wrangler.toml`:
+
+* `PUBLIC_API_URL` → your real Worker URL
+* `APP_ORIGINS` → `https://varystal.github.io` (the Pages origin, comma-separated;
+  the OAuth `return_to` and CORS allow-list are checked against it)
+
+Deploy:
+
+```bash
+wrangler deploy
+curl https://<your-worker>.workers.dev/api/health
+curl https://<your-worker>.workers.dev/api/setup   # state must be DISCONNECTED, missing []
+```
+
+Then in the site: **Integrations → Backend URL → Save & check → Connect Kick account**.
+The overlay editor's Publish button registers a stable per-overlay runtime key, and the
+OBS browser source URL keeps working across deploys because the key is stored in D1.
+
+## 4. Free-tier budget
+
+| Resource | Free allowance | This design |
+| --- | --- | --- |
+| Worker requests | 100k/day | OBS runtime SSE ~2.4k/day per open overlay (25s streams), webhooks, editor calls |
+| Worker CPU | 10 ms/invocation | HMAC-free RSA verify + small D1 reads, well under |
+| D1 rows read | 5M/day | SSE polls every 2s per open overlay, ~1.1k rows/hour |
+| D1 rows written | 100k/day | one row per event per published overlay |
+| D1 storage | 5 GB | events pruned hourly by cron, chat history is not archived |
+| Cron | every minute | 1 call/minute, capped at 20 connections per sweep |
+
+Because the free plan allows 50 subrequests per invocation, the cron sweep refreshes at
+most 20 channels per minute (Kick's channels endpoint accepts up to 50 ids, so this can be
+batched further later if needed). Nothing here requires a paid resource. If you ever need
+sub-second fan-out at thousands of concurrent overlays, that is when Durable Objects or
+Queues would be worth paying for; the honest free-tier ceiling is a few hundred
+concurrent OBS sources.
+
+## 5. Security model
+
+* Tokens are sealed with AES-GCM in the Worker (`ENCRYPTION_KEY`), stored in D1, never
+  returned by any endpoint. `GET /api/runtime/:key/state` and the SSE frames carry only
+  derived data.
+* The browser gets a `managementToken` via a one-time exchange code; only its SHA-256 is
+  stored. Disconnect wipes the sealed token row.
+* Webhooks are verified with RSA-SHA256 over `<messageId>.<timestamp>.<rawBody>` using the
+  PEM from `GET /public/v1/public-key`, refetched on rotation and cached one hour. Stale
+  timestamps (>10 min) and unknown message ids are rejected; replay is deduped by
+  `Kick-Event-Message-Id`.
+* CORS is an origin allow-list, not `*`. Overlay snapshots already strip token-like keys
+  (`src/lib/storage.ts`), and the runtime key is a separate capability from the OAuth
+  token, so a published overlay URL cannot act on your channel.
+* Event payloads are passed through untouched. Nothing is scraped from Kick's site, and
+  no widget HTML from third parties is used; every border, ornament, animation and layout
+  stays in this editor.
+
+## 6. Verification checklist
+
+Automated (`npm run test:worker`, Node 22): 12 tests covering the OAuth PKCE handshake,
+sealed-token storage, webhook signature/tampering/replay, per-overlay runtime keys,
+secret-free runtime state, honest viewer metrics and cron refresh. Run
+`npm test` (39 frontend tests) and `npm run build` as well.
+
+Manual, in this order, after deploying:
+
+1. `/api/setup` → `state: DISCONNECTED`, `missing: []`, `followerTotal.supported: false`.
+2. Connect Kick account → consent screen lists the three scopes → back on
+   **Integrations** the badge reads CONNECTED and the event list shows 8 subscriptions.
+3. Start a stream: within one minute the viewer card shows a real number, and the overlay
+   viewer widget matches Kick's own display.
+4. Send a chat line: it appears in the overlay chat box within ~2 seconds.
+5. Follow your own channel from a second account: the latest-follower widget and the
+   session follow count increment by one.
+6. Kill the OBS browser source and reopen it: chat and alerts resume, nothing is
+   duplicated.
+7. Disconnect: the overlay runtime returns 409 `integration_disconnected` and no token
+   remains in D1.
+
+Until steps 2-6 have been run against a real authorized channel, treat live connectivity
+as unverified. The unit tests use a local SQLite shim and a signed fixture webhook, not
+Kick's production servers.
+
+## 7. Rollback
+
+`wrangler delete` removes the Worker. `wrangler d1 delete obsidian-overlay` removes the
+database. The GitHub Pages editor keeps working without a backend: Integrations reports
+`Backend URL` unreachable and every live widget stays empty rather than showing placeholder
+data.

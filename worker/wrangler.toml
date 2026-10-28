@@ -1,0 +1,26 @@
+# Cloudflare Workers configuration — free plan only.
+# No Durable Objects, no Queues, no paid bindings.
+name = "obsidian-overlay-api"
+main = "worker/index.mjs"
+compatibility_date = "2025-01-01"
+
+# Public origin of this Worker. Used for the OAuth callback and the webhook URL.
+[vars]
+PUBLIC_API_URL = "https://obsidian-overlay-api.<your-subdomain>.workers.dev"
+# Comma-separated allow-list. This is the GitHub Pages origin of the editor.
+APP_ORIGINS = "https://varystal.github.io"
+
+# Free tier: 5 GB storage, 5M rows read/day, 100k rows written/day.
+[[d1_databases]]
+binding = "DB"
+database_name = "obsidian-overlay"
+database_id = "<run: wrangler d1 create obsidian-overlay>"
+
+# Viewer-count / live-status sweep. Free plan cron triggers are included.
+[triggers]
+crons = ["* * * * *"]
+
+# Secrets (never in this file, never in the frontend):
+#   wrangler secret put KICK_CLIENT_ID
+#   wrangler secret put KICK_CLIENT_SECRET
+#   wrangler secret put ENCRYPTION_KEY     # openssl rand -base64 32

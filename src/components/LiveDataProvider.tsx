@@ -25,13 +25,29 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
     let cancelled = false
     const backend = config.backendUrl.replace(/\/$/, '')
     setData((value) => ({ ...value, state: 'connecting' }))
-    fetch(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/state`)
+    const loadState = () => fetch(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/state`)
       .then((response) => response.ok ? response.json() : Promise.reject(new Error('Runtime unavailable')))
-      .then((state) => !cancelled && setData((value) => ({ ...value, state: 'connecting', viewer: state.viewer ?? value.viewer, latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null, sessionFollowerCount: state.sessionFollowerCount ?? 0, lastEventAt: state.lastEventAt ?? null })))
-      .catch(() => !cancelled && setData((value) => ({ ...value, state: 'error' })))
+      .then((state) => {
+        if (cancelled) return
+        setData((value) => ({
+          ...value,
+          state: value.state === 'connected' ? 'connected' : 'connecting',
+          viewer: state.viewer ?? value.viewer,
+          latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null,
+          sessionFollowerCount: state.sessionFollowerCount ?? 0,
+          lastEventAt: state.lastEventAt ?? value.lastEventAt,
+        }))
+      })
+      .catch(() => !cancelled && setData((value) => ({ ...value, state: value.state === 'connected' ? 'connected' : 'error' })))
+    void loadState()
+    // Viewer counts and offline transitions arrive on a slow cadence; refresh so a reconnected overlay is never stale.
+    const refresh = window.setInterval(() => { if (!cancelled) void loadState() }, 60_000)
 
     const source = new EventSource(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/events`)
-    source.onopen = () => setData((value) => ({ ...value, state: 'connected' }))
+    source.onopen = () => {
+      setData((value) => ({ ...value, state: 'connected' }))
+      void loadState()
+    }
     source.onerror = () => setData((value) => ({ ...value, state: source.readyState === EventSource.CLOSED ? 'error' : 'reconnecting' }))
     source.addEventListener('overlay-event', (message) => {
       try {
@@ -55,7 +71,7 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
         })
       } catch { /* Ignore malformed runtime frames; EventSource will continue. */ }
     })
-    return () => { cancelled = true; source.close() }
+    return () => { cancelled = true; window.clearInterval(refresh); source.close() }
   }, [config?.backendUrl, config?.runtimeKey])
 
   const value = useMemo(() => data, [data])

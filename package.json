@@ -9,11 +9,13 @@
     "start:server": "node server/index.mjs",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
-    "test": "vitest run && node --test server/*.test.mjs",
+    "test": "vitest run && node --test server/*.test.mjs && node --test worker/index.test.mjs",
     "test:frontend": "vitest run",
     "test:server": "node --test server/*.test.mjs",
     "test:watch": "vitest",
-    "check": "npm test && npm run build"
+    "check": "npm test && npm run build",
+    "test:worker": "node --test worker/index.test.mjs",
+    "preview:dist": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
