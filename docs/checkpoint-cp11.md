@@ -34,9 +34,18 @@ error escalation with retries continuing, stall detection, and no reconnect afte
 assertions that expected a permanent `error` on close were updated, since that expectation encoded the bug.
 
 Live: `scripts/probes/cp11-stream-recovery.mjs` drives the deployed runtime against the real backend,
-kills `/api/runtime/*/events` with a 503, then restores it. Against the pre-fix bundle it recorded zero
-retries during the outage, which is the defect. Against the fixed bundle it records retries with growing
-gaps and a recovered stream without a page reload.
+kills `/api/runtime/*/events` with a 503, then restores it.
+
+| Bundle | Retries during outage | Backoff gaps | Recovered without reload |
+| --- | --- | --- | --- |
+| pre-fix | 0 | none | (n/a, needed a reload) |
+| fixed | 5 | 2s, 5s, 10s | yes, 2 attempts, 0 page errors |
+
+Probe gotcha worth keeping: the server closes each stream after a 25s window, so an outage must outlast
+one window before the client has any reason to request again. A 12s outage recorded zero attempts even on
+the fixed build, because the already-open connection simply kept streaming; only the window boundary
+forces a new request. The first run of this probe therefore proved nothing, which is exactly the kind of
+result that looks like a defect.
 
 Backend: `an idle stream emits a heartbeat event the client can actually observe` asserts the named event,
 because a comment-only keepalive is invisible to the browser.

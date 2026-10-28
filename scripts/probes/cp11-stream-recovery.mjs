@@ -41,14 +41,14 @@ const healthyAttempts = attempts.length
 
 // Kill the stream the way a backend deploy does: the endpoint stops answering.
 mode = 'down'
-await page.waitForTimeout(12_000)
+await page.waitForTimeout(45_000)
 const duringOutage = attempts.length - healthyAttempts
 const gaps = attempts.slice(healthyAttempts + 1).map((a, i, list) => (i === 0 ? null : Math.round((a.at - list[i - 1].at) / 100) / 10)).filter(Boolean)
 
 // Bring it back. No reload: the page must recover on its own.
 mode = 'healthy'
 const beforeRecovery = attempts.length
-await page.waitForTimeout(30_000)
+await page.waitForTimeout(45_000)
 const afterRecovery = attempts.length - beforeRecovery
 const recovered = await page.evaluate(() => {
   const chat = document.querySelector('.runtime-element .element-content')?.textContent || ''
