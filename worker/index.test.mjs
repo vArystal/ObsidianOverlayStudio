@@ -49,6 +49,15 @@ const sign = async (privateKey, messageId, timestamp, body) => {
 const req = (path, init = {}) => new Request(`${API}${path}`, { ...init, headers: { origin: ORIGIN, ...(init.headers || {}) } })
 
 /* -------------------------------------------------------------- fixtures */
+// The studio is a hash router, so the callback puts the exchange code inside the hash route.
+function exchangeFrom(location) {
+  const url = new URL(location)
+  const fromSearch = url.searchParams.get('exchange')
+  if (fromSearch) return fromSearch
+  const cut = url.hash.indexOf('?')
+  return cut === -1 ? null : new URLSearchParams(url.hash.slice(cut + 1)).get('exchange')
+}
+
 async function connect(env, keys) {
   const start = await handleRequest(req('/api/auth/kick/start?return_to=' + encodeURIComponent(`${ORIGIN}/#/integrations`)), env)
   assert.equal(start.status, 302)
@@ -81,7 +90,7 @@ async function connect(env, keys) {
   const callback = await handleRequest(req(`/api/auth/kick/callback?code=auth-code&state=${state}`), env)
   assert.equal(callback.status, 302)
   const back = new URL(callback.headers.get('location'))
-  const exchange = back.searchParams.get('exchange')
+  const exchange = exchangeFrom(callback.headers.get('location'))
   assert.ok(exchange, 'callback must redirect back with a one-time exchange code')
 
   const session = await handleRequest(req('/api/auth/session', { method: 'POST', body: JSON.stringify({ code: exchange }), headers: { 'content-type': 'application/json' } }), env)
@@ -366,6 +375,41 @@ test('reconnecting clears the old subscriptions first and never erases a working
   assert.equal(after.length, 8, 'a failed re-subscribe keeps the eight that were already delivering')
   assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM connections').get().n, 1, 'reconnect updates the existing connection instead of adding one')
   assert.equal(connection.channel?.slug ?? sqlite.prepare('SELECT channel_slug FROM connections').get().channel_slug, 'varystal')
+})
+
+test('the callback puts the exchange code inside the hash route, where the hash router reads it', async () => {
+  const keys = await keypair()
+  const { env } = makeEnv()
+  const hashTarget = `${ORIGIN}/jubilant-octo-lamp/#/integrations`
+  const start = await handleRequest(req('/api/auth/kick/start?return_to=' + encodeURIComponent(hashTarget)), env)
+  const state = new URL(start.headers.get('location')).searchParams.get('state')
+  env.fetchImpl = async (url, options = {}) => {
+    const u = String(url)
+    if (u.startsWith('https://id.kick.com/oauth/token')) return Response.json({ access_token: 'a', refresh_token: 'r', expires_in: 3600, scope: REQUIRED_SCOPES.join(' ') })
+    if (u.startsWith('https://api.kick.com/public/v1/users')) return Response.json({ data: [{ user_id: 42, name: 'varystal' }] })
+    if (u.startsWith('https://api.kick.com/public/v1/channels?')) return Response.json({ data: [{ slug: 'varystal', stream: { is_live: false, viewer_count: 3 } }] })
+    if (u.startsWith('https://api.kick.com/public/v1/events/subscriptions')) return Response.json({ data: SUBSCRIBED_EVENTS.map((name, index) => ({ name, version: 1, subscription_id: `sub_${index}` })) })
+    return Response.json({ data: [] })
+  }
+  const cb = await handleRequest(req(`/api/auth/kick/callback?code=c&state=${state}`), env)
+  assert.equal(cb.status, 302)
+  const back = new URL(cb.headers.get('location'))
+  assert.equal(back.pathname, '/jubilant-octo-lamp/')
+  assert.match(back.hash, /^#\/integrations\?exchange=/, 'the hash router must be able to see the code')
+  assert.match(back.search, /exchange=/, 'a cached pre-fix bundle only reads the plain query, so mirror it there too')
+  const code = new URLSearchParams(back.hash.slice(back.hash.indexOf('?') + 1)).get('exchange')
+  assert.ok(code)
+
+  // the code it handed back is redeemable and yields the management session
+  const session = await handleRequest(req('/api/auth/session', { method: 'POST', body: JSON.stringify({ code }), headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(session.status, 200)
+  assert.ok((await session.json()).managementToken)
+
+  // a plain (non-hash) destination keeps the classic query placement
+  const start2 = await handleRequest(req('/api/auth/kick/start?return_to=' + encodeURIComponent(`${ORIGIN}/plain`)), env)
+  const state2 = new URL(start2.headers.get('location')).searchParams.get('state')
+  const cb2 = await handleRequest(req(`/api/auth/kick/callback?code=c&state=${state2}`), env)
+  assert.match(new URL(cb2.headers.get('location')).search, /exchange=/)
 })
 
 test('cron refreshes viewer count from the official channels endpoint', async () => {

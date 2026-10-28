@@ -253,6 +253,22 @@ const appOrigin = (env) => String(env.APP_ORIGINS || '').split(',').map((v) => v
 
 function appendQuery(target, params) {
   const url = new URL(target)
+  // The studio is a hash router (createHashRouter), so its routes read their query from inside
+  // the hash. ?exchange= left outside the hash is invisible to useSearchParams and the callback
+  // silently does nothing, so put the value where the router actually looks.
+  if (url.hash.startsWith('#/')) {
+    const hash = url.hash
+    const cut = hash.indexOf('?')
+    const route = cut === -1 ? hash : hash.slice(0, cut)
+    const inner = new URLSearchParams(cut === -1 ? '' : hash.slice(cut + 1))
+    Object.entries(params).forEach(([key, value]) => inner.set(key, value))
+    url.hash = `${route}?${inner.toString()}`
+    // Also mirror it outside the hash: a browser still running a cached pre-fix bundle only looks
+    // at window.location.search, and this must not depend on the user hard-refreshing at the right
+    // moment. The redeem step strips both.
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
+    return url.toString()
+  }
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
   return url.toString()
 }
@@ -623,7 +639,7 @@ export async function handleRequest(request, env, ctx = {}) {
                     ON CONFLICT(runtime_key) DO NOTHING`, `pub_${randomToken(9)}`, row.id, runtimeKey, now, now)
     const exchangeCode = randomToken(24)
     await run(env, 'INSERT INTO exchanges (code, connection_id, management_token, expires_at) VALUES (?, ?, ?, ?)',
-      exchangeCode, row.id, managementToken, Date.now() + 5 * 60_000)
+      exchangeCode, row.id, managementToken, Date.now() + 15 * 60_000)
     return new Response(null, { status: 302, headers: { location: appendQuery(pending.return_to, { exchange: exchangeCode }), ...corsHeaders(request, env) } })
   }
 

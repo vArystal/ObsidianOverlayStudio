@@ -212,6 +212,16 @@ var webhookUrl = /* @__PURE__ */ __name((env) => `${String(env.PUBLIC_API_URL).r
 var appOrigin = /* @__PURE__ */ __name((env) => String(env.APP_ORIGINS || "").split(",").map((v) => v.trim()).filter(Boolean)[0] || "null", "appOrigin");
 function appendQuery(target, params) {
   const url = new URL(target);
+  if (url.hash.startsWith("#/")) {
+    const hash = url.hash;
+    const cut = hash.indexOf("?");
+    const route = cut === -1 ? hash : hash.slice(0, cut);
+    const inner = new URLSearchParams(cut === -1 ? "" : hash.slice(cut + 1));
+    Object.entries(params).forEach(([key, value]) => inner.set(key, value));
+    url.hash = `${route}?${inner.toString()}`;
+    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+    return url.toString();
+  }
   Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
   return url.toString();
 }
@@ -612,7 +622,7 @@ ${hint}`);
       exchangeCode,
       row.id,
       managementToken,
-      Date.now() + 5 * 6e4
+      Date.now() + 15 * 6e4
     );
     return new Response(null, { status: 302, headers: { location: appendQuery(pending.return_to, { exchange: exchangeCode }), ...corsHeaders(request, env) } });
   }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { clearIntegrationSession, getBackendUrl, getIntegrationSession, getPublicIntegrationConfig, integrationRequest, saveIntegrationSession, setBackendUrl } from './integration'
+import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegrationSession, getPublicIntegrationConfig, integrationRequest, readExchangeCode, saveIntegrationSession, setBackendUrl } from './integration'
 
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks() })
 
@@ -31,5 +31,30 @@ describe('browser integration boundary', () => {
     setBackendUrl('https://api.example')
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({ error: 'setup_required' }) }))
     await expect(integrationRequest('/api/setup', {}, false)).rejects.toThrow('setup_required')
+  })
+})
+
+describe('reading the OAuth exchange code', () => {
+  it('finds a code the hash router can see', () => {
+    expect(readExchangeCode('/integrations?exchange=abc', '#/integrations?exchange=abc', '')).toBe('abc')
+  })
+
+  it('still finds one that a redirect left outside the hash', () => {
+    expect(readExchangeCode('', '#/integrations', '?exchange=outside')).toBe('outside')
+  })
+
+  it('finds a raw code appended straight to the hash', () => {
+    expect(readExchangeCode('', '#/integrations?x=1&exchange=hashonly', '')).toBe('hashonly')
+  })
+
+  it('returns null when the callback carried no code', () => {
+    expect(readExchangeCode('', '#/integrations', '')).toBeNull()
+  })
+
+  it('clears a redeemed code from the address bar without touching the route', () => {
+    window.history.replaceState({}, '', '/jubilant-octo-lamp/?exchange=spent#/integrations')
+    clearExchangeFromUrl()
+    expect(window.location.search).toBe('')
+    expect(window.location.hash).toBe('#/integrations')
   })
 })

@@ -40,6 +40,29 @@ export async function integrationRequest<T>(path: string, options: RequestInit =
   return body as T
 }
 
+/**
+ * The OAuth callback hands back a one-time exchange code. Depending on who built the redirect it
+ * can sit in the router's hash query, the hash itself, or the browser query, so accept all three
+ * instead of trusting one placement.
+ */
+export function readExchangeCode(routerSearch: string, rawHash: string, rawSearch: string): string | null {
+  const fromRouter = new URLSearchParams(routerSearch).get('exchange')
+  if (fromRouter) return fromRouter
+  const cut = rawHash.indexOf('?')
+  if (cut !== -1) {
+    const fromHash = new URLSearchParams(rawHash.slice(cut + 1)).get('exchange')
+    if (fromHash) return fromHash
+  }
+  return new URLSearchParams(rawSearch).get('exchange')
+}
+
+/** Drop a redeemed code from the address bar so a refresh cannot replay it. */
+export function clearExchangeFromUrl() {
+  const { pathname, hash, search } = window.location
+  if (!search.includes('exchange=')) return
+  window.history.replaceState({}, '', `${pathname}${hash}`)
+}
+
 export function startKickOAuth() {
   // Keep the full mount path (project pages live under /<repo>/) and drop any stale query,
   // otherwise the OAuth round-trip lands on the Pages root, which is a 404.

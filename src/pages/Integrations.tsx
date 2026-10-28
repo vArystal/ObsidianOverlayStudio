@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Activity, AlertTriangle, Check, Copy, ExternalLink, Link2, MessageSquare, Radio, RefreshCw, ShieldCheck, Unplug, Users, Webhook, Zap } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
-import { clearIntegrationSession, getBackendUrl, getIntegrationSession, integrationRequest, saveIntegrationSession, setBackendUrl, startKickOAuth } from '../lib/integration'
+import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegrationSession, integrationRequest, readExchangeCode, saveIntegrationSession, setBackendUrl, startKickOAuth } from '../lib/integration'
 
 interface StatusResponse {
   state: string
@@ -38,12 +38,13 @@ export function Integrations() {
   }
 
   useEffect(() => {
-    const exchange = params.get('exchange')
+    const exchange = readExchangeCode(params.toString(), window.location.hash, window.location.search)
     if (!exchange) { void refresh(); return }
     setBusy(true)
     integrationRequest<any>('/api/auth/session', { method: 'POST', body: JSON.stringify({ code: exchange }) }, false)
       .then((result) => {
         saveIntegrationSession({ managementToken: result.managementToken, connectionId: result.connection.id, runtimeKey: result.connection.runtimeKey, channelName: result.connection.channel?.slug || result.connection.account?.username || 'Kick' })
+        clearExchangeFromUrl()
         navigate('/integrations', { replace: true })
         return refresh()
       })
