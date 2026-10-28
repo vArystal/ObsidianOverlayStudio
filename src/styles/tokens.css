@@ -1,0 +1,116 @@
+/* ---------------------------------------------------------------------------
+   Design tokens — the single source of colour, type, space, motion and depth.
+   Legacy variable names are re-pointed here so every existing rule inherits
+   the identity without being rewritten.
+   --------------------------------------------------------------------------- */
+:root {
+  color-scheme: dark;
+
+  /* Aubergine ground */
+  --ink-950: #07040C;
+  --ink-900: #0A0510;
+  --ink-850: #100817;
+  --ink-800: #150C20;
+  --ink-750: #1A0F26;
+  --ink-700: #20132E;
+  --ink-600: #2A1A3B;
+  --ink-500: #372447;
+
+  /* Royal purple */
+  --royal-700: #4A2070;
+  --royal-600: #5B2A86;
+  --royal-500: #7B3FB0;
+  --royal-400: #A472D8;
+  --royal-300: #C6A5E8;
+
+  /* Gold */
+  --gold-700: #8A6A2F;
+  --gold-600: #B98F3E;
+  --gold-500: #D8AD55;
+  --gold-400: #E8C87F;
+  --gold-300: #F0D9A6;
+  --gold-200: #F7E9C9;
+
+  /* Warm ivory text */
+  --ivory-100: #FBF3E4;
+  --ivory-200: #F1E5D2;
+  --ivory-300: #D9C9B4;
+  --ivory-400: #B9A9C4;
+
+  /* Semantic */
+  --ok-500: #4FB286;
+  --ok-200: #9FE0C1;
+  --warn-500: #E0A940;
+  --danger-500: #E0607A;
+  --danger-200: #F6A6B6;
+  --info-500: #7FA8E0;
+
+  /* Surfaces and lines */
+  --surface-1: var(--ink-900);
+  --surface-2: var(--ink-850);
+  --surface-3: var(--ink-800);
+  --surface-4: var(--ink-750);
+  --hairline: rgba(216, 173, 85, .18);
+  --hairline-strong: rgba(216, 173, 85, .38);
+  --line-subtle: rgba(216, 173, 85, .10);
+
+  /* Type */
+  --font-ui: 'Vazirmatn', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Studio Display', 'Vazirmatn', Georgia, serif;
+  --font-fa: 'Vazirmatn', Tahoma, sans-serif;
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-md: 13px;
+  --text-lg: 15px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 40px;
+  --tracking-wide: .14em;
+  --tracking-tight: -.02em;
+
+  /* Space, radii, depth */
+  --space-1: 4px;  --space-2: 6px;  --space-3: 8px;  --space-4: 12px;
+  --space-5: 16px; --space-6: 22px; --space-7: 30px; --space-8: 40px;
+  --radius-sm: 7px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px;
+  --shadow-lift: 0 18px 42px rgba(4, 1, 9, .55), 0 2px 8px rgba(4, 1, 9, .4);
+  --shadow-inset: inset 0 1px 0 rgba(247, 233, 201, .07);
+  --glow-gold: 0 0 0 1px rgba(216, 173, 85, .22), 0 10px 34px rgba(216, 173, 85, .10);
+
+  /* Motion */
+  --dur-fast: 130ms;
+  --dur-base: 220ms;
+  --dur-slow: 420ms;
+  --ease-out: cubic-bezier(.22, .61, .36, 1);
+  --ease-in-out: cubic-bezier(.5, 0, .5, 1);
+
+  /* Layout density */
+  --header-h: 66px;
+  --toolbar-h: 58px;
+  --rail-w: 300px;
+  --gutter: 24px;
+
+  /* Legacy aliases — every pre-existing rule reads these */
+  --bg: var(--ink-900);
+  --panel: var(--ink-850);
+  --panel-2: var(--ink-800);
+  --panel-3: var(--ink-750);
+  --line: rgba(216, 173, 85, .16);
+  --line-soft: rgba(216, 173, 85, .09);
+  --muted: var(--ivory-400);
+  --muted-2: #8E7F9B;
+  --accent: var(--gold-500);
+  --accent-bright: var(--gold-300);
+  --accent-soft: rgba(216, 173, 85, .12);
+  --cyan: var(--info-500);
+  --danger: var(--danger-500);
+  --success: var(--ok-500);
+
+  font-family: var(--font-ui);
+  color: var(--ivory-100);
+  background: var(--ink-900);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; }
+}

@@ -5,8 +5,11 @@ import { OverlayList } from './pages/OverlayList'
 import { OverlayEditor } from './pages/OverlayEditor'
 import { OverlayRuntime } from './pages/OverlayRuntime'
 import { Integrations } from './pages/Integrations'
+import './styles/fonts.css'
+import './styles/tokens.css'
 import './styles.css'
 import './premium.css'
+import './styles/studio.css'
 
 const router = createHashRouter([
   { path: '/', element: <Navigate to="/overlays" replace /> },

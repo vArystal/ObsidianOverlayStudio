@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
 import { deleteOverlay, loadOverlays, saveOverlay } from '../lib/storage'
 import { getPublicIntegrationConfig } from '../lib/integration'
@@ -23,6 +24,8 @@ export function OverlayList() {
   const [overlays, setOverlays] = useState(() => loadOverlays())
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Overlay | null>(null)
+  const liveConfig = useMemo(() => getPublicIntegrationConfig(), [])
   const [error, setError] = useState('')
 
   const filtered = useMemo(
@@ -48,11 +51,16 @@ export function OverlayList() {
   }
 
   function remove(overlay: Overlay) {
-    if (!window.confirm(`Delete “${overlay.name}”? This cannot be undone.`)) return
-    const result = deleteOverlay(overlay.id)
-    if (!result.ok) return setError(result.error ?? 'Could not delete overlay')
-    setOverlays((items) => items.filter((item) => item.id !== overlay.id))
+    setPendingDelete(overlay)
     setMenu(null)
+  }
+
+  function confirmDelete() {
+    if (!pendingDelete) return
+    const result = deleteOverlay(pendingDelete.id)
+    if (!result.ok) { setError(result.error ?? 'Could not delete overlay'); setPendingDelete(null); return }
+    setOverlays((items) => items.filter((item) => item.id !== pendingDelete.id))
+    setPendingDelete(null)
   }
 
   return (
@@ -66,6 +74,13 @@ export function OverlayList() {
           </div>
           <button className="primary-button" onClick={createOverlay}><Plus size={18} /> New empty overlay</button>
         </section>
+
+        <div className="library-stats" aria-label="Workspace summary">
+          <div><small>COMPOSITIONS</small><strong>{overlays.length}</strong></div>
+          <div><small>LAYERS</small><strong>{overlays.reduce((total, overlay) => total + overlay.elements.length, 0)}</strong></div>
+          <div><small>PUBLISHED</small><strong>{overlays.filter((overlay) => overlay.publishedAt).length}</strong></div>
+          <div><small>KICK</small><strong className={liveConfig ? 'stat-live' : 'stat-idle'}>{liveConfig ? `Connected · ${liveConfig.channelName || 'channel'}` : 'Not connected'}</strong></div>
+        </div>
 
         <div className="library-toolbar">
           <label className="search-box"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search overlays" /></label>
@@ -89,7 +104,8 @@ export function OverlayList() {
                           top: `${(element.y / overlay.height) * 100}%`,
                           width: `${(element.width / overlay.width) * 100}%`,
                           height: `${(element.height / overlay.height) * 100}%`,
-                          borderColor: element.visible ? '#8b5cf6' : '#373744',
+                          borderColor: element.visible ? 'rgba(216,173,85,.85)' : 'rgba(185,169,196,.28)',
+                          background: element.visible ? 'rgba(216,173,85,.12)' : 'rgba(185,169,196,.06)',
                         }}
                       />
                     ))}
@@ -118,8 +134,17 @@ export function OverlayList() {
           <section className="empty-library">
             <div className="empty-library-icon"><Layers3 /></div>
             <h2>{query ? 'No overlays match your search' : 'Start with an empty canvas'}</h2>
-            <p>{query ? 'Try a different name.' : 'Nothing is added automatically. Choose every widget, frame, and visual yourself.'}</p>
-            {!query && <button className="primary-button" onClick={createOverlay}><Plus size={18} /> Create empty overlay</button>}
+            <p>{query ? 'Try a different name.' : 'Build a 1920×1080 transparent layout, then point an OBS Browser Source at it.'}</p>
+            {!query && (
+              <>
+                <ol className="onboarding-steps">
+                  <li><b>1</b><span>Create an overlay and set its size.</span></li>
+                  <li><b>2</b><span>Add widgets: chat, alerts, viewer count, ornaments.</span></li>
+                  <li><b>3</b><span>Publish, then paste the output link into OBS.</span></li>
+                </ol>
+                <button className="primary-button" onClick={createOverlay}><Plus size={18} /> Create empty overlay</button>
+              </>
+            )}
           </section>
         )}
 
@@ -128,6 +153,15 @@ export function OverlayList() {
           <span>Designs are saved in this browser. They are not synced to another device or account.</span>
         </aside>
       </main>
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete this overlay?"
+        description={pendingDelete ? `“${pendingDelete.name}” and its ${pendingDelete.elements.length} layer${pendingDelete.elements.length === 1 ? '' : 's'} will be removed from this browser. Published links keep working until you republish.` : ''}
+        confirmLabel="Delete overlay"
+        destructive
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </AppShell>
   )
 }
