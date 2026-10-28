@@ -15,7 +15,9 @@ const server = createServer(async (req, res) => {
   try { res.writeHead(200, { 'content-type': MIME[extname(file)] || 'application/octet-stream' }); res.end(await readFile(file)) }
   catch { res.writeHead(200, { 'content-type': 'text/html' }); res.end(await readFile(join(ROOT, 'index.html'))) }
 })
-await new Promise((resolve) => server.listen(4180, resolve))
+const FROM_PRODUCTION = process.env.SITE === 'production'
+if (!FROM_PRODUCTION) await new Promise((resolve) => server.listen(4180, resolve))
+const ORIGIN = FROM_PRODUCTION ? 'https://varystal.github.io/jubilant-octo-lamp' : 'http://localhost:4180'
 
 const base = { rotation: 0, opacity: 1, visible: true, locked: false, includeInOutput: true, maintainAspectRatio: false }
 const text = (i, idle) => ({
@@ -41,9 +43,9 @@ async function measure(browser, { staticMotion, idle, label }) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } })
   const errors = []
   page.on('pageerror', (e) => errors.push(e.message))
-  await page.goto('http://localhost:4180/#/overlays')
+  await page.goto(`${ORIGIN}/#/overlays`)
   await page.evaluate((data) => localStorage.setItem('obsidian-overlays-v1', JSON.stringify([data])), makeOverlay(staticMotion, idle))
-  await page.goto('http://localhost:4180/#/overlay/pubperf')
+  await page.goto(`${ORIGIN}/#/overlay/pubperf`)
   try { await page.waitForSelector('.runtime-element', { timeout: 8000 }) }
   catch { console.log(JSON.stringify({ label, failed: true, errors, html: await page.evaluate(() => document.querySelector('main')?.className || document.body.innerHTML.slice(0, 300)) })); await page.close(); return null }
   await page.waitForTimeout(1200)
@@ -79,7 +81,7 @@ async function measure(browser, { staticMotion, idle, label }) {
 const browser = await pw.chromium.launch()
 const staticRun = await measure(browser, { staticMotion: true, idle: false, label: 'static (40 elements, no idle animation)' })
 const animatedRun = await measure(browser, { staticMotion: false, idle: true, label: 'animated (40 elements, glow + ornate frame)' })
-await browser.close(); server.close()
+await browser.close(); if (!FROM_PRODUCTION) server.close()
 
 const verdict = {
   animatedKeeps60: animatedRun?.fps >= 55,
