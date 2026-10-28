@@ -63,3 +63,63 @@ describe('live runtime transport', () => {
     expect(EventSourceMock.latest).toBeUndefined()
   })
 })
+
+describe('long-run stability for an all-day OBS source', () => {
+  const chatEvent = (n: number) => ({
+    id: `evt_${n}`, type: 'chat.message.sent', receivedAt: new Date().toISOString(),
+    data: { messageId: `msg_${n}`, content: `message ${n}`, createdAt: new Date().toISOString(), sender: { username: `user${n}`, badges: [] } },
+  })
+  const read = () => JSON.parse(screen.getByTestId('state').textContent || '{}')
+
+  it('keeps the newest 50 chat messages so an overnight stream cannot grow without bound', async () => {
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'c', channelName: 'ch' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    await act(async () => {
+      for (let i = 0; i < 60; i += 1) EventSourceMock.latest!.emit(chatEvent(i))
+    })
+    const state = read()
+    expect(state.messages).toHaveLength(50)
+    expect(state.messages[49].content).toBe('message 59')
+    expect(state.messages[0].content).toBe('message 10')
+  })
+
+  it('ignores a redelivered message instead of showing it twice', async () => {
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'c', channelName: 'ch' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    await act(async () => {
+      EventSourceMock.latest!.emit(chatEvent(1))
+      EventSourceMock.latest!.emit(chatEvent(1))
+    })
+    expect(read().messages).toHaveLength(1)
+  })
+
+  it('caps queued alerts as well', async () => {
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'c', channelName: 'ch' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    await act(async () => {
+      for (let i = 0; i < 25; i += 1) {
+        EventSourceMock.latest!.emit({ id: `follow_${i}`, type: 'channel.followed', receivedAt: new Date().toISOString(), data: { follower: { username: `f${i}` } } })
+      }
+    })
+    expect(read().alerts).toHaveLength(20)
+  })
+
+  it('reports a dropped stream as reconnecting and a closed one as an error', async () => {
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'c', channelName: 'ch' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    await act(async () => {
+      EventSourceMock.latest!.emit({ ...chatEvent(1) })
+    })
+    expect(read().state).toBe('connected')
+    await act(async () => {
+      EventSourceMock.latest!.readyState = 0
+      EventSourceMock.latest!.onerror?.()
+    })
+    expect(read().state).toBe('reconnecting')
+    await act(async () => {
+      EventSourceMock.latest!.readyState = 2
+      EventSourceMock.latest!.onerror?.()
+    })
+    expect(read().state).toBe('error')
+  })
+})

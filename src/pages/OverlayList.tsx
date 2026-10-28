@@ -14,7 +14,8 @@ import {
 import { AppShell } from '../components/AppShell'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
-import { deleteOverlay, loadOverlays, saveOverlay } from '../lib/storage'
+import { deleteOverlay, encodeOverlaySnapshot, loadOverlays, saveOverlay } from '../lib/storage'
+import { snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig } from '../lib/integration'
 import { buildHashUrl } from '../lib/urls'
 import type { Overlay } from '../types'
@@ -119,7 +120,17 @@ export function OverlayList() {
                     {menu === overlay.id && (
                       <div className="card-menu">
                         <button onClick={() => navigate(`/overlays/editor/${overlay.id}`)}><ArrowRight /> Open editor</button>
-                        <button onClick={() => window.open(buildHashUrl(`/overlay/${overlay.publicId}`), '_blank')}><ExternalLink /> Open output</button>
+                        {(() => {
+                          // The saved composition must travel in the URL: a bare /overlay/<id> resolves
+                          // only in the browser that authored it, which is useless for OBS.
+                          const snapshot = encodeOverlaySnapshot(overlay)
+                          const budget = snapshotBudget(snapshot.length)
+                          const href = buildHashUrl(`/overlay/${overlay.publicId}?snapshot=${snapshot}`)
+                          return <button
+                            onClick={() => window.open(href, '_blank')}
+                            title={budget.level === 'blocked' ? budget.message : 'Open this saved composition in a clean output window'}
+                          ><ExternalLink /> Open output{budget.level !== 'ok' ? ` (${budget.level})` : ''}</button>
+                        })()}
                         <button onClick={() => duplicate(overlay)}><Copy /> Duplicate</button>
                         <button className="danger" onClick={() => remove(overlay)}><Trash2 /> Delete</button>
                       </div>
