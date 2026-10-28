@@ -92,6 +92,30 @@ export function Integrations() {
                   <article><Users /><span><small>Latest follower</small><strong>{connection.lastFollower?.username || 'None received'}</strong><em>{connection.sessionFollowerCount || 0} this connection</em></span></article>
                   <article><Activity /><span><small>Last event</small><strong>{connection.lastEventType || 'None received'}</strong><em>{connection.lastEventAt ? new Date(connection.lastEventAt).toLocaleTimeString() : 'Waiting'}</em></span></article>
                 </div>
+                {(() => {
+                  // Receipts are the only durable proof that a signed delivery arrived: the event rows
+                  // are pruned after an hour, so counts are what remain.
+                  const counts: Record<string, number> = connection.eventCounts && typeof connection.eventCounts === 'object' ? connection.eventCounts : {}
+                  const entries = Object.entries(counts).filter(([, value]) => Number(value) > 0)
+                  const total = entries.reduce((sum, [, value]) => sum + Number(value), 0)
+                  const slug = connection.channel?.slug || connection.account?.username || 'your channel'
+                  return (
+                    <div className="receipts-block">
+                      <h3>Signed event receipts</h3>
+                      {total > 0 ? (
+                        <>
+                          <div className="receipt-chips">
+                            {entries.map(([type, value]) => <span key={type} className="receipt-chip"><strong>{Number(value)}</strong>{type}</span>)}
+                          </div>
+                          <p className="integration-note">{total} signed {total === 1 ? 'event has' : 'events have'} been verified by the webhook route since this connection was created.</p>
+                        </>
+                      ) : (
+                        <p className="receipts-empty">No signed event has ever reached this server. Post one message in <code>kick.com/{slug}</code> or have someone follow the channel, then check again. Test-button events do not count, because they never touch the webhook route.</p>
+                      )}
+                      <button className="secondary-button" disabled={busy} onClick={() => void refresh()}><RefreshCw /> Check for new events</button>
+                    </div>
+                  )
+                })()}
                 <div className="scope-list"><h3>Granted permissions</h3>{connection.scopes?.map((scope: string) => <span key={scope}><Check />{scope}</span>)}{status?.missingScopes?.map((scope) => <span className="missing" key={scope}><AlertTriangle />{scope}</span>)}</div>
                 {!status?.missingScopes?.length && <p className="integration-note">The status route reports the scopes Kick actually granted this connection.</p>}
                 <div className="integration-actions"><button className="secondary-button" disabled={busy} onClick={() => action('/api/integrations/kick/resubscribe')}><RefreshCw /> Resubscribe webhooks</button><button className="danger-button" disabled={busy} onClick={disconnect}><Unplug /> Disconnect & revoke</button></div>

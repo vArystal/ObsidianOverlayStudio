@@ -10,6 +10,7 @@ import './styles/tokens.css'
 import './styles.css'
 import './premium.css'
 import './styles/studio.css'
+import './styles/integrations-receipts.css'
 
 const router = createHashRouter([
   { path: '/', element: <Navigate to="/overlays" replace /> },

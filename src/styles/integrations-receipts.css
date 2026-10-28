@@ -1,0 +1,10 @@
+/* Receipts: the durable proof that a signed delivery arrived. Counts, not rows, because events prune
+   after an hour; the empty state names the one action that produces a delivery. */
+.receipts-block { display: grid; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(216, 173, 85, 0.18); }
+.receipts-block h3 { margin: 0; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: #9c9caa; }
+.receipt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.receipt-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 10px; border-radius: 999px; background: rgba(216, 173, 85, 0.12); border: 1px solid rgba(216, 173, 85, 0.3); color: #f0e7d2; font-size: 11px; }
+.receipt-chip strong { color: #d8ad55; font-size: 12px; }
+.receipts-empty { margin: 0; font-size: 12px; line-height: 1.55; color: #b9b9c6; }
+.receipts-empty code { padding: 1px 5px; border-radius: 4px; background: rgba(255, 255, 255, 0.07); color: #f0e7d2; }
+.receipts-block .secondary-button { justify-self: start; }
