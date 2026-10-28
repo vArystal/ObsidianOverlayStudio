@@ -46,7 +46,28 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  verify:
+    runs-on: ubuntu-latest
+    needs: deploy
+    env:
+      PAGE_URL: ${{ needs.deploy.outputs.page_url }}
+    steps:
+      - name: Verify published assets and rendered application
+        run: |
+          set -euo pipefail
+          cache_bust="?version=${GITHUB_SHA}"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "${PAGE_URL}${cache_bust}" --output page.html
+          grep -q 'id="root"' page.html
+          asset_path=$(grep -oE 'src="\./assets/[^"]+\.js"' page.html | head -1 | cut -d'"' -f2 | sed 's#^\./##')
+          test -n "$asset_path"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "${PAGE_URL}${asset_path}" --output app.js
+          google-chrome --headless --disable-gpu --no-sandbox --virtual-time-budget=8000 \
+            --dump-dom "${PAGE_URL}${cache_bust}#/overlays" > rendered.html
+          grep -q 'Your overlays' rendered.html
