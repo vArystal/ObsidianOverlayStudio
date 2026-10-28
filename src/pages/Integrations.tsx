@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Activity, AlertTriangle, Check, Copy, ExternalLink, Link2, MessageSquare, Radio, RefreshCw, ShieldCheck, Unplug, Users, Webhook, Zap } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
-import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegrationSession, integrationRequest, readExchangeCode, saveIntegrationSession, setBackendUrl, startKickOAuth } from '../lib/integration'
+import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegrationSession, integrationRequest, isBackendConfigured, readExchangeCode, saveIntegrationSession, setBackendUrl, startKickOAuth } from '../lib/integration'
 
 interface StatusResponse {
   state: string
@@ -30,6 +30,9 @@ export function Integrations() {
 
   async function refresh() {
     setError('')
+    // A missing backend origin is a configuration state, not a failure: fetching it would hit whatever
+    // host serves the page and 404, which reads as a broken integration to a first-time visitor.
+    if (!isBackendConfigured()) { setStatus({ state: 'NOT_CONFIGURED' }); return }
     try {
       const activeSession = getIntegrationSession()
       const result = activeSession ? await integrationRequest<StatusResponse>('/api/integrations/kick') : await integrationRequest<StatusResponse>('/api/setup', {}, false)
@@ -76,6 +79,11 @@ export function Integrations() {
           <span className={badgeClass(status?.state || 'DISCONNECTED')}>{status?.state || 'DISCONNECTED'}</span>
         </section>
         {error && <div className="error-banner"><AlertTriangle /> {error}</div>}
+        {/* A config probe cannot know whether a connection exists, because the management token lives
+            only in the browser that created it. Saying so stops DISCONNECTED from reading as "broken". */}
+        {status && (status as { connectionStateKnown?: boolean }).connectionStateKnown === false && (
+          <p className="integration-note probe-note">The server is configured and reachable. Connection state is only visible in the browser that created it, so this page cannot confirm or deny an existing connection.</p>
+        )}
         <div className="integration-layout">
           <section className="integration-main-card persian-surface">
             <header><div className="kick-logo">K</div><div><h2>Kick Developer API</h2><p>OAuth 2.1 + PKCE · signed webhooks · server-side tokens</p></div><span className={badgeClass(status?.state || 'DISCONNECTED')}>{status?.state || 'DISCONNECTED'}</span></header>
@@ -123,7 +131,9 @@ export function Integrations() {
             ) : (
               <div className="connect-panel">
                 <ShieldCheck /><h3>Connect without exposing credentials</h3><p>You will sign in on Kick. The client secret, access token, and refresh token stay encrypted on the integration server and never enter this browser or an overlay URL.</p>
-                {status?.missing?.length ? <div className="setup-missing"><strong>Backend setup required</strong>{status.missing.map((item) => <code key={item}>{item}</code>)}</div> : <button className="kick-connect-button" disabled={busy} onClick={startKickOAuth}>Connect Kick account <ExternalLink /></button>}
+                {status?.state === 'NOT_CONFIGURED'
+                  ? <p className="receipts-empty">This build has no integration server address, so there is nothing to connect to yet. Enter the backend origin below; it is a public URL, never a secret.</p>
+                  : status?.missing?.length ? <div className="setup-missing"><strong>Backend setup required</strong>{status.missing.map((item) => <code key={item}>{item}</code>)}</div> : <button className="kick-connect-button" disabled={busy} onClick={startKickOAuth}>Connect Kick account <ExternalLink /></button>}
               </div>
             )}
           </section>

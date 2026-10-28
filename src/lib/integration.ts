@@ -29,6 +29,8 @@ export function getPublicIntegrationConfig(): LiveIntegrationConfig | null {
   return session ? { backendUrl: getBackendUrl(), runtimeKey: session.runtimeKey, connectionId: session.connectionId, channelName: session.channelName } : null
 }
 
+export const isBackendConfigured = () => getBackendUrl().length > 0
+
 export async function integrationRequest<T>(path: string, options: RequestInit = {}, authenticated = true): Promise<T> {
   const session = getIntegrationSession()
   const response = await fetch(`${getBackendUrl()}${path}`, {
