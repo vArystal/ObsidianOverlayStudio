@@ -16,7 +16,10 @@ const sampleMessages = [
   { id: 'sample-3', username: 'NovaSky', content: 'That Persian frame is so clean.', createdAt: new Date().toISOString(), color: '#c4b5fd', avatar: 'N', badges: [{ type: 'moderator', text: 'MOD' }] },
 ]
 
-function colorWithOpacity(hex: string, opacity: number) {
+function colorWithOpacity(hex: string | undefined, opacity: number) {
+  // Older saved overlays and hand-edited storage can lack theme colours; a throw here would take down
+  // every element in the runtime, so an unknown colour degrades to no tint instead.
+  if (typeof hex !== 'string' || hex.length === 0) return 'transparent'
   const clean = hex.replace('#', '')
   if (clean.length !== 6) return hex
   const [r, g, b] = [0, 2, 4].map((offset) => Number.parseInt(clean.slice(offset, offset + 2), 16))

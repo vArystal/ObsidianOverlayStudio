@@ -209,7 +209,7 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .safe-area::before { left: 50%; top: 0; bottom: 0; width: 1px; }
 .safe-area::after { top: 50%; left: 0; right: 0; height: 1px; }
 .safe-area span { color: #fbbf24; background: rgba(20,15,5,.8); padding: 4px 7px; position: absolute; font-size: 11px; letter-spacing: .12em; }
-.canvas-element, .runtime-element { position: absolute; transform-origin: center; }
+.canvas-element, .runtime-element { position: absolute; transform-origin: center; contain: layout paint style; }
 .element-content { width: 100%; height: 100%; overflow: hidden; }
 .canvas-element { cursor: move; touch-action: none; }
 .canvas-element.selected::after { content: ''; position: absolute; inset: -3px; border: 3px solid var(--accent); pointer-events: none; box-shadow: 0 0 0 2px rgba(12,8,18,.8), 0 0 24px rgba(139,92,246,.2); }

@@ -91,10 +91,18 @@ body:not(.runtime-root) {
 .element-exit-scale, .element-exit-pop { animation-name: premium-scale-out; animation-fill-mode: both; }
 .element-exit-ornamental { animation-name: ornamental-close; animation-fill-mode: both; }
 .element-idle { width: 100%; height: 100%; }
-.element-idle-glow .decorated-widget { animation: elegant-glow 3.4s ease-in-out infinite; }
+/* Idle glow: a static shadow on its own layer, animated with opacity. The old rule animated
+   filter: drop-shadow, which repaints the element on every frame. */
+.element-idle { position: relative; }
+.idle-layer { position: absolute; inset: 0; pointer-events: none; border-radius: inherit; will-change: opacity, transform; }
+.idle-glow { box-shadow: 0 0 14px 2px rgba(216, 173, 85, 0.34); opacity: 0.3; animation: glow-breathe 3.4s ease-in-out infinite; }
+.element-idle-glow .decorated-widget { filter: drop-shadow(0 0 4px rgba(216, 173, 85, 0.14)); }
 .element-idle-float { animation: subtle-float 5s ease-in-out infinite; }
 .element-idle-shimmer .decorated-widget::after { content: ''; position: absolute; inset: -30% -70%; z-index: 5; pointer-events: none; background: linear-gradient(105deg, transparent 42%, rgba(255,231,166,.16) 49%, rgba(255,248,231,.3) 50%, rgba(255,231,166,.12) 51%, transparent 58%); transform: translateX(-45%); animation: gold-shimmer 5.5s ease-in-out infinite; }
-.element-idle-sparkle .decorated-widget { background-image: radial-gradient(circle at 12% 18%, rgba(255,235,175,.7) 0 1px, transparent 2px), radial-gradient(circle at 88% 24%, rgba(255,235,175,.5) 0 1px, transparent 2px), radial-gradient(circle at 70% 82%, rgba(255,235,175,.4) 0 1px, transparent 2px); animation: sparkle-breathe 3.8s ease-in-out infinite; }
+/* Idle sparkle: the same three glints, drifting by transform instead of background-position. */
+.idle-sparkle { background-image: radial-gradient(circle at 12% 18%, rgba(255,235,175,.7) 0 1px, transparent 2px), radial-gradient(circle at 88% 24%, rgba(255,235,175,.5) 0 1px, transparent 2px), radial-gradient(circle at 70% 82%, rgba(255,235,175,.4) 0 1px, transparent 2px); background-repeat: no-repeat; animation: sparkle-drift 3.8s ease-in-out infinite; }
+@keyframes glow-breathe { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@keyframes sparkle-drift { 0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.75; } 50% { transform: translate3d(5px, -3px, 0); opacity: 1; } }
 @keyframes premium-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes premium-slide { from { opacity: 0; transform: translate(var(--slide-x,0),var(--slide-y,32px)); } to { opacity: 1; transform: translate(0,0); } }
 @keyframes premium-scale { from { opacity: 0; transform: scale(calc(1 - var(--anim-intensity,.65) * .16)); } to { opacity: 1; transform: scale(1); } }

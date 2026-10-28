@@ -46,3 +46,48 @@ describe('published overlay runtime', () => {
     expect(screen.getByText('Overlay unavailable')).toBeTruthy()
   })
 })
+
+describe('runtime resilience for legacy data', () => {
+  // A stored overlay from an older build (or a hand-edited one) can arrive without theme colours.
+  // Before this guard the colour helper threw on undefined.replace and React unmounted the whole
+  // runtime into an error page, which blanks a live OBS source instead of losing one colour.
+  it('renders a snapshot whose theme carries no colours, falling back to the default accent', () => {
+    const overlay = createEmptyOverlay('Legacy overlay')
+    overlay.theme = { id: 'royal-persian' } as typeof overlay.theme
+    const title = createElement('text')
+    title.props.text = 'Legacy title'
+    const chat = createElement('chat')
+    overlay.elements.push(title, chat)
+
+    const snapshot = encodeOverlaySnapshot(overlay)
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}`]}>
+        <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Legacy title')).toBeTruthy()
+    expect(container.querySelector('.runtime-stage')).not.toBeNull()
+    const main = container.querySelector('.overlay-runtime') as HTMLElement
+    expect(main.style.getPropertyValue('--theme-accent')).toBe('#d8ad55')
+  })
+
+  it('gives idle glow and sparkle their own compositor layer instead of animating the widget', () => {
+    const overlay = createEmptyOverlay('Idle layers')
+    const glowing = createElement('text')
+    glowing.animation.idle = 'glow'
+    const sparkling = createElement('text')
+    sparkling.animation.idle = 'sparkle'
+    overlay.elements.push(glowing, sparkling)
+
+    const snapshot = encodeOverlaySnapshot(overlay)
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}`]}>
+        <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
+      </MemoryRouter>,
+    )
+
+    expect(container.querySelectorAll('.idle-layer.idle-glow')).toHaveLength(1)
+    expect(container.querySelectorAll('.idle-layer.idle-sparkle')).toHaveLength(1)
+  })
+})
