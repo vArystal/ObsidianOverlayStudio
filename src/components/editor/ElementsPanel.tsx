@@ -10,6 +10,9 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Frame,
+  RadioTower,
+  UserPlus,
   Gamepad2,
   Image,
   ImagePlus,
@@ -31,6 +34,7 @@ const library: Array<{ type: ElementType; icon: typeof TextCursorInput; title: s
   { type: 'text', icon: TextCursorInput, title: 'Text', description: 'Custom RTL or LTR copy', group: 'Content' },
   { type: 'image', icon: Image, title: 'Image / Logo', description: 'PNG, JPEG or WebP', group: 'Content' },
   { type: 'shape', icon: Shapes, title: 'Shape / Border', description: 'Decorative visual layer', group: 'Content' },
+  { type: 'frame', icon: Frame, title: 'Persian ornamental frame', description: 'Independent girih border layer', group: 'Content' },
   { type: 'capture', icon: Gamepad2, title: 'Game capture plan', description: 'Layout guide — not a capture', group: 'Planning' },
   { type: 'webcam', icon: Camera, title: 'Webcam frame', description: 'Frame or planning guide', group: 'Planning' },
   { type: 'chat', icon: MessageSquare, title: 'Chat box', description: 'Preview-ready integration slot', group: 'Widgets' },
@@ -38,7 +42,10 @@ const library: Array<{ type: ElementType; icon: typeof TextCursorInput; title: s
   { type: 'goal', icon: CircleDollarSign, title: 'Donation goal', description: 'Preview data only', group: 'Widgets' },
   { type: 'counter', icon: AlignJustify, title: 'Custom counter', description: 'Manual numeric metric', group: 'Widgets' },
   { type: 'countdown', icon: Clock3, title: 'Countdown', description: 'Local countdown timer', group: 'Widgets' },
-  { type: 'supporter', icon: UserRound, title: 'Latest supporter', description: 'Provider integration slot', group: 'Widgets' },
+  { type: 'viewerCount', icon: RadioTower, title: 'Live viewer count', description: 'Official Kick livestream metric', group: 'Live Kick' },
+  { type: 'sessionFollowers', icon: UserPlus, title: 'Session follows', description: 'Real follow events received now', group: 'Live Kick' },
+  { type: 'latestFollower', icon: UserRound, title: 'Latest Kick follower', description: 'Official channel.followed event', group: 'Live Kick' },
+  { type: 'supporter', icon: UserRound, title: 'Latest supporter', description: 'Donation adapter slot', group: 'Widgets' },
 ]
 
 interface ElementsPanelProps {
@@ -75,7 +82,7 @@ export function ElementsPanel(props: ElementsPanelProps) {
       {tab === 'elements' && (
         <div className="panel-scroll element-library">
           <div className="panel-heading"><div><h2>Add element</h2><p>Nothing is added until you choose it.</p></div></div>
-          {['Content', 'Planning', 'Widgets'].map((group) => (
+          {['Content', 'Planning', 'Live Kick', 'Widgets'].map((group) => (
             <section key={group}>
               <h3>{group}</h3>
               <div className="element-list">

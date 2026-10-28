@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   Maximize,
+  Palette,
   Redo2,
   Save,
   Undo2,
@@ -23,6 +24,7 @@ interface EditorToolbarProps {
   canRedo: boolean
   preview: boolean
   resolution: string
+  themeId: string
   zoomPercent: number
   selectedIsTestable: boolean
   onNameChange: (value: string) => void
@@ -31,6 +33,7 @@ interface EditorToolbarProps {
   onRedo: () => void
   onPreview: () => void
   onResolution: (value: string) => void
+  onTheme: (value: string) => void
   onZoomIn: () => void
   onZoomOut: () => void
   onFit: () => void
@@ -60,6 +63,16 @@ export function EditorToolbar(props: EditorToolbarProps) {
       <button className={`toolbar-button ${props.preview ? 'active' : ''}`} onClick={props.onPreview}>
         {props.preview ? <EyeOff /> : <Eye />} {props.preview ? 'Exit preview' : 'Preview'}
       </button>
+      <label className="select-control theme-control">
+        <Palette />
+        <select aria-label="Overlay theme" value={props.themeId} onChange={(event) => props.onTheme(event.target.value)}>
+          <option value="royal-persian">Royal Persian</option>
+          <option value="persian-turquoise">Persian Turquoise</option>
+          <option value="imperial-night">Imperial Night</option>
+          <option value="minimal-esports">Minimal Esports</option>
+        </select>
+        <ChevronDown />
+      </label>
       <label className="select-control resolution-control">
         <Maximize />
         <select aria-label="Canvas resolution" value={props.resolution} onChange={(event) => props.onResolution(event.target.value)}>

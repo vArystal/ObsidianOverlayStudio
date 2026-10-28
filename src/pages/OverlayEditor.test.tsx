@@ -66,7 +66,7 @@ describe('overlay editor workflow', () => {
     clickLibraryDescription('Layout guide — not a capture')
     clickLibraryDescription('Preview-ready integration slot')
     clickLibraryDescription('Testable event surface')
-    expect(screen.getByText('No event provider')).toBeTruthy()
+    expect(screen.getByText('Kick connection required')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Test preview alert/ }))
     expect(screen.getByText(/Preview alert triggered/)).toBeTruthy()
 

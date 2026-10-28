@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Crosshair, Lock, ZoomIn } from 'lucide-react'
 import { ElementRenderer } from '../ElementRenderer'
 import { clampElement, roundGeometry, snapPosition } from '../../lib/geometry'
@@ -130,13 +130,16 @@ export function Canvas(props: CanvasProps) {
       <div className="canvas-scroll-area">
         <div className="canvas-size-wrap" style={{ width: props.overlay.width * scale, height: props.overlay.height * scale }}>
           <div
-            className={`canvas-stage ${props.overlay.settings.transparent ? 'checkerboard' : 'dark-stage'} ${props.overlay.settings.showGrid ? 'show-grid' : ''}`}
+            className={`canvas-stage theme-${props.overlay.theme.id} ${props.overlay.staticMotion ? 'static-motion' : ''} ${props.overlay.settings.transparent ? 'checkerboard' : 'dark-stage'} ${props.overlay.settings.showGrid ? 'show-grid' : ''}`}
             style={{
               width: props.overlay.width,
               height: props.overlay.height,
               transform: `scale(${scale})`,
               backgroundImage: props.overlay.settings.backgroundImage ? `url(${props.overlay.settings.backgroundImage})` : undefined,
-            }}
+              '--theme-accent': props.overlay.theme.accent,
+              '--theme-primary': props.overlay.theme.primary,
+              '--theme-surface': props.overlay.theme.surface,
+            } as CSSProperties}
             onPointerMove={pointerMove}
             onPointerUp={endPointer}
             onPointerCancel={endPointer}
@@ -166,7 +169,13 @@ export function Canvas(props: CanvasProps) {
                 }}
                 onPointerDown={(event) => beginDrag(event, element)}
               >
-                <ElementRenderer element={element} runtime={props.preview} testAlertNonce={props.testAlertNonce} />
+                <div
+                  key={`${element.id}:${props.selectedId === element.id ? props.testAlertNonce : 0}`}
+                  className={`element-content element-anim-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.type}`}
+                  style={{ animationDuration: `${element.animation.duration}ms`, animationDelay: `${element.animation.delay}ms`, animationTimingFunction: element.animation.easing, '--anim-intensity': element.animation.intensity, '--slide-x': element.animation.direction === 'left' ? '-42px' : element.animation.direction === 'right' ? '42px' : '0px', '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px' } as CSSProperties}
+                >
+                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><ElementRenderer element={element} theme={props.overlay.theme} runtime={props.preview} testAlertNonce={props.testAlertNonce} /></div>
+                </div>
                 {props.selectedId === element.id && !props.preview && (
                   <>
                     {element.locked ? <div className="locked-pill"><Lock /> Locked</div> : handles.map((direction) => (

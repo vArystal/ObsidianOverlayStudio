@@ -15,7 +15,7 @@ describe('overlay model', () => {
     const text = createElement('text')
     const webcam = createElement('webcam')
     const capture = createElement('capture')
-    expect(text.props.text).toBe('Your stream, your story.')
+    expect(text.props.text).toBe('به استریم من خوش آمدید')
     expect(webcam.includeInOutput).toBe(false)
     expect(capture.includeInOutput).toBe(false)
   })

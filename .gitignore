@@ -6,3 +6,7 @@ vite.config.d.ts
 coverage/
 .DS_Store
 *.log
+.env
+.env.*
+!.env.example
+data/

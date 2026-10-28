@@ -9,12 +9,12 @@ describe('widget preview boundaries', () => {
   it('labels sample chat in the editor and does not publish sample messages', () => {
     const chat = createElement('chat')
     const editor = render(<ElementRenderer element={chat} />)
-    expect(screen.getByText('SAMPLE CHAT · PREVIEW ONLY')).toBeTruthy()
-    expect(screen.getByText('That transition is so clean!')).toBeTruthy()
+    expect(screen.getByText(/SAMPLE ONLY/)).toBeTruthy()
+    expect(screen.getByText(/قاب جدید/)).toBeTruthy()
     editor.unmount()
 
     const runtime = render(<ElementRenderer element={chat} runtime />)
-    expect(runtime.queryByText('That transition is so clean!')).toBeNull()
+    expect(runtime.queryByText(/قاب جدید/)).toBeNull()
     expect(runtime.container.textContent).toBe('')
   })
 
@@ -31,7 +31,7 @@ describe('widget preview boundaries', () => {
     hidden.unmount()
     goal.props.includePreviewOutput = true
     render(<ElementRenderer element={goal} runtime />)
-    expect(screen.getByText('Studio upgrade goal')).toBeTruthy()
+    expect(screen.getByText(/هدف حمایت/)).toBeTruthy()
   })
 
   it('renders Persian text with an explicit RTL direction', () => {

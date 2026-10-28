@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Aperture, Layers3, Settings } from 'lucide-react'
+import { Aperture, Layers3, Link2 } from 'lucide-react'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -15,7 +15,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link className={location.pathname.startsWith('/overlays') ? 'active' : ''} to="/overlays">
             <Layers3 size={17} /> Overlays
           </Link>
-          <button type="button" disabled title="Settings are not required for the local editor"><Settings size={17} /> Settings</button>
+          <Link className={location.pathname.startsWith('/integrations') ? 'active' : ''} to="/integrations">
+            <Link2 size={17} /> Integrations
+          </Link>
         </nav>
         <div className="local-badge"><span /> LOCAL WORKSPACE</div>
       </header>

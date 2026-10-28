@@ -14,6 +14,7 @@ import {
 import { AppShell } from '../components/AppShell'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
 import { deleteOverlay, loadOverlays, saveOverlay } from '../lib/storage'
+import { getPublicIntegrationConfig } from '../lib/integration'
 import { buildHashUrl } from '../lib/urls'
 import type { Overlay } from '../types'
 
@@ -31,6 +32,7 @@ export function OverlayList() {
 
   function createOverlay() {
     const overlay = createEmptyOverlay(`Overlay ${overlays.length + 1}`)
+    overlay.live = getPublicIntegrationConfig()
     const result = saveOverlay(overlay)
     if (!result.ok || !result.value) return setError(result.error ?? 'Could not create overlay')
     setOverlays((items) => [...items, result.value!])

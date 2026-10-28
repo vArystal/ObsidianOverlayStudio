@@ -10,6 +10,8 @@ import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
 import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
+import { getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
+import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
 import type { ElementType, Overlay, OverlayElement } from '../types'
 
@@ -279,7 +281,7 @@ export function OverlayEditor() {
   function testWidget() {
     if (!selected) return
     setTestAlertNonce((value) => value + 1)
-    if (selected.type === 'alert' && selected.props.soundSrc) {
+    if (selected.type === 'alert' && selected.props.soundEnabled && selected.props.soundSrc) {
       const audio = new Audio(String(selected.props.soundSrc))
       audio.volume = 0.65
       void audio.play().catch(() => setNotice('The browser blocked audio playback.'))
@@ -327,7 +329,17 @@ export function OverlayEditor() {
   async function publish() {
     const current = overlayRef.current
     if (!current) return
-    const published: Overlay = { ...current, publishedAt: new Date().toISOString() }
+    let published: Overlay = { ...current, publishedAt: new Date().toISOString() }
+    let liveRegistration = ''
+    if (published.live) {
+      try {
+        const registration = await integrationRequest<{ publicationId: string; runtimeKey: string }>('/api/overlays/publish', { method: 'POST', body: JSON.stringify({ overlayId: published.publicId }) })
+        published = { ...published, live: { ...published.live, runtimeKey: registration.runtimeKey } }
+        liveRegistration = ` · live ID ${registration.publicationId.slice(0, 8)}`
+      } catch {
+        setNotice('Static snapshot published; live registration needs an active Integrations session')
+      }
+    }
     const result = saveOverlay(published)
     if (!result.ok || !result.value) {
       setSaveError(result.error ?? 'Could not publish this overlay')
@@ -339,6 +351,7 @@ export function OverlayEditor() {
     const url = buildHashUrl(`/overlay/${result.value.publicId}?snapshot=${snapshot}`)
     setPublishUrl(url)
     await copyText(url)
+    if (liveRegistration) setNotice(`Published with stable server-backed live runtime${liveRegistration}`)
   }
 
   useEffect(() => {
@@ -379,11 +392,12 @@ export function OverlayEditor() {
         <EditorToolbar
           name={overlay.name} dirty={dirty} saving={saving} saveError={saveError}
           canUndo={past.length > 0} canRedo={future.length > 0} preview={preview}
-          resolution={resolution} zoomPercent={Math.round(actualScale * 100)}
-          selectedIsTestable={selected?.type === 'alert' || selected?.type === 'chat'}
+          resolution={resolution} themeId={overlay.theme.id} zoomPercent={Math.round(actualScale * 100)}
+          selectedIsTestable={Boolean(selected)}
           onNameChange={(name) => commit((item) => ({ ...item, name }))}
           onSave={save} onUndo={undo} onRedo={redo} onPreview={() => { setPreview((value) => !value); setSelectedId(null) }}
           onResolution={changeResolution}
+          onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
           onZoomIn={() => setZoom(Math.min(2, (zoom ?? actualScale) + 0.1))}
           onZoomOut={() => setZoom(Math.max(0.05, (zoom ?? actualScale) - 0.1))}
           onFit={() => setZoom(null)} onCopyUrl={publish} onTest={testWidget}
@@ -422,6 +436,9 @@ export function OverlayEditor() {
             onAlign={alignSelected} onLayerEdge={(edge) => selectedId && moveLayerEdge(selectedId, edge)}
             onDuplicate={() => selectedId && duplicate(selectedId)} onDelete={() => selectedId && deleteElement(selectedId)}
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}
+            onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
+            onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
+            onAttachLive={() => { const live = getPublicIntegrationConfig(); if (!live) { setNotice('Connect Kick from Integrations first'); return } commit((item) => ({ ...item, live })); setNotice(`Kick channel ${live.channelName} attached`) }}
           />
         </div>
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
@@ -436,7 +453,7 @@ export function OverlayEditor() {
               <div className="resolution-recommendation"><span>Width <strong>{overlay.width}</strong></span><span>Height <strong>{overlay.height}</strong></span></div>
               <label className="url-field"><span>Browser Source URL</span><textarea readOnly value={publishUrl} onFocus={(event) => event.target.select()} /></label>
               <button className="primary-button full" onClick={async () => { await copyText(publishUrl); setNotice('URL copied') }}><Copy /> Copy URL again</button>
-              <div className="publish-warning"><Info /><p><strong>Local-first publishing:</strong> the composition is embedded in this URL, so it can load without this browser’s local storage. A localhost URL only works on this computer while the dev server is running. Deploy this app over HTTPS for a stable OBS URL. Embedded image assets can make the URL long; production use needs backend asset hosting. Snapshot URLs cannot be revoked without a backend.</p></div>
+              <div className="publish-warning"><Info /><p><strong>Transparent OBS output:</strong> the secret-sanitized composition is embedded as a static fallback. With an attached, authenticated integration, Publish also registers this overlay’s stable server-backed live ID. A localhost URL works only while this machine’s dev server is running; production OAuth, webhooks, and remote OBS clients require public HTTPS. Snapshot URLs and embedded media cannot be revoked.</p></div>
             </section>
           </div>
         )}
