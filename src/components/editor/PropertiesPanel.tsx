@@ -172,8 +172,16 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         )}
 
         {element.type === 'webcam' && (
-          <Section title="Webcam frame">
-            <div className="integration-card"><Info /><div><strong>Frame / planning placeholder</strong><p>Your camera remains an OBS Video Capture Device. This browser layer cannot capture it.</p></div></div>
+          <Section title="Webcam">
+            <Field label="Camera source">
+              <select value={asString(element, 'captureMode', 'frame')} onChange={(event) => prop('captureMode', event.target.value)}>
+                <option value="frame">Frame only — align my OBS camera</option>
+                <option value="camera">Browser camera — capture here</option>
+              </select>
+            </Field>
+            <div className="integration-card"><Info /><div><strong>{asString(element, 'captureMode', 'frame') === 'camera' ? 'Captured by this page' : 'Frame for an OBS camera source'}</strong><p>{asString(element, 'captureMode', 'frame') === 'camera'
+              ? 'This source asks the browser for a camera. OBS must allow camera access for the browser source, otherwise the output says CAMERA BLOCKED rather than showing a stale frame.'
+              : 'Your camera stays an OBS Video Capture Device. In output this layer draws no fill, so it frames the real feed instead of covering it.'}</p></div></div>
             <Field label="Frame shape"><select value={asString(element, 'shape', 'rounded')} onChange={(event) => prop('shape', event.target.value)}><option value="rectangle">Rectangle</option><option value="rounded">Rounded</option><option value="circle">Circle / ellipse</option></select></Field>
             <div className="two-columns"><Field label="Border"><NumberInput value={asNumber(element, 'borderWidth', 8)} min={0} max={48} onChange={(value) => prop('borderWidth', value)} suffix="px" /></Field><Field label="Radius"><NumberInput value={asNumber(element, 'borderRadius', 28)} min={0} max={300} onChange={(value) => prop('borderRadius', value)} suffix="px" /></Field></div>
             <Field label="Border color"><ColorInput value={asString(element, 'borderColor', '#8b5cf6')} onChange={(value) => prop('borderColor', value)} /></Field>
@@ -249,7 +257,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         {(element.type === 'counter' || element.type === 'countdown' || element.type === 'supporter' || element.type === 'viewerCount' || element.type === 'sessionFollowers' || element.type === 'latestFollower') && (
           <Section title="Widget content">
             {element.type === 'supporter' && <div className="integration-card warning"><Info /><div><strong>Donation adapter slot</strong><p>No donation provider is connected, so this widget is excluded at runtime.</p></div></div>}
-            {(element.type === 'viewerCount' || element.type === 'sessionFollowers' || element.type === 'latestFollower') && <div className="integration-card"><Radio /><div><strong>Official Kick live data</strong><p>{element.type === 'viewerCount' ? 'Polled from GET /public/v1/users/livestreams at a controlled interval.' : 'Updated only by verified channel.followed webhook events. Session follows are not a historical total.'}</p></div></div>}
+            {(element.type === 'viewerCount' || element.type === 'sessionFollowers' || element.type === 'latestFollower') && <div className="integration-card"><Radio /><div><strong>Official Kick live data</strong><p>{element.type === 'viewerCount' ? 'Polled from GET /public/v1/users/livestreams at a controlled interval.' : element.type === 'sessionFollowers' ? 'Counts verified channel.followed webhook events received since this browser source loaded; reloading the source restarts the count. It is not a lifetime total.' : 'Shows the most recent verified channel.followed webhook event, or nothing when none has been received.'}</p></div></div>}
             <Field label="Label"><input value={asString(element, 'label')} onChange={(event) => prop('label', event.target.value)} /></Field>
             {element.type === 'counter' && <Field label="Value"><NumberInput value={asNumber(element, 'value')} onChange={(value) => prop('value', value)} /></Field>}
             {element.type === 'countdown' && (
@@ -262,7 +270,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                 </Field>
               </>
             )}
-            {element.type === 'supporter' && <Field label="Placeholder"><input value={asString(element, 'value')} onChange={(event) => prop('value', event.target.value)} /></Field>}
+            {element.type === 'supporter' && <Field label="Preview text" hint="Editor preview only. This element is excluded from OBS output until a donation provider exists."><input value={asString(element, 'value')} onChange={(event) => prop('value', event.target.value)} /></Field>}
             <Field label="Text color"><ColorInput value={asString(element, 'color', '#ffffff')} onChange={(value) => prop('color', value)} /></Field>
             <Field label="Accent color"><ColorInput value={asString(element, 'accentColor', '#8b5cf6')} onChange={(value) => prop('accentColor', value)} /></Field>
             <Field label="Background"><ColorInput value={asString(element, 'backgroundColor', '#111118')} onChange={(value) => prop('backgroundColor', value)} /></Field>

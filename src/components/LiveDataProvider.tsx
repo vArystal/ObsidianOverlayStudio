@@ -12,16 +12,23 @@ interface LiveDataState {
   lastEventAt: string | null
   /** False when no Kick connection is attached at all, which is not the same as a failed API call. */
   configured?: boolean
+  /** True only when this page was opened for a test preview; synthetic events are ignored otherwise. */
+  testMode?: boolean
 }
 
-const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false }
+const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false, testMode: false }
 const LiveContext = createContext<LiveDataState>(initial)
 /** Exported so tests can inject a live snapshot without opening a real SSE stream. */
 export const LiveDataContext = LiveContext
 export type { LiveDataState }
 export const useLiveData = () => useContext(LiveContext)
 
-export function LiveDataProvider({ config, children }: { config: LiveIntegrationConfig | null; children: ReactNode }) {
+/**
+ * `testMode` is the only door synthetic events have into this state. A live overlay must never show a
+ * fabricated follower, subscription or chat line next to real ones, so by default a frame marked
+ * `test` proves the stream is alive and changes nothing else.
+ */
+export function LiveDataProvider({ config, children, testMode = false }: { config: LiveIntegrationConfig | null; children: ReactNode; testMode?: boolean }) {
   const [data, setData] = useState(initial)
   const seen = useRef(new Set<string>())
 
@@ -41,7 +48,8 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
           state: value.state === 'disconnected' || value.state === 'connecting' ? 'connecting' : value.state,
           viewer: state.viewer ?? value.viewer,
           latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null,
-          sessionFollowerCount: state.sessionFollowerCount ?? 0,
+          // Deliberately not state.sessionFollowerCount: that is a lifetime total kept by the backend,
+          // and adopting it mid-session made a widget labelled "this session" jump to an old number.
           lastEventAt: state.lastEventAt ?? value.lastEventAt,
         }))
       })
@@ -111,6 +119,11 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
         if (seen.current.has(event.id)) return
         seen.current.add(event.id)
         if (seen.current.size > 500) seen.current = new Set([...seen.current].slice(-250))
+        // A synthetic event still proves the channel works, but it must not become data.
+        if (event.test && !testMode) {
+          setData((value) => (value.state === 'connected' ? value : { ...value, state: 'connected' as const }))
+          return
+        }
         setData((value) => {
           const next = { ...value, state: 'connected' as const, lastEventAt: event.receivedAt }
           if (event.type === 'chat.message.sent') {
@@ -143,8 +156,8 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
       window.clearTimeout(retryTimer)
       source?.close()
     }
-  }, [config?.backendUrl, config?.runtimeKey])
+  }, [config?.backendUrl, config?.runtimeKey, testMode])
 
-  const value = useMemo(() => data, [data])
+  const value = useMemo(() => ({ ...data, testMode }), [data, testMode])
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>
 }

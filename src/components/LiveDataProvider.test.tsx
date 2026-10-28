@@ -33,12 +33,52 @@ describe('live runtime transport', () => {
     await waitFor(() => expect(screen.getByTestId('state').textContent).toContain('"status":"offline"'))
     expect(EventSourceMock.latest!.url).toBe('https://api.example/api/runtime/runtime/events')
     act(() => EventSourceMock.latest!.onopen?.())
-    const chat = { id: 'event-1', type: 'chat.message.sent', receivedAt: '2026-10-28T00:00:00Z', test: true, data: { messageId: 'message-1', content: 'TEST', sender: { username: 'fixture', badges: [{ type: 'test', text: 'TEST' }] } } }
+    const chat = { id: 'event-1', type: 'chat.message.sent', receivedAt: '2026-10-28T00:00:00Z', test: false, data: { messageId: 'message-1', content: 'سلام', sender: { username: 'arystal', badges: [{ type: 'subscriber', text: 'SUB', count: 3 }] } } }
     act(() => { EventSourceMock.latest!.emit(chat); EventSourceMock.latest!.emit(chat) })
     await waitFor(() => expect(JSON.parse(screen.getByTestId('state').textContent || '{}').messages).toHaveLength(1))
     const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
     expect(state.state).toBe('connected')
-    expect(state.messages[0]).toMatchObject({ content: 'TEST', test: true })
+    expect(state.messages[0]).toMatchObject({ content: 'سلام', test: false })
+  })
+
+  // The whole point of the test buttons is verification, and the whole risk is that a synthetic follow
+  // becomes a follower count on air. These two cases pin both halves of that contract.
+  it('drops synthetic events on a live source but still counts them as proof of liveness', async () => {
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'connection', channelName: 'channel' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    act(() => EventSourceMock.latest!.onopen?.())
+    const testFollow = { id: 'test-1', type: 'channel.followed', receivedAt: '2026-10-28T00:00:00Z', test: true, data: { follower: { username: 'TEST EVENT', avatar: null } } }
+    const testChat = { id: 'test-2', type: 'chat.message.sent', receivedAt: '2026-10-28T00:00:01Z', test: true, data: { messageId: 'm-1', content: 'TEST EVENT', sender: { username: 'TEST EVENT' } } }
+    act(() => { EventSourceMock.latest!.emit(testFollow); EventSourceMock.latest!.emit(testChat) })
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state.state).toBe('connected')
+    expect(state.alerts).toHaveLength(0)
+    expect(state.messages).toHaveLength(0)
+    expect(state.latestFollower).toBeNull()
+    expect(state.sessionFollowerCount).toBe(0)
+  })
+
+  it('accepts synthetic events only when the source was opened in test mode', async () => {
+    render(<LiveDataProvider testMode config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'connection', channelName: 'channel' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
+    act(() => EventSourceMock.latest!.onopen?.())
+    const testFollow = { id: 'test-1', type: 'channel.followed', receivedAt: '2026-10-28T00:00:00Z', test: true, data: { follower: { username: 'TEST EVENT', avatar: null } } }
+    act(() => EventSourceMock.latest!.emit(testFollow))
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state.testMode).toBe(true)
+    expect(state.alerts).toHaveLength(1)
+    expect(state.sessionFollowerCount).toBe(1)
+  })
+
+  it('keeps a lifetime backend follow total out of the per-session counter', async () => {
+    // /state reports every follow ever recorded; adopting it made a widget captioned "this session"
+    // jump from 1 to 7 during a stream.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ connected: true, viewer: { status: 'live', count: 12, updatedAt: 'now' }, latestFollower: { username: 'arystal', avatar: null }, sessionFollowerCount: 7, lastEventAt: 'now' }) }))
+    render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'connection', channelName: 'channel' }}><Probe /></LiveDataProvider>)
+    await waitFor(() => expect(screen.getByTestId('state').textContent).toContain('"count":12'))
+    const state = JSON.parse(screen.getByTestId('state').textContent || '{}')
+    expect(state.sessionFollowerCount).toBe(0)
+    expect(state.latestFollower).toMatchObject({ username: 'arystal' })
   })
 
   it('reports reconnecting/error rather than retaining a false connected label', async () => {

@@ -1,5 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { act, cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from '../lib/elements'
 import { ElementRenderer } from './ElementRenderer'
 import { LiveDataContext } from './LiveDataProvider'
@@ -187,6 +187,83 @@ describe('element capability sweep', () => {
     for (const type of ['webcam', 'capture'] as const) {
       const element = createElement(type)
       expect(element.includeInOutput, `${type} must not publish a placeholder that looks like capture`).toBe(false)
+    }
+  })
+})
+
+describe('production output carries no test data', () => {
+  const liveState = (overrides: Partial<React.ContextType<typeof LiveDataContext>>) => ({
+    state: 'connected' as const, messages: [], viewer: { status: 'live' as const, count: 5, updatedAt: 'now' },
+    latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: true, testMode: false, ...overrides,
+  })
+  const withLive = (node: React.ReactNode, overrides: Parameters<typeof liveState>[0]) =>
+    render(<LiveDataContext.Provider value={liveState(overrides) as never}>{node}</LiveDataContext.Provider>)
+
+  it('hides the TEST marker on a synthetic chat line unless the source is in test mode', () => {
+    const chat = createElement('chat')
+    const message = { id: 'm1', username: 'TEST EVENT', content: 'TEST EVENT', avatar: null, usernameColor: null, badges: [], createdAt: new Date().toISOString(), test: true }
+    const live = withLive(<ElementRenderer element={chat} runtime />, { messages: [message] })
+    expect(live.queryByText('TEST')).toBeNull()
+    live.unmount()
+    const testMode = withLive(<ElementRenderer element={chat} runtime />, { messages: [message], testMode: true })
+    expect(testMode.getByText('TEST')).toBeTruthy()
+  })
+
+  it('hides the synthetic-alert banner on a live source', () => {
+    const alert = createElement('alert')
+    const synthetic = { id: 'a1', type: 'channel.followed', receivedAt: new Date().toISOString(), test: true, data: { follower: { username: 'TEST EVENT' } } }
+    const live = withLive(<ElementRenderer element={alert} runtime />, { alerts: [synthetic] })
+    expect(live.queryByText(/NOT A REAL KICK EVENT/)).toBeNull()
+    live.unmount()
+    const testMode = withLive(<ElementRenderer element={alert} runtime />, { alerts: [synthetic], testMode: true })
+    expect(testMode.getByText(/NOT A REAL KICK EVENT/)).toBeTruthy()
+  })
+
+  // The shared alert history keeps the last 20 events. An index cursor pointed past that window and the
+  // widget went blank for the rest of the stream, which is the failure this pins.
+  it('keeps playing alerts after the shared history has been trimmed twenty times over', () => {
+    vi.useFakeTimers()
+    const alert = createElement('alert')
+    alert.animation.holdDuration = 10
+    alert.animation.exitDuration = 10
+    const make = (index: number) => ({ id: `a${index}`, type: 'channel.followed', receivedAt: new Date().toISOString(), test: false, data: { follower: { username: `follower${index}` } } })
+    const list: ReturnType<typeof make>[] = []
+    // Mirror the provider: it keeps only the last 20 alerts, and each new one arrives while the previous
+    // is still playing. Delivery is staggered like a real stream, not dumped all at once.
+    const view = (extra?: typeof list) => (
+      <LiveDataContext.Provider value={liveState({ alerts: extra ?? list.slice(-20) }) as never}><ElementRenderer element={alert} runtime /></LiveDataContext.Provider>
+    )
+    const rendered = render(view())
+    const seen = new Set<string>()
+    for (let index = 0; index < 26; index += 1) {
+      list.push(make(index))
+      act(() => { rendered.rerender(view()) })
+      const match = (document.body.textContent || '').match(/follower(\d+)/)
+      if (match) seen.add(match[1])
+      act(() => { vi.advanceTimersByTime(12) })
+    }
+    vi.useRealTimers()
+    expect(seen.size).toBeGreaterThan(20)
+  })
+
+  it('does not publish a placeholder box for an image with no source', () => {
+    const image = createElement('image')
+    const runtime = render(<ElementRenderer element={image} runtime />)
+    expect(runtime.container.textContent).toBe('')
+    expect(runtime.container.querySelector('img')).toBeNull()
+    runtime.unmount()
+    const editor = render(<ElementRenderer element={image} />)
+    expect(editor.getByText(/Upload an image/)).toBeTruthy()
+  })
+
+  it('publishes capture placeholders as transparent frames so they cannot cover a real OBS source', () => {
+    for (const type of ['webcam', 'capture'] as const) {
+      const element = createElement(type)
+      const { container, unmount } = render(<ElementRenderer element={element} runtime />)
+      const box = container.querySelector('.placeholder-element') as HTMLElement
+      expect(box.style.background).toBe('transparent')
+      expect(container.textContent).toBe('')
+      unmount()
     }
   })
 })

@@ -73,12 +73,65 @@ function ChatWidget({ element, runtime }: { element: OverlayElement; runtime: bo
               {bool(element, 'showBadges', true) && ('badges' in message ? message.badges : []).slice(0, 3).map((badge: { type: string; text: string; count?: number }) => (
                 <span className="chat-badge" key={`${badge.type}-${badge.text}`} title={badge.type}>{badge.text || badge.type}{badge.count ? ` ×${badge.count}` : ''}</span>
               ))}
-              {'test' in message && message.test && <small className="test-event-mark">TEST</small>}
+              {'test' in message && message.test && live.testMode && <small className="test-event-mark">TEST</small>}
             </span>
             <span>{message.content}</span>
           </span>
         </div>
       ))}
+    </div>
+  )
+}
+
+type CameraState = 'idle' | 'requesting' | 'live' | 'denied' | 'unsupported'
+
+/**
+ * A browser source can capture a camera the streamer grants it, and that is the one capture a browser
+ * genuinely performs. Everything else in this widget is a frame to align an OBS source with, which is
+ * what the editor text says; nothing here pretends to read another application's window.
+ */
+function WebcamElement({ element, runtime }: { element: OverlayElement; runtime: boolean }) {
+  const mode = text(element, 'captureMode', 'frame')
+  const video = useRef<HTMLVideoElement>(null)
+  const [camera, setCamera] = useState<CameraState>('idle')
+  const radius = text(element, 'shape') === 'circle' ? '50%' : num(element, 'borderRadius', 24)
+  useEffect(() => {
+    if (!runtime || mode !== 'camera') return
+    if (!navigator.mediaDevices?.getUserMedia) { setCamera('unsupported'); return }
+    let stream: MediaStream | null = null
+    let cancelled = false
+    setCamera('requesting')
+    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      .then((media) => {
+        // A source can be reloaded mid-permission; without this the camera light stays on forever.
+        if (cancelled) { media.getTracks().forEach((track) => track.stop()); return }
+        stream = media
+        if (video.current) video.current.srcObject = media
+        setCamera('live')
+      })
+      .catch(() => { if (!cancelled) setCamera('denied') })
+    return () => { cancelled = true; stream?.getTracks().forEach((track) => track.stop()) }
+  }, [runtime, mode])
+
+  if (mode === 'camera') {
+    return (
+      <div className="placeholder-element webcam-placeholder camera-source" style={{ borderRadius: radius, background: 'transparent', overflow: 'hidden' }}>
+        <video ref={video} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', display: camera === 'live' ? 'block' : 'none', borderRadius: radius }} />
+        {camera !== 'live' && (
+          <div className="camera-state">
+            <Camera />
+            <span>{camera === 'requesting' ? 'Requesting camera permission' : camera === 'denied' ? 'CAMERA BLOCKED' : camera === 'unsupported' ? 'CAMERA UNSUPPORTED' : text(element, 'label')}</span>
+            <small>{camera === 'denied' ? 'Allow camera access for this source in OBS, then reload' : camera === 'unsupported' ? 'This browser exposes no camera API' : 'A permission prompt may appear behind the source'}</small>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Frame mode is alignment geometry, not a picture: in OBS it must never cover the real camera feed.
+  return (
+    <div className="placeholder-element webcam-placeholder" style={{ borderRadius: radius, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#170b20'), num(element, 'fillOpacity', .2)) }}>
+      {!runtime && <><Camera /><span>{text(element, 'label')}</span><small>Frame only · place your OBS camera behind this source</small></>}
     </div>
   )
 }
@@ -125,13 +178,28 @@ function alertCopy(event: LiveOverlayEvent | null, element: OverlayElement) {
 }
 
 function LiveAlert({ element, runtime, nonce }: { element: OverlayElement; runtime: boolean; nonce: number }) {
-  const live = useLiveData(); const [cursor, setCursor] = useState(0); const [phase, setPhase] = useState<'enter' | 'exit'>('enter'); const played = useRef('')
-  const event = runtime ? live.alerts[cursor] ?? null : null
+  const live = useLiveData(); const [phase, setPhase] = useState<'enter' | 'exit'>('enter'); const played = useRef('')
+  // The shared history keeps only the last 20 alerts, so an index cursor could point past the end and the
+  // widget would never render again. This local queue holds what has not been played yet and is drained
+  // by identity, which survives history trimming and reconnects.
+  const [queue, setQueue] = useState<LiveOverlayEvent[]>([])
+  const known = useRef(new Set<string>())
+  useEffect(() => {
+    if (!runtime) return
+    setQueue((pending) => {
+      const additions = live.alerts.filter((alert) => !known.current.has(alert.id))
+      if (!additions.length) return pending
+      additions.forEach((alert) => known.current.add(alert.id))
+      // Bursts should not build an unbounded backlog behind a 3s alert; the newest few are enough.
+      return [...pending, ...additions].slice(-6)
+    })
+  }, [live.alerts, runtime])
+  const event = runtime ? queue[0] ?? null : null
   useEffect(() => {
     if (!runtime || !event) return
     setPhase('enter')
     const exitTimer = window.setTimeout(() => setPhase('exit'), element.animation.holdDuration)
-    const nextTimer = window.setTimeout(() => setCursor((value) => value + 1), element.animation.holdDuration + element.animation.exitDuration)
+    const nextTimer = window.setTimeout(() => setQueue((pending) => pending.slice(1)), element.animation.holdDuration + element.animation.exitDuration)
     if (bool(element, 'soundEnabled') && element.props.soundSrc && played.current !== event.id) { played.current = event.id; void new Audio(String(element.props.soundSrc)).play().catch(() => undefined) }
     return () => { clearTimeout(exitTimer); clearTimeout(nextTimer) }
   }, [event?.id, runtime, element.animation.holdDuration, element.animation.exitDuration, element.props.soundSrc])
@@ -141,7 +209,7 @@ function LiveAlert({ element, runtime, nonce }: { element: OverlayElement; runti
     <div key={runtime ? event?.id : nonce} className={`alert-widget alert-phase-${phase} ${phase === 'exit' ? `element-exit-${element.animation.exit}` : ''}`} style={{ color: text(element, 'textColor', '#fff8e7'), animationDuration: `${phase === 'exit' ? element.animation.exitDuration : element.animation.duration}ms` }}>
       <div className="alert-art" style={{ color: text(element, 'accentColor', '#d8ad55') }}>{text(element, 'imageSrc') ? <img src={text(element, 'imageSrc')} alt="" /> : <Sparkles />}</div>
       <strong>{copy.title}</strong><span>{copy.message}</span>
-      {(!runtime || event?.test) && <small className="test-event-mark">TEST PREVIEW · NOT A REAL KICK EVENT</small>}
+      {(!runtime || (event?.test && live.testMode)) && <small className="test-event-mark">TEST PREVIEW · NOT A REAL KICK EVENT</small>}
     </div>
   )
 }
@@ -150,9 +218,16 @@ function ElementContent({ element, runtime, testAlertNonce }: { element: Overlay
   const live = useLiveData(); const p = element.props
   switch (element.type) {
     case 'text': return <div className="text-element" dir={text(element, 'direction', 'auto') as 'ltr' | 'rtl' | 'auto'} style={{ fontFamily: text(element, 'fontFamily'), fontSize: num(element, 'fontSize', 52), fontWeight: num(element, 'fontWeight', 700), color: text(element, 'color', '#fff8e7'), textAlign: text(element, 'textAlign', 'right') as 'left' | 'center' | 'right', lineHeight: num(element, 'lineHeight', 1.3) }}>{text(element, 'text', 'Text')}</div>
-    case 'image': return text(element, 'src') ? <img className="image-element" draggable={false} src={text(element, 'src')} alt={text(element, 'alt')} style={{ objectFit: text(element, 'fit', 'contain') as 'contain' | 'cover' | 'fill' }} /> : <div className="empty-image"><ImageIcon /><span>Upload an image in Properties</span></div>
-    case 'webcam': return <div className="placeholder-element webcam-placeholder" style={{ borderRadius: text(element, 'shape') === 'circle' ? '50%' : num(element, 'borderRadius', 24), background: colorWithOpacity(text(element, 'fillColor', '#170b20'), num(element, 'fillOpacity', .2)) }}>{!runtime && <><Camera /><span>{text(element, 'label')}</span><small>OBS owns the camera source</small></>}</div>
-    case 'capture': return <div className="placeholder-element capture-placeholder" style={{ background: colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Planning only · capture this source in OBS</small></>}</div>
+    case 'image': return text(element, 'src')
+      ? <img className="image-element" draggable={false} src={text(element, 'src')} alt={text(element, 'alt')} style={{ objectFit: text(element, 'fit', 'contain') as 'contain' | 'cover' | 'fill' }} />
+      : runtime ? null : <div className="empty-image"><ImageIcon /><span>Upload an image in Properties</span></div>
+    case 'webcam': return <WebcamElement element={element} runtime={runtime} />
+    case 'capture': {
+      // No browser API can read a game window, so in OBS this element is a layout guide only: transparent
+      // interior, optional border, and no label that could read as a captured picture.
+      const shape = text(element, 'shape') === 'circle' ? '50%' : num(element, 'borderRadius', 24)
+      return <div className="placeholder-element capture-placeholder" style={{ borderRadius: shape, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Layout guide only · add your game source in OBS</small></>}</div>
+    }
     case 'chat': return <ChatWidget element={element} runtime={runtime} />
     case 'alert': return <LiveAlert element={element} runtime={runtime} nonce={testAlertNonce} />
     case 'goal': {
@@ -176,7 +251,7 @@ function ElementContent({ element, runtime, testAlertNonce }: { element: Overlay
       const caption = !runtime ? 'LIVE API PREVIEW' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
       return <div className={`metric-widget live-metric viewer-${status}`} style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></div>
     }
-    case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>events received this connection</em></div>
+    case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>follows this session</em></div>
     case 'latestFollower': return <div className="supporter-widget" style={{ color: text(element, 'color', '#fff8e7') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{runtime ? live.latestFollower?.username || text(element, 'emptyText') : 'Roya · TEST PREVIEW'}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
     case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <div className="supporter-widget" style={{ color: text(element, 'color') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
     default: return <div>{String(p.label ?? element.name)}</div>

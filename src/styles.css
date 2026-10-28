@@ -444,3 +444,24 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
   .canvas-empty-hint strong { font-size: 24px; }
   .canvas-empty-hint small { font-size: 15px; }
 }
+
+/* Opt-in test preview for a published source: synthetic events are labelled, never silent. */
+.runtime-test-mode {
+  position: fixed;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 217, 143, .5);
+  background: rgba(38, 14, 44, .88);
+  color: #f4d98f;
+  font: 700 11px/1 "Vazirmatn", Inter, sans-serif;
+  letter-spacing: .1em;
+  pointer-events: none;
+}
+.camera-source { position: relative; display: flex; align-items: center; justify-content: center; }
+.camera-state { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: #cbb7d6; padding: 8px; }
+.camera-state span { font: 700 12px/1.2 "Vazirmatn", Inter, sans-serif; letter-spacing: .06em; }
+.camera-state small { font-size: 9px; color: #a98b94; max-width: 26ch; }
