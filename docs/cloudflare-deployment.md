@@ -89,6 +89,9 @@ Two things now prevent a repeat:
 
 * `/api/setup` returns `state: "MISCONFIGURED"` plus
   `problems: ["KICK_CLIENT_ID_EQUALS_KICK_CLIENT_SECRET"]` instead of a clean bill of health.
+  The real secret was supplied on the second attempt (64 chars, no shared prefix) and is
+  pushed to Pages with `wrangler pages secret put`; `/api/setup` then reports
+  `state: "DISCONNECTED"`, `missing: []`, `problems: []`.
 * The callback wraps the token request and answers with an HTML page naming the real cause
   and the fix, instead of bubbling a generic `internal_error`.
 
@@ -98,6 +101,10 @@ client/secret pair and the real pair both return `401 invalid_client` for
 for the garbage pair**, so Kick validates `scope` before client authentication. Neither
 response tells you whether the credentials are good. Only the `authorization_code` exchange
 with a real code does, so do not read a `client_credentials` 401 as proof of a bad secret.
+Even the `authorization_code` probe with a bogus code is useless here: Kick answers it with a
+bodyless `401` for both a wrong and the correct secret, so credentials can only be proven by
+the real callback. Pages also bakes secrets into a deployment, so `wrangler pages secret put`
+must always be followed by a deploy or the runtime keeps the old value.
 
 ### Why Pages and not Workers
 
