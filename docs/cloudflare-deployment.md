@@ -63,13 +63,25 @@ Deployed and verified on 2026-10-28:
 | Webhook endpoint | `https://obsidian-overlay-api.pages.dev/api/webhooks/kick` |
 | D1 database | `obsidian-overlay` (`4e7fa326-63e1-4823-8518-063099aad5be`) |
 | Hosting | Cloudflare **Pages** Functions, free plan |
-| Secrets set | `KICK_CLIENT_SECRET`, `ENCRYPTION_KEY` |
-| Still missing | `KICK_CLIENT_ID` |
+| Secrets set | `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`, `ENCRYPTION_KEY` |
 
-`GET /api/health` returns 200, `GET /api/setup` reports `missing: ["KICK_CLIENT_ID"]`, and
-`GET /api/auth/kick/start` correctly refuses with 503 until that last secret lands. No live
-Kick connection exists yet: that needs the client ID plus one authorization by the channel
-owner.
+Verified on 2026-10-28 after the last secret landed:
+
+* `GET /api/health` → 200
+* `GET /api/setup` → `state: "DISCONNECTED"`, `missing: []` (all three secrets bound)
+* `GET /api/auth/kick/start` → `302` to
+  `https://id.kick.com/oauth/authorize?response_type=code&client_id=…&redirect_uri=https%3A%2F%2Fobsidian-overlay-api.pages.dev%2Fapi%2Fauth%2Fkick%2Fcallback&scope=user%3Aread+channel%3Aread+events%3Asubscribe&code_challenge=…&code_challenge_method=S256&state=…`
+* Loading that authorize URL in a real browser renders Kick's own login form, which means
+  Kick accepted the client ID (a bad client ID is rejected there instead)
+* `GET https://api.kick.com/public/v1/public-key` → 200 (the PEM the Worker verifies
+  webhooks against)
+* `POST /api/webhooks/kick` without signature headers → `401 {"error":"missing_headers"}`
+
+`grep` on Kick's docs plus a live probe: Kick returns `401 invalid_client` for a
+`client_credentials` token request. That is expected for user-context OAuth apps and is not
+evidence of a wrong secret; the secret is only proven during the callback's
+authorization-code exchange. No live connection is claimed until the channel owner
+authorizes, so `state` will read `CONNECTED` only after that.
 
 ### Why Pages and not Workers
 
