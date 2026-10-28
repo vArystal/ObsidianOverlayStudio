@@ -100,23 +100,49 @@ export function OverlayEditor() {
     })
   }, [])
 
-  const save = useCallback(() => {
+  const save = useCallback((options: { quiet?: boolean } = {}) => {
     const current = overlayRef.current
     if (!current) return false
-    setSaving(true)
+    if (!options.quiet) setSaving(true)
     const result = saveOverlay(current)
-    setSaving(false)
+    if (!options.quiet) setSaving(false)
     if (!result.ok || !result.value) {
+      // Keep `dirty` set: the edit is still only in memory, so the toolbar keeps warning and
+      // the autosave loop retries on the next change instead of reporting a false success.
       setSaveError(result.error ?? 'Save failed')
       return false
     }
-    setOverlay(result.value)
+    // A quiet save must not replace the live overlay object: the user may be mid-drag, and a
+    // fresh identity would interrupt the pointer session. The stored copy already has the data.
+    if (!options.quiet) setOverlay(result.value)
     setDirty(false)
     setSaveError('')
-    setNotice('Overlay saved to this browser')
-    window.setTimeout(() => setNotice(''), 2200)
+    if (!options.quiet) {
+      setNotice('Overlay saved to this browser')
+      window.setTimeout(() => setNotice(''), 2200)
+    }
     return true
   }, [])
+
+  /**
+   * Autosave. Every edit marks the overlay dirty; 700 ms after the user stops, it is written to
+   * storage. Without this, leaving the editor with the nav link unmounted the page and silently
+   * dropped the change, because only the explicit Save button and Ctrl+S persisted anything.
+   */
+  useEffect(() => {
+    if (!dirty || !overlay) return
+    const timer = window.setTimeout(() => { save({ quiet: true }) }, 700)
+    return () => window.clearTimeout(timer)
+  }, [dirty, overlay, save])
+
+  // Route changes and tab closes do not always fire beforeunload, so flush synchronously on unmount.
+  useEffect(() => () => {
+    const current = overlayRef.current
+    if (!current) return
+    const stored = getOverlay(current.id)
+    if (!stored || JSON.stringify(stored) !== JSON.stringify(current)) saveOverlay(current)
+  }, [])
+
 
   const selected = overlay?.elements.find((element) => element.id === selectedId) ?? null
 
