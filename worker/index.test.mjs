@@ -315,6 +315,28 @@ test('the connection runtime key streams state before any overlay is published',
   assert.equal((await handleRequest(req(`/api/runtime/${connection.runtimeKey}/events`), env)).status, 200)
 })
 
+test('an idle stream emits a heartbeat event the client can actually observe', async () => {
+  const keys = await keypair()
+  const { env } = makeEnv()
+  const { connection } = await connect(env, keys)
+  const response = await handleRequest(req(`/api/runtime/${connection.runtimeKey}/events`), env)
+  assert.equal(response.status, 200)
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let text = ''
+  // Read until at least one heartbeat arrives, or the window closes.
+  for (let i = 0; i < 40 && !text.includes('event: heartbeat'); i += 1) {
+    const { value, done } = await reader.read()
+    if (done) break
+    text += decoder.decode(value, { stream: true })
+  }
+  await reader.cancel().catch(() => {})
+  // A comment-only keepalive is invisible to EventSource; the runtime needs a real named event to
+  // distinguish a quiet channel from a dead one.
+  assert.match(text, /event: ready/, 'the stream still announces itself first')
+  assert.match(text, /event: heartbeat\ndata: \{"at":/, 'a named heartbeat event must be sent when idle')
+})
+
 test('live viewer metric never invents numbers', () => {
   assert.deepEqual(viewerMetric(null).status, 'offline')
   assert.deepEqual(viewerMetric({ stream: { is_live: false, viewer_count: 0 } }).count, null)

@@ -46,8 +46,10 @@ describe('live runtime transport', () => {
     await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
     act(() => { EventSourceMock.latest!.readyState = 1; EventSourceMock.latest!.onerror?.() })
     expect(screen.getByTestId('state').textContent).toContain('"state":"reconnecting"')
+    // A fatal close now schedules its own retry instead of showing a permanent error; escalation to
+    // 'error' after repeated failures is covered in LiveDataProvider.reconnect.test.tsx.
     act(() => { EventSourceMock.latest!.readyState = EventSourceMock.CLOSED; EventSourceMock.latest!.onerror?.() })
-    expect(screen.getByTestId('state').textContent).toContain('"state":"error"')
+    expect(screen.getByTestId('state').textContent).toContain('"state":"reconnecting"')
   })
 
   it('supports the same-origin /api development proxy without browser localhost calls', async () => {
@@ -104,7 +106,7 @@ describe('long-run stability for an all-day OBS source', () => {
     expect(read().alerts).toHaveLength(20)
   })
 
-  it('reports a dropped stream as reconnecting and a closed one as an error', async () => {
+  it('reports a dropped stream and a closed one as reconnecting, since both now retry', async () => {
     render(<LiveDataProvider config={{ backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'c', channelName: 'ch' }}><Probe /></LiveDataProvider>)
     await waitFor(() => expect(EventSourceMock.latest).toBeTruthy())
     await act(async () => {
@@ -120,6 +122,7 @@ describe('long-run stability for an all-day OBS source', () => {
       EventSourceMock.latest!.readyState = 2
       EventSourceMock.latest!.onerror?.()
     })
-    expect(read().state).toBe('error')
+    // Closed streams are retried now, so the label stays 'reconnecting' until the retry budget burns out.
+    expect(read().state).toBe('reconnecting')
   })
 })

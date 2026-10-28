@@ -36,7 +36,9 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
         if (cancelled) return
         setData((value) => ({
           ...value,
-          state: value.state === 'connected' ? 'connected' : 'connecting',
+          // A successful poll says nothing about the event channel, so it must not overwrite
+          // 'reconnecting' or 'error' with a softer state and hide a stream that is still down.
+          state: value.state === 'disconnected' || value.state === 'connecting' ? 'connecting' : value.state,
           viewer: state.viewer ?? value.viewer,
           latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null,
           sessionFollowerCount: state.sessionFollowerCount ?? 0,
@@ -48,15 +50,64 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
     // Viewer counts and offline transitions arrive on a slow cadence; refresh so a reconnected overlay is never stale.
     const refresh = window.setInterval(() => { if (!cancelled) void loadState() }, 60_000)
 
-    const source = new EventSource(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/events`)
-    source.onopen = () => {
-      setData((value) => ({ ...value, state: 'connected' }))
-      void loadState()
+    // An OBS browser source runs for hours unattended, so the stream has to repair itself twice over.
+    // A transient drop is handled by EventSource's own retry, but a CLOSED stream is fatal and never
+    // retries, and an idle NAT can leave a stream open that will never deliver again. Both leave a dead
+    // overlay until somebody reloads the page, which on a stream means until the stream ends.
+    const RETRY_STEPS = [1000, 2000, 5000, 10000, 20000, 30000]
+    const STALL_AFTER_MS = 150_000
+    let retry = 0
+    let retryTimer = 0
+    let retryPending = false
+    let source: EventSource | null = null
+    let lastSignalAt = Date.now()
+
+    const signal = () => { lastSignalAt = Date.now() }
+
+    const scheduleReconnect = () => {
+      // Single flight: the watchdog ticks every 30s and the backoff ceiling is also 30s, so without this
+      // guard each tick would cancel and re-arm the pending retry and recovery could be postponed forever.
+      if (cancelled || retryPending) return
+      retryPending = true
+      const delay = RETRY_STEPS[Math.min(retry, RETRY_STEPS.length - 1)]
+      retry += 1
+      // Keep retrying either way; past five failures 'error' is the honest label, because the overlay
+      // is not coming back on its own and the streamer should see that it is broken, not just slow.
+      setData((value) => ({ ...value, state: retry > 5 ? 'error' : 'reconnecting' }))
+      window.clearTimeout(retryTimer)
+      retryTimer = window.setTimeout(() => { if (!cancelled) connect() }, delay)
     }
-    source.onerror = () => setData((value) => ({ ...value, state: source.readyState === EventSource.CLOSED ? 'error' : 'reconnecting' }))
-    source.addEventListener('overlay-event', (message) => {
+
+    const connect = () => {
+      if (cancelled) return
+      retryPending = false
+      // A fresh attempt starts its own stall clock; otherwise the watchdog would judge the new, still
+      // silent connection by the old one's silence and reconnect in a loop.
+      lastSignalAt = Date.now()
+      source?.close()
+      const stream = new EventSource(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/events`)
+      source = stream
+      stream.onopen = () => {
+        if (cancelled) return
+        retry = 0
+        signal()
+        setData((value) => ({ ...value, state: 'connected' }))
+        void loadState()
+      }
+      stream.onerror = () => {
+        if (cancelled) return
+        // Both cases are "reconnecting" to the viewer, but only a CLOSED stream needs our own retry;
+        // EventSource already retries the transient kind.
+        setData((value) => ({ ...value, state: 'reconnecting' }))
+        if (stream.readyState === EventSource.CLOSED) scheduleReconnect()
+      }
+      // Heartbeats are how a quiet channel stays trusted; without them the watchdog would reconnect
+      // every couple of minutes during slow chat.
+      stream.addEventListener('heartbeat', signal)
+      stream.addEventListener('overlay-event', (message) => {
       try {
         const event = JSON.parse((message as MessageEvent).data) as LiveOverlayEvent
+        signal()
         if (seen.current.has(event.id)) return
         seen.current.add(event.id)
         if (seen.current.size > 500) seen.current = new Set([...seen.current].slice(-250))
@@ -75,8 +126,23 @@ export function LiveDataProvider({ config, children }: { config: LiveIntegration
           return next
         })
       } catch { /* Ignore malformed runtime frames; EventSource will continue. */ }
-    })
-    return () => { cancelled = true; window.clearInterval(refresh); source.close() }
+      })
+    }
+    connect()
+
+    const watchdog = window.setInterval(() => {
+      if (cancelled) return
+      if (Date.now() - lastSignalAt < STALL_AFTER_MS) return
+      scheduleReconnect()
+    }, 30_000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(refresh)
+      window.clearInterval(watchdog)
+      window.clearTimeout(retryTimer)
+      source?.close()
+    }
   }, [config?.backendUrl, config?.runtimeKey])
 
   const value = useMemo(() => data, [data])

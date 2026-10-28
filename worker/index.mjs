@@ -420,7 +420,14 @@ function sseStream(env, runtimeKey, connection) {
             cursor = Number(row.seq)
             send(`id: ${row.seq}\nevent: overlay-event\ndata: ${row.payload}\n\n`)
           }
-          if (!rows.length) send(`: keepalive ${Date.now()}\n\n`)
+          if (!rows.length) {
+            // Keepalive comments keep proxies happy but are invisible to EventSource, so a quiet channel
+            // gave the client no way to tell "nothing happening" from "connection is dead". Emit a real
+            // event: the runtime watches it to decide whether the stream still works.
+            const at = new Date().toISOString()
+            send(`: keepalive ${Date.now()}\n\n`)
+            send(`event: heartbeat\ndata: ${JSON.stringify({ at })}\n\n`)
+          }
           await new Promise((resolve) => setTimeout(resolve, SSE_POLL_MS))
         }
       } catch {
