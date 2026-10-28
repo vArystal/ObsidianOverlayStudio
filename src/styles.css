@@ -137,10 +137,10 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .right-panel { border-left: 1px solid var(--line); }
 .panel-scroll { overflow-y: auto; min-height: 0; scrollbar-color: #33333d transparent; scrollbar-width: thin; }
 .panel-tabs { height: 49px; flex: 0 0 49px; display: flex; align-items: stretch; border-bottom: 1px solid var(--line); padding: 0 6px; }
-.panel-tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; background: none; color: #6f6f7b; font-size: 9px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; padding: 0 4px; }
+.panel-tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; background: none; color: #9c9caa; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; padding: 0 4px; }
 .panel-tabs button.active { color: #e0e0e8; border-bottom-color: var(--accent); }
 .panel-tabs button svg { width: 13px; }
-.panel-tabs button span { font-size: 8px; background: #292933; border-radius: 6px; padding: 2px 4px; }
+.panel-tabs button span { font-size: 9px; color: #d6d6e2; background: #33333f; border-radius: 6px; padding: 2px 5px; }
 .panel-heading { padding: 19px 17px 13px; }
 .panel-heading h2 { font-size: 12px; margin: 0 0 5px; }
 .panel-heading p { color: #6d6d78; font-size: 9px; margin: 0; line-height: 1.5; }
@@ -311,7 +311,7 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .number-input { display: flex; align-items: center; background: #17171e; border: 1px solid #2c2c35; border-radius: 6px; min-width: 0; }
 .number-input:focus-within { border-color: var(--accent); }
 .number-input input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: #d0d0d8; padding: 8px 7px; font-size: 10px; }
-.number-input i { font-style: normal; font-size: 7px; color: #646470; margin-right: 7px; }
+.number-input i { font-style: normal; font-size: 9px; color: #9c9caa; margin-right: 7px; }
 .color-input { display: flex; align-items: center; background: #17171e; border: 1px solid #2c2c35; border-radius: 6px; padding: 4px; }
 .color-input input[type="color"] { width: 26px; height: 24px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 .color-input input:last-child { border: 0; outline: 0; background: transparent; color: #c5c5ce; width: 100%; font-size: 9px; padding-left: 7px; text-transform: uppercase; }

@@ -67,20 +67,29 @@ type Tab = 'elements' | 'layers' | 'assets'
 
 export function ElementsPanel(props: ElementsPanelProps) {
   const [tab, setTab] = useState<Tab>('elements')
+  const tabs = ['elements', 'layers', 'assets'] as const
+  const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+    event.preventDefault()
+    const at = tabs.indexOf(tab)
+    const next = tabs[(at + (event.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
+    setTab(next)
+    document.getElementById(`tab-${next}`)?.focus()
+  }
   const uploadRef = useRef<HTMLInputElement>(null)
   const backgroundRef = useRef<HTMLInputElement>(null)
   const assetElements = props.elements.filter((element) => element.type === 'image' && element.props.src)
 
   return (
     <aside className="editor-panel left-panel">
-      <div className="panel-tabs" role="tablist">
-        <button className={tab === 'elements' ? 'active' : ''} onClick={() => setTab('elements')}><Plus /> Elements</button>
-        <button className={tab === 'layers' ? 'active' : ''} onClick={() => setTab('layers')}><Layers3 /> Layers <span>{props.elements.length}</span></button>
-        <button className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}><ImagePlus /> Assets</button>
+      <div className="panel-tabs" role="tablist" aria-label="Editor panels" onKeyDown={handleTabKey}>
+        <button role="tab" id="tab-elements" aria-selected={tab === 'elements'} aria-controls="panel-elements" tabIndex={tab === 'elements' ? 0 : -1} className={tab === 'elements' ? 'active' : ''} onClick={() => setTab('elements')}><Plus /> Elements</button>
+        <button role="tab" id="tab-layers" aria-selected={tab === 'layers'} aria-controls="panel-layers" tabIndex={tab === 'layers' ? 0 : -1} className={tab === 'layers' ? 'active' : ''} onClick={() => setTab('layers')}><Layers3 /> Layers <span aria-label={`${props.elements.length} layers`}>{props.elements.length}</span></button>
+        <button role="tab" id="tab-assets" aria-selected={tab === 'assets'} aria-controls="panel-assets" tabIndex={tab === 'assets' ? 0 : -1} className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}><ImagePlus /> Assets</button>
       </div>
 
       {tab === 'elements' && (
-        <div className="panel-scroll element-library">
+        <div className="panel-scroll element-library" role="tabpanel" id="panel-elements" aria-labelledby="tab-elements">
           <div className="panel-heading"><div><h2>Add element</h2><p>Nothing is added until you choose it.</p></div></div>
           {['Content', 'Planning', 'Live Kick', 'Widgets'].map((group) => (
             <section key={group}>
@@ -100,7 +109,7 @@ export function ElementsPanel(props: ElementsPanelProps) {
       )}
 
       {tab === 'layers' && (
-        <div className="panel-scroll layers-panel">
+        <div className="panel-scroll layers-panel" role="tabpanel" id="panel-layers" aria-labelledby="tab-layers">
           <div className="panel-heading"><div><h2>Layers</h2><p>Top items render in front.</p></div></div>
           {!props.elements.length && <div className="panel-empty"><Layers3 /><strong>No layers yet</strong><span>Add an element to begin.</span></div>}
           <div className="layers-list">
@@ -135,7 +144,7 @@ export function ElementsPanel(props: ElementsPanelProps) {
       )}
 
       {tab === 'assets' && (
-        <div className="panel-scroll assets-panel">
+        <div className="panel-scroll assets-panel" role="tabpanel" id="panel-assets" aria-labelledby="tab-assets">
           <div className="panel-heading"><div><h2>Assets</h2><p>Stored inside this browser.</p></div></div>
           <input ref={uploadRef} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => event.target.files?.[0] && props.onUploadAsset(event.target.files[0])} />
           <input ref={backgroundRef} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => event.target.files?.[0] && props.onUploadBackground(event.target.files[0])} />

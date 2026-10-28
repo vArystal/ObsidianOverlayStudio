@@ -52,15 +52,15 @@ describe('overlay editor workflow', () => {
     fireEvent.keyDown(window, { key: 'ArrowRight' })
 
     fireEvent.keyDown(window, { key: 'd', ctrlKey: true })
-    expect(screen.getByRole('button', { name: /Layers 2/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Layers 2/ })).toBeTruthy()
     fireEvent.click(screen.getByTitle('Undo (Ctrl/⌘ Z)'))
-    expect(screen.getByRole('button', { name: /Layers 1/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Layers 1/ })).toBeTruthy()
     fireEvent.click(screen.getByTitle('Redo (Ctrl/⌘ Shift Z)'))
-    expect(screen.getByRole('button', { name: /Layers 2/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Layers 2/ })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Delete' })
-    expect(screen.getByRole('button', { name: /Layers 1/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Layers 1/ })).toBeTruthy()
     fireEvent.click(screen.getByTitle('Undo (Ctrl/⌘ Z)'))
-    expect(screen.getByRole('button', { name: /Layers 2/ })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Layers 2/ })).toBeTruthy()
 
     clickLibraryDescription('Frame or planning guide')
     clickLibraryDescription('Layout guide — not a capture')
@@ -70,7 +70,7 @@ describe('overlay editor workflow', () => {
     fireEvent.click(screen.getByRole('button', { name: /Test preview alert/ }))
     expect(screen.getByText(/Preview alert triggered/)).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: /Layers 6/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /Layers 6/ }))
     const selectedLayer = document.querySelector('.layer-row.selected') as HTMLElement
     fireEvent.click(selectedLayer.querySelector('[aria-label="Toggle layer lock"]') as HTMLElement)
     fireEvent.click(selectedLayer.querySelector('[aria-label="Toggle layer visibility"]') as HTMLElement)
