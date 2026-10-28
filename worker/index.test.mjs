@@ -492,11 +492,30 @@ test('cron refreshes viewer count from the official channels endpoint', async ()
   assert.equal(row.active_subscribers, 13)
 })
 
-test('CORS allows only the configured editor origin', async () => {
+test('a crash answers with a bare error and keeps the detail server-side', async () => {
+  const { env } = makeEnv()
+  const broken = { ...env, DB: { prepare() { throw new Error('D1_ERROR: no such table: connections at offset 1') } } }
+  const logged = []
+  const originalError = console.error
+  console.error = (...args) => logged.push(args.join(' '))
+  try {
+    const response = await worker.fetch(new Request(`${API}/api/runtime/abc/state`), broken, {})
+    assert.equal(response.status, 500)
+    assert.deepEqual(await response.json(), { error: 'internal_error' })
+    assert.ok(logged.some((line) => line.includes('no such table')), 'the detail must still be logged')
+  } finally { console.error = originalError }
+})
+
+test('CORS names the caller origin only when it is on the allowlist', async () => {
   const { env } = makeEnv()
   const allowed = await handleRequest(req('/api/health'), env)
   assert.equal(allowed.headers.get('access-control-allow-origin'), ORIGIN)
+  assert.equal(allowed.headers.get('vary'), 'Origin')
+
   const other = await handleRequest(new Request(`${API}/api/health`, { headers: { origin: 'https://attacker.example' } }), env)
-  assert.equal(other.headers.get('access-control-allow-origin'), ORIGIN)
   assert.equal(other.status, 200)
+  assert.equal(other.headers.get('access-control-allow-origin'), null, 'a foreign origin gets no allowance at all')
+
+  const none = await handleRequest(new Request(`${API}/api/health`), env)
+  assert.equal(none.headers.get('access-control-allow-origin'), null, 'a server-to-server call needs no allowance')
 })

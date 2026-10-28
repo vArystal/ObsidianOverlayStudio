@@ -204,9 +204,7 @@ const run = async (env, sql, ...params) => db(env).prepare(sql).bind(...params).
 export function corsHeaders(request, env) {
   const origin = request.headers.get('origin') || ''
   const allowed = String(env.APP_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean)
-  const allowOrigin = allowed.includes(origin) ? origin : (allowed[0] || 'null')
-  return {
-    'access-control-allow-origin': allowOrigin,
+  const headers = {
     'access-control-allow-headers': 'authorization, content-type',
     'access-control-allow-methods': 'GET, POST, DELETE, OPTIONS',
     'access-control-max-age': '86400',
@@ -215,6 +213,11 @@ export function corsHeaders(request, env) {
     'x-content-type-options': 'nosniff',
     'referrer-policy': 'no-referrer',
   }
+  // Only a matched origin earns an allow-origin header. Handing our own origin back to a caller
+  // that is not on the list is not exploitable (the browser compares against the caller's origin)
+  // but it makes the allowance look broader than it is in logs and in any future proxy cache.
+  if (origin && allowed.includes(origin)) headers['access-control-allow-origin'] = origin
+  return headers
 }
 
 const json = (request, env, status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json; charset=utf-8', ...corsHeaders(request, env) } })
@@ -789,7 +792,12 @@ export async function handleRequest(request, env, ctx = {}) {
 
 export default {
   fetch(request, env, ctx) {
-    return handleRequest(request, env, ctx).catch((error) => json(request, env, 500, { error: 'internal_error', message: String(error?.message || error).slice(0, 200) }))
+    return handleRequest(request, env, ctx).catch((error) => {
+      // Log the detail, never return it: driver and binding messages can carry SQL, table and
+      // credential-adjacent detail to an unauthenticated caller.
+      console.error('request_failed', request.method, new URL(request.url).pathname, String(error?.stack || error).slice(0, 600))
+      return json(request, env, 500, { error: 'internal_error' })
+    })
   },
   /** Cron: refresh live status + viewer count from the official channels endpoint. */
   async scheduled(event, env) {
