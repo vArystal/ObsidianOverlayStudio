@@ -27,7 +27,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { Overlay, OverlayElement } from '../../types'
-import { DECORATION_PRESETS } from '../../lib/themes'
+import { DECORATION_PRESETS, toggleDecoration } from '../../lib/themes'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -261,7 +261,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         )}
 
         <Section title="Persian decoration">
-          <Toggle checked={element.decoration.enabled} onChange={(enabled) => decorate({ enabled })} label="Decorative frame" description="Independent from widget content and safe to remove." />
+          <Toggle checked={element.decoration.enabled} onChange={(enabled) => props.onPatch({ decoration: toggleDecoration(element.decoration, enabled) })} label="Decorative frame" description="Independent from widget content and safe to remove." />
           <Field label="Frame preset"><select value={element.decoration.preset} onChange={(event) => props.onPatch({ decoration: structuredClone(DECORATION_PRESETS[event.target.value as OverlayElement['decoration']['preset']]) })}><option value="none">None</option><option value="royal-panel">Royal panel</option><option value="turquoise-panel">Turquoise panel</option><option value="imperial-card">Imperial card</option><option value="esports-line">Minimal esports</option><option value="ornamental-frame">Ornamental frame</option></select></Field>
           <Toggle checked={element.decoration.inheritTheme} onChange={(inheritTheme) => decorate({ inheritTheme })} label="Use theme colors" description="Theme changes never move or rewrite this layer's content." />
           <Toggle checked={element.decoration.borderVisible} onChange={(borderVisible) => decorate({ borderVisible })} label="Outer border" />

@@ -66,6 +66,34 @@ export function getTheme(id?: string | null): OverlayTheme {
   return THEMES[(id as ThemeId) ?? 'royal-persian'] ?? DEFAULT_THEME
 }
 
+/** True when a decoration produces any visible framing at all. */
+export function hasVisibleFrame(decoration: ElementDecoration) {
+  return Boolean(
+    decoration.borderVisible
+    || decoration.innerBorder
+    || decoration.cornerOrnaments
+    || decoration.shadow
+    || decoration.glow
+    || decoration.highlight
+    || (decoration.pattern && decoration.pattern !== 'none')
+    || decoration.backgroundOpacity > 0,
+  )
+}
+
+/**
+ * Turning the frame on must always show something. Text, image and shape layers are created with the
+ * `none` preset, so flipping `enabled` alone used to leave a 0px border with no ornaments, no pattern
+ * and no padding — a toggle that looked broken. Enabling an empty preset now adopts Royal panel,
+ * while any customised frame keeps its own values.
+ */
+export function toggleDecoration(decoration: ElementDecoration, enabled: boolean): ElementDecoration {
+  if (!enabled) return { ...decoration, enabled: false }
+  if (decoration.preset === 'none' || !hasVisibleFrame(decoration)) {
+    return { ...structuredClone(DECORATION_PRESETS['royal-panel']), inheritTheme: decoration.inheritTheme, enabled: true }
+  }
+  return { ...decoration, enabled: true }
+}
+
 export function resolveDecoration(decoration: ElementDecoration, theme: OverlayTheme) {
   if (!decoration.inheritTheme) return decoration
   return {
