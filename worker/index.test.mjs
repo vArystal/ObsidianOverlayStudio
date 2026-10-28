@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFileSync } from 'node:fs'
-import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, resetPublicKeyCache, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
+import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, resetPublicKeyCache, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
 
 const ORIGIN = 'https://varystal.github.io'
 const API = 'https://obsidian-overlay-api.test.workers.dev'
@@ -254,6 +254,35 @@ test('chat events normalise to the shape the overlay runtime consumes', () => {
   assert.equal(event.data.sender.usernameColor, '#d8ad55')
   assert.deepEqual(event.data.sender.badges, [{ type: 'sub', text: '3' }])
   assert.equal(event.data.broadcaster.userId, 42)
+})
+
+test('a stale viewer number is refreshed lazily (Pages has no cron) and a failure never fabricates one', async () => {
+  const keys = await keypair()
+  const { env, sqlite } = makeEnv()
+  const { connection } = await connect(env, keys)
+  const staleConnection = { ...sqlite.prepare('SELECT * FROM connections').get(), viewer: JSON.stringify({ status: 'live', count: 137, updatedAt: new Date(Date.now() - 10 * 60_000).toISOString() }) }
+
+  env.fetchImpl = async (url) => {
+    assert.match(String(url), /broadcaster_user_id=42/)
+    return Response.json({ data: [{ slug: 'varystal', stream: { is_live: true, viewer_count: 555 } }] })
+  }
+  const refreshed = await refreshViewerIfStale(env, staleConnection, env.fetchImpl)
+  assert.equal(JSON.parse(refreshed.viewer).count, 555)
+  assert.equal(JSON.parse(sqlite.prepare('SELECT viewer FROM connections').get().viewer).count, 555)
+
+  // fresh data must not trigger another Kick call
+  let calls = 0
+  env.fetchImpl = async () => { calls += 1; return Response.json({ data: [] }) }
+  await refreshViewerIfStale(env, { ...refreshed, viewer: refreshed.viewer }, env.fetchImpl)
+  assert.equal(calls, 0)
+
+  // a failing Kick call degrades to "stale" and keeps the last real number
+  env.fetchImpl = async () => { throw new Error('kick down') }
+  const degraded = await refreshViewerIfStale(env, staleConnection, env.fetchImpl)
+  const metric = JSON.parse(degraded.viewer)
+  assert.equal(metric.status, 'stale')
+  assert.equal(metric.count, 137)
+  assert.ok(connection.runtimeKey)
 })
 
 test('cron refreshes viewer count from the official channels endpoint', async () => {

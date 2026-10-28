@@ -15,7 +15,9 @@
     "test:watch": "vitest",
     "check": "npm test && npm run build",
     "test:worker": "node --test worker/index.test.mjs",
-    "preview:dist": "vite preview --host 0.0.0.0"
+    "preview:dist": "vite preview --host 0.0.0.0",
+    "build:pages": "node scripts/build-pages.mjs",
+    "deploy:pages": "node scripts/build-pages.mjs && wrangler pages deploy worker/pages --project-name=obsidian-overlay-api --branch=main --commit-dirty=true"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

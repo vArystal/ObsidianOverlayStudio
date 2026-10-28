@@ -52,44 +52,68 @@ that metric would break the rule that nothing is invented.
 Unverified Kick apps have a 1,000-subscription cap on `chat.message.sent`; a single
 channel uses one subscription per event type, so this does not matter here.
 
-## 3. Deploy the Worker (one time, free plan)
+## 3. Current deployment (already live)
+
+Deployed and verified on 2026-10-28:
+
+| Thing | Value |
+| --- | --- |
+| Backend base URL | `https://obsidian-overlay-api.pages.dev` |
+| OAuth callback | `https://obsidian-overlay-api.pages.dev/api/auth/kick/callback` |
+| Webhook endpoint | `https://obsidian-overlay-api.pages.dev/api/webhooks/kick` |
+| D1 database | `obsidian-overlay` (`4e7fa326-63e1-4823-8518-063099aad5be`) |
+| Hosting | Cloudflare **Pages** Functions, free plan |
+| Secrets set | `KICK_CLIENT_SECRET`, `ENCRYPTION_KEY` |
+| Still missing | `KICK_CLIENT_ID` |
+
+`GET /api/health` returns 200, `GET /api/setup` reports `missing: ["KICK_CLIENT_ID"]`, and
+`GET /api/auth/kick/start` correctly refuses with 503 until that last secret lands. No live
+Kick connection exists yet: that needs the client ID plus one authorization by the channel
+owner.
+
+### Why Pages and not Workers
+
+The account's Workers scripts deploy successfully but every request returns Cloudflare
+error 1101, including a three-line probe worker (reproduced from both the sandbox and a
+real browser). The same code runs correctly under `wrangler dev --remote`, and a probe
+Pages Function returns 200, so Pages Functions is the working free surface for this
+account. Cloudflare was also reporting a major platform incident during the diagnosis,
+so Workers may start working later; `worker/wrangler.toml` is kept so the identical code
+can move back to Workers (and regain the cron sweep) in one command.
+
+Pages has no cron triggers, so the viewer-count sweep runs **lazily** instead: any read of
+`/api/runtime/:key/state`, `/api/integrations/kick`, or the start of an SSE stream
+refreshes the number when the stored value is older than 45 seconds. One Kick call per
+connection per 45 seconds at most; a failed refresh keeps the last real count and marks it
+`stale` rather than inventing a value.
+
+### Update the Kick app
+
+In <https://kick.com/settings/developer>, edit the app so these match exactly:
+
+* Redirect URL: `https://obsidian-overlay-api.pages.dev/api/auth/kick/callback`
+* Webhook URL: `https://obsidian-overlay-api.pages.dev/api/webhooks/kick`
+* Scopes: `user:read`, `channel:read`, `events:subscribe` only
+
+Then the Client ID goes in as one more secret:
 
 ```bash
-npm install -g wrangler           # or: npx wrangler@latest
-wrangler login                    # free Cloudflare account, no card needed
-wrangler d1 create obsidian-overlay
-# copy database_id into worker/wrangler.toml
-
-wrangler d1 execute obsidian-overlay --remote --file=worker/schema.sql
-# local testing only, optional:
-wrangler d1 execute obsidian-overlay --local --file=worker/schema.sql
+npx wrangler pages secret put KICK_CLIENT_ID --project-name=obsidian-overlay-api
+npx wrangler pages deploy worker/pages --project-name=obsidian-overlay-api --branch=main
 ```
 
-Set the three secrets (never in git, never in the frontend bundle):
+Pages bakes secrets into a deployment, so **the redeploy is mandatory** or the runtime
+still reports the secret as missing.
+
+### Redeploy from a clean checkout
 
 ```bash
-wrangler secret put KICK_CLIENT_ID
-wrangler secret put KICK_CLIENT_SECRET
-wrangler secret put ENCRYPTION_KEY        # openssl rand -base64 32
+npm install
+node scripts/build-pages.mjs          # copies worker/index.mjs beside _worker.js
+npx wrangler pages deploy worker/pages --project-name=obsidian-overlay-api --branch=main
 ```
 
-Edit `worker/wrangler.toml`:
-
-* `PUBLIC_API_URL` → your real Worker URL
-* `APP_ORIGINS` → `https://varystal.github.io` (the Pages origin, comma-separated;
-  the OAuth `return_to` and CORS allow-list are checked against it)
-
-Deploy:
-
-```bash
-wrangler deploy
-curl https://<your-worker>.workers.dev/api/health
-curl https://<your-worker>.workers.dev/api/setup   # state must be DISCONNECTED, missing []
-```
-
-Then in the site: **Integrations → Backend URL → Save & check → Connect Kick account**.
-The overlay editor's Publish button registers a stable per-overlay runtime key, and the
-OBS browser source URL keeps working across deploys because the key is stored in D1.
+`worker/pages/index.mjs` is generated and gitignored; never edit it by hand.
 
 ## 4. Free-tier budget
 

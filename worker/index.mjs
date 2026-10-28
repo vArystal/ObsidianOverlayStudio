@@ -328,6 +328,32 @@ export async function validAccessToken(env, connection, fetchImpl = fetch, now =
   return next.access_token
 }
 
+/* ------------------------------------------------ viewer freshness (cron-free)
+ * Workers deployments use the cron sweep above; Pages Functions have no cron, so the
+ * same refresh runs lazily when a runtime asks for state and the number is stale.
+ * One Kick call per connection per 45s at most, and a failure degrades to "stale"
+ * instead of inventing a count. */
+const VIEWER_MAX_AGE_MS = 45_000
+
+export async function refreshViewerIfStale(env, connection, fetchImpl = fetch) {
+  if (!connection?.connected) return connection
+  const viewer = JSON.parse(connection.viewer || '{"status":"unavailable","count":null,"updatedAt":null}')
+  const age = viewer.updatedAt ? Date.now() - Date.parse(viewer.updatedAt) : Number.POSITIVE_INFINITY
+  if (age < VIEWER_MAX_AGE_MS) return connection
+  try {
+    const token = await validAccessToken(env, connection, fetchImpl)
+    const channel = await fetchChannelState(fetchImpl, token, connection.account_user_id)
+    const now = new Date().toISOString()
+    const next = viewerMetric(channel, now)
+    await run(env, 'UPDATE connections SET viewer = ?, active_subscribers = COALESCE(?, active_subscribers), updated_at = ? WHERE id = ?',
+      JSON.stringify(next), channel?.active_subscribers_count ?? null, now, connection.id)
+    return { ...connection, viewer: JSON.stringify(next), updated_at: now, active_subscribers: channel?.active_subscribers_count ?? connection.active_subscribers }
+  } catch {
+    const degraded = { ...viewer, status: viewer.updatedAt ? 'stale' : 'unavailable' }
+    return { ...connection, viewer: JSON.stringify(degraded) }
+  }
+}
+
 /* ------------------------------------------------------------ runtime stream */
 
 function sseStream(env, runtimeKey, connection) {
@@ -341,6 +367,7 @@ function sseStream(env, runtimeKey, connection) {
     async start(controller) {
       const send = (chunk) => { if (!closed) controller.enqueue(encoder.encode(chunk)) }
       send(`retry: 2000\n\n`)
+      await refreshViewerIfStale(env, connection).catch(() => null)
       send(`event: ready\ndata: ${JSON.stringify({ runtimeKey, at: new Date().toISOString() })}\n\n`)
       try {
         while (Date.now() - started < SSE_WINDOW_MS) {
@@ -554,7 +581,7 @@ export async function handleRequest(request, env, ctx = {}) {
   if (request.method === 'GET' && path === '/api/integrations/kick') {
     const connection = await managedConnection(request, env)
     if (!connection) return json(request, env, 401, { error: 'unauthorized' })
-    return json(request, env, 200, publicStatus(connection, env))
+    return json(request, env, 200, publicStatus(await refreshViewerIfStale(env, connection, fetchImpl), env))
   }
 
   if (request.method === 'POST' && path === '/api/overlays/publish') {
@@ -624,12 +651,13 @@ export async function handleRequest(request, env, ctx = {}) {
     const connection = await runtimeConnection(env, runtimeKey)
     if (!connection) return json(request, env, 404, { error: 'runtime_not_found' })
     if (tail === 'state') {
+      const fresh = await refreshViewerIfStale(env, connection, env.fetchImpl || fetch)
       return json(request, env, 200, {
-        connected: Boolean(connection.connected),
-        viewer: JSON.parse(connection.viewer || '{"status":"unavailable","count":null,"updatedAt":null}'),
-        latestFollower: connection.last_follower ? JSON.parse(connection.last_follower) : null,
-        sessionFollowerCount: Number(connection.session_follower_count || 0),
-        channel: { slug: connection.channel_slug, description: connection.channel_description },
+        connected: Boolean(fresh.connected),
+        viewer: JSON.parse(fresh.viewer || '{"status":"unavailable","count":null,"updatedAt":null}'),
+        latestFollower: fresh.last_follower ? JSON.parse(fresh.last_follower) : null,
+        sessionFollowerCount: Number(fresh.session_follower_count || 0),
+        channel: { slug: fresh.channel_slug, description: fresh.channel_description },
         lastEventAt: connection.last_event_at || null,
         followerTotal: FOLLOWER_TOTAL,
         serverTime: new Date().toISOString(),

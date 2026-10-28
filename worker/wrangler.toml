@@ -1,12 +1,12 @@
 # Cloudflare Workers configuration — free plan only.
 # No Durable Objects, no Queues, no paid bindings.
 name = "obsidian-overlay-api"
-main = "worker/index.mjs"
+main = "index.mjs"
 compatibility_date = "2025-01-01"
 
 # Public origin of this Worker. Used for the OAuth callback and the webhook URL.
 [vars]
-PUBLIC_API_URL = "https://obsidian-overlay-api.<your-subdomain>.workers.dev"
+PUBLIC_API_URL = "https://obsidian-overlay-api.amiralibinaeyan.workers.dev"
 # Comma-separated allow-list. This is the GitHub Pages origin of the editor.
 APP_ORIGINS = "https://varystal.github.io"
 
@@ -14,7 +14,7 @@ APP_ORIGINS = "https://varystal.github.io"
 [[d1_databases]]
 binding = "DB"
 database_name = "obsidian-overlay"
-database_id = "<run: wrangler d1 create obsidian-overlay>"
+database_id = "4e7fa326-63e1-4823-8518-063099aad5be"
 
 # Viewer-count / live-status sweep. Free plan cron triggers are included.
 [triggers]
