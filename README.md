@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173/overlays`. Production verification:
+Open `http://localhost:5173/#/overlays`. Production verification:
 
 ```bash
 npm test
@@ -17,11 +17,20 @@ npm run build
 npm run preview
 ```
 
+## Deploy to GitHub Pages
+
+The app uses hash routing and relative build assets, so it works on GitHub Pages without server rewrite rules. The included `.github/workflows/deploy-pages.yml` workflow tests, builds, and deploys the `dist` directory whenever `main` is updated.
+
+1. In the GitHub repository, open **Settings → Pages**.
+2. Under **Build and deployment**, select **GitHub Actions** as the source.
+3. Merge this branch into `main`, or manually run **Deploy Overlay Studio to GitHub Pages** from the Actions tab.
+4. Open `https://varystal.github.io/jubilant-octo-lamp/#/overlays`.
+
 ## Routes
 
-- `/overlays` — saved overlay library
-- `/overlays/editor/:id` — visual editor
-- `/overlay/:publicId` — clean transparent runtime (no dashboard/editor controls)
+- `#/overlays` — saved overlay library
+- `#/overlays/editor/:id` — visual editor
+- `#/overlay/:publicId` — clean transparent runtime (no dashboard/editor controls)
 
 ## OBS workflow
 
@@ -32,7 +41,7 @@ npm run preview
 5. Paste the copied snapshot URL and set its width and height to the recommendation shown by the editor (for example `1920 × 1080`).
 6. Add Game Capture / Display Capture and Video Capture Device sources separately in OBS, then align them under any planning placeholders or decorative webcam frames.
 
-The copied URL includes a compressed snapshot of the composition so the runtime does not depend on the editor browser's local storage. When using a local development URL, OBS must run on the same computer and the Vite server must remain running. For a stable externally accessible URL, deploy the production build over HTTPS with SPA history fallback to `index.html`.
+The copied URL includes a compressed snapshot of the composition so the runtime does not depend on the editor browser's local storage. When using a local development URL, OBS must run on the same computer and the Vite server must remain running. A GitHub Pages URL is HTTPS-hosted and can be opened directly by OBS without keeping the development server running.
 
 ## What is local-only
 

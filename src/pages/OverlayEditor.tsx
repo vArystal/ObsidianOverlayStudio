@@ -10,6 +10,7 @@ import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
 import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
+import { buildHashUrl } from '../lib/urls'
 import type { ElementType, Overlay, OverlayElement } from '../types'
 
 const MAX_HISTORY = 60
@@ -335,7 +336,7 @@ export function OverlayEditor() {
     setOverlay(result.value)
     setDirty(false)
     const snapshot = encodeOverlaySnapshot(result.value)
-    const url = `${window.location.origin}/overlay/${result.value.publicId}?snapshot=${snapshot}`
+    const url = buildHashUrl(`/overlay/${result.value.publicId}?snapshot=${snapshot}`)
     setPublishUrl(url)
     await copyText(url)
   }

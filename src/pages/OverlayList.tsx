@@ -14,6 +14,7 @@ import {
 import { AppShell } from '../components/AppShell'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
 import { deleteOverlay, loadOverlays, saveOverlay } from '../lib/storage'
+import { buildHashUrl } from '../lib/urls'
 import type { Overlay } from '../types'
 
 export function OverlayList() {
@@ -100,7 +101,7 @@ export function OverlayList() {
                     {menu === overlay.id && (
                       <div className="card-menu">
                         <button onClick={() => navigate(`/overlays/editor/${overlay.id}`)}><ArrowRight /> Open editor</button>
-                        <button onClick={() => window.open(`/overlay/${overlay.publicId}`, '_blank')}><ExternalLink /> Open output</button>
+                        <button onClick={() => window.open(buildHashUrl(`/overlay/${overlay.publicId}`), '_blank')}><ExternalLink /> Open output</button>
                         <button onClick={() => duplicate(overlay)}><Copy /> Duplicate</button>
                         <button className="danger" onClick={() => remove(overlay)}><Trash2 /> Delete</button>
                       </div>
