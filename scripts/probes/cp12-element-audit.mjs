@@ -7,6 +7,9 @@ import { readFileSync, existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
 
 const PORT = Number(process.env.PORT || 4327)
+// SITE=https://host/path runs the same checks against a deployed build instead of the local dist.
+const SITE = process.env.SITE ? process.env.SITE.replace(/\/$/, '') : ''
+const ORIGIN = SITE || `http://localhost:${PORT}`
 const root = new URL('../../dist/', import.meta.url).pathname
 const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' }
 const server = createServer((req, res) => {
@@ -15,7 +18,7 @@ const server = createServer((req, res) => {
   if (existsSync(file) && !file.endsWith('/')) { res.writeHead(200, { 'content-type': types[extname(file)] || 'application/octet-stream' }); res.end(readFileSync(file)); return }
   res.writeHead(200, { 'content-type': 'text/html' }); res.end(readFileSync(join(root, 'index.html')))
 })
-await new Promise((resolve) => server.listen(PORT, resolve))
+if (!SITE) await new Promise((resolve) => server.listen(PORT, resolve))
 
 const base = { rotation: 0, opacity: 1, visible: true, locked: false, includeInOutput: true, maintainAspectRatio: false }
 const element = (id, type, extra = {}) => ({ ...base, id, type, name: type, x: 40, y: 40 + Math.random() * 40, width: 420, height: 150, animation: { type: 'none', exit: 'none', idle: 'none', duration: 300, delay: 0, holdDuration: 600, exitDuration: 200, easing: 'ease', intensity: 1, direction: 'left', reducedMotion: 'respect' }, decoration: { enabled: false, preset: 'none' }, props: {}, ...extra })
@@ -63,7 +66,7 @@ async function openRuntime(page, query = '', seed = true) {
       : original(input, init)
   })
   if (seed) await page.addInitScript((data) => localStorage.setItem('obsidian-overlays-v1', JSON.stringify([data])), overlay)
-  await page.goto(`http://localhost:${PORT}/#/overlay/pubcp12${query}`)
+  await page.goto(`${ORIGIN}/#/overlay/pubcp12${query}`)
   await page.waitForTimeout(1500)
 }
 
@@ -151,7 +154,7 @@ await richPage.addInitScript(() => {
     ? Promise.resolve(new Response(JSON.stringify({ connected: true, viewer: { status: 'live', count: 137, updatedAt: new Date().toISOString() }, latestFollower: null, sessionFollowerCount: 0, lastEventAt: null }), { status: 200, headers: { 'content-type': 'application/json' } }))
     : original(input, init)
 })
-await richPage.goto(`http://localhost:${PORT}/#/overlay/pubcp12b`)
+await richPage.goto(`${ORIGIN}/#/overlay/pubcp12b`)
 await richPage.waitForTimeout(1500)
 await richPage.evaluate(() => {
   window.__emit({ id: 'rc1', type: 'chat.message.sent', receivedAt: new Date().toISOString(), test: false, data: { messageId: 'rc1', content: 'سلام از چت واقعی', createdAt: new Date().toISOString(), sender: { username: 'arystal', usernameColor: '#f1d89a', badges: [] } } })
@@ -182,7 +185,7 @@ results.camera = await page.evaluate(() => {
 const editorPage = await context.newPage()
 editorPage.on('pageerror', (error) => errors.push(error.message))
 await editorPage.addInitScript((data) => localStorage.setItem('obsidian-overlays-v1', JSON.stringify([data])), overlay)
-await editorPage.goto(`http://localhost:${PORT}/#/overlays/editor/ov_cp12`)
+await editorPage.goto(`${ORIGIN}/#/overlays/editor/ov_cp12`)
 await editorPage.waitForTimeout(1500)
 // Layer rows live behind the Layers tab of the left panel.
 await editorPage.locator('#tab-layers').click()
@@ -203,5 +206,5 @@ results.editorPersistence = await editorPage.evaluate((controls) => {
 }, editorControls)
 
 await browser.close()
-server.close()
+if (!SITE) server.close()
 console.log(JSON.stringify({ results, pageErrors: errors }, null, 1))

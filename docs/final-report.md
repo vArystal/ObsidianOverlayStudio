@@ -70,3 +70,20 @@ someone follow the channel). After that I can report the received event, the ren
   the public-key refresh budget.
 - axe covers automated WCAG 2 A/AA checks only; a manual screen-reader pass is still worth doing.
 - Follower total is not in Kick's official API, so the UI reports it as unsupported rather than guessing.
+
+## CP12 — elements, test data, and what is honestly unsupported
+
+Full detail in `docs/checkpoint-cp12.md`. Four defects were reproducible and fixed: synthetic events were
+becoming data on air, the alert widget stopped rendering after 20 alerts, session follows showed a lifetime
+total under a per-session caption, and an image with no source plus both capture guides published visible
+boxes into OBS.
+
+Verified against the deployed build (`index-BW-zMQC4.js`): the same element probe that runs locally was run
+with `SITE=https://varystal.github.io/jubilant-octo-lamp` and returned identical results, the journey probe
+is 14/14, accessibility is 0 violations on all three surfaces, and 89 tests pass with no page errors.
+
+Honest limits recorded in the matrix: no donation provider exists, so the goal is manual and hidden unless
+explicitly published and the supporter slot never publishes; Kick exposes no follower total, so only the
+latest follower is shown; a browser cannot capture another application's window, so game capture stays a
+transparent layout guide; and OBS must grant camera access for the browser camera mode, otherwise the
+output says CAMERA BLOCKED rather than showing a stale frame.
