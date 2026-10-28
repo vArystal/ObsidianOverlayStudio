@@ -485,7 +485,7 @@ async function handleRequest(request, env, ctx = {}) {
   }
   if (request.method === "GET" && path === "/api/auth/kick/start") {
     if (missing.length) return json(request, env, 503, { error: "setup_required", missing });
-    const returnTo = url.searchParams.get("return_to") || `${appOrigin(env)}/#/integrations`;
+    let returnTo = url.searchParams.get("return_to") || `${appOrigin(env)}/#/integrations`;
     let target;
     try {
       target = new URL(returnTo);
@@ -494,6 +494,21 @@ async function handleRequest(request, env, ctx = {}) {
     }
     const allowed = String(env.APP_ORIGINS || "").split(",").map((value) => value.trim()).filter(Boolean);
     if (!allowed.includes(target.origin)) return json(request, env, 400, { error: "invalid_return_origin" });
+    if (target.pathname === "/" || target.pathname === "") {
+      const referer = request.headers.get("referer");
+      if (referer) {
+        try {
+          const from = new URL(referer);
+          if (allowed.includes(from.origin) && from.pathname !== "/") {
+            const repaired = new URL(from.origin + from.pathname);
+            repaired.hash = target.hash || "/integrations";
+            returnTo = repaired.toString();
+            target = repaired;
+          }
+        } catch {
+        }
+      }
+    }
     const pkce = await pkcePair();
     await run(
       env,
@@ -537,9 +552,13 @@ ${hint}`);
     const user = await kickApi(fetchImpl, accessToken, "/public/v1/users").then((b) => (b.data ?? [])[0] ?? null).catch(() => null);
     const channel = await fetchChannelState(fetchImpl, accessToken, user?.user_id).catch(() => null) ?? await kickApi(fetchImpl, accessToken, "/public/v1/channels").then((b) => (b.data ?? [])[0] ?? null).catch(() => null);
     if (!user?.user_id) return text(request, env, 502, "Kick did not return an authorized user identity");
-    let subscriptions = [];
+    const previous = await one(env, "SELECT subscriptions FROM connections WHERE account_user_id = ?", Number(user.user_id));
+    const previousSubscriptions = JSON.parse(previous?.subscriptions || "[]");
+    let subscriptions = previousSubscriptions;
     let webhookError = null;
     try {
+      const staleIds = previousSubscriptions.map((item) => item.subscription_id ?? item.id).filter(Boolean);
+      if (staleIds.length) await unsubscribeFromEvents(fetchImpl, accessToken, staleIds).catch(() => null);
       subscriptions = await subscribeToEvents(fetchImpl, accessToken);
     } catch (error) {
       webhookError = error.message;

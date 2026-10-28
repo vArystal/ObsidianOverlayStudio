@@ -310,6 +310,64 @@ test('a secret that is really the client ID is reported as misconfiguration, and
   assert.match(page, /Client ID saved as the Client Secret/)
 })
 
+test('an origin-only return_to is repaired from the referer so the user is not dropped on the Pages 404 root', async () => {
+  const { env, sqlite } = makeEnv()
+  const originOnly = `${ORIGIN}/#/integrations`
+  const res = await handleRequest(new Request(`https://api.test/api/auth/kick/start?return_to=${encodeURIComponent(originOnly)}`,
+    { headers: { referer: `${ORIGIN}/jubilant-octo-lamp/#/integrations` } }), env)
+  assert.equal(res.status, 302)
+  const stored = sqlite.prepare('SELECT return_to FROM oauth_states').all().map((row) => row.return_to)
+  assert.equal(stored.at(-1), `${ORIGIN}/jubilant-octo-lamp/#/integrations`)
+
+  // a full path from a caller that sends it correctly is preserved untouched
+  const good = `${ORIGIN}/jubilant-octo-lamp/#/integrations`
+  const res2 = await handleRequest(new Request(`https://api.test/api/auth/kick/start?return_to=${encodeURIComponent(good)}`,
+    { headers: { referer: `${ORIGIN}/jubilant-octo-lamp/#/integrations` } }), env)
+  assert.equal(res2.status, 302)
+  assert.equal(sqlite.prepare('SELECT return_to FROM oauth_states').all().at(-1).return_to, good)
+
+  // a referer on a foreign origin must not smuggle the user anywhere else
+  const res3 = await handleRequest(new Request(`https://api.test/api/auth/kick/start?return_to=${encodeURIComponent(originOnly)}`,
+    { headers: { referer: 'https://evil.test/steal' } }), env)
+  assert.equal(res3.status, 302)
+  assert.equal(sqlite.prepare('SELECT return_to FROM oauth_states').all().at(-1).return_to, originOnly)
+})
+
+test('reconnecting clears the old subscriptions first and never erases a working set on a failed re-subscribe', async () => {
+  const keys = await keypair()
+  const { env, sqlite } = makeEnv()
+  const { connection } = await connect(env, keys)
+  const before = JSON.parse(sqlite.prepare('SELECT subscriptions FROM connections').get().subscriptions)
+  assert.equal(before.length, 8)
+
+  const calls = []
+  env.fetchImpl = async (url, options = {}) => {
+    const u = String(url)
+    calls.push(`${options.method || 'GET'} ${u}`)
+    if (u.startsWith('https://id.kick.com/oauth/token')) return Response.json({ access_token: 'access-2', refresh_token: 'refresh-2', expires_in: 3600, scope: REQUIRED_SCOPES.join(' ') })
+    if (u.startsWith('https://api.kick.com/public/v1/users')) return Response.json({ data: [{ user_id: 42, name: 'varystal' }] })
+    if (u.startsWith('https://api.kick.com/public/v1/channels?')) return Response.json({ data: [{ slug: 'varystal', active_subscribers_count: 12, stream: { is_live: false, viewer_count: 7 } }] })
+    if (u.startsWith('https://api.kick.com/public/v1/events/subscriptions') && options.method === 'DELETE') return Response.json({ data: [] })
+    if (u.startsWith('https://api.kick.com/public/v1/events/subscriptions') && options.method === 'POST') {
+      return new Response(JSON.stringify({ error: 'already subscribed' }), { status: 409, headers: { 'content-type': 'application/json' } })
+    }
+    return Response.json({ data: [] })
+  }
+
+  const start = await handleRequest(req('/api/auth/kick/start?return_to=' + encodeURIComponent(`${ORIGIN}/#/integrations`)), env)
+  const state = new URL(start.headers.get('location')).searchParams.get('state')
+  const cb = await handleRequest(req(`/api/auth/kick/callback?code=second-code&state=${state}`), env)
+  assert.equal(cb.status, 302)
+
+  const deleted = calls.find((call) => call.startsWith('DELETE') && call.includes('/events/subscriptions'))
+  assert.ok(deleted, 'old subscriptions must be removed before re-subscribing')
+  assert.ok(deleted.includes('sub_0'), 'the stored subscription ids are the ones removed')
+  const after = JSON.parse(sqlite.prepare('SELECT subscriptions FROM connections').get().subscriptions)
+  assert.equal(after.length, 8, 'a failed re-subscribe keeps the eight that were already delivering')
+  assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM connections').get().n, 1, 'reconnect updates the existing connection instead of adding one')
+  assert.equal(connection.channel?.slug ?? sqlite.prepare('SELECT channel_slug FROM connections').get().channel_slug, 'varystal')
+})
+
 test('cron refreshes viewer count from the official channels endpoint', async () => {
   const keys = await keypair()
   const { env, sqlite } = makeEnv()

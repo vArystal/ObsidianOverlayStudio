@@ -514,11 +514,29 @@ export async function handleRequest(request, env, ctx = {}) {
 
   if (request.method === 'GET' && path === '/api/auth/kick/start') {
     if (missing.length) return json(request, env, 503, { error: 'setup_required', missing })
-    const returnTo = url.searchParams.get('return_to') || `${appOrigin(env)}/#/integrations`
+    let returnTo = url.searchParams.get('return_to') || `${appOrigin(env)}/#/integrations`
     let target
     try { target = new URL(returnTo) } catch { return json(request, env, 400, { error: 'invalid_return_origin' }) }
     const allowed = String(env.APP_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean)
     if (!allowed.includes(target.origin)) return json(request, env, 400, { error: 'invalid_return_origin' })
+
+    // A caller that sends only the origin (older builds did) would send the user to the Pages
+    // root, which 404s for project sites. The page that started the flow knows the real mount
+    // path, so recover it from the referer before falling back to the bare origin.
+    if (target.pathname === '/' || target.pathname === '') {
+      const referer = request.headers.get('referer')
+      if (referer) {
+        try {
+          const from = new URL(referer)
+          if (allowed.includes(from.origin) && from.pathname !== '/') {
+            const repaired = new URL(from.origin + from.pathname)
+            repaired.hash = target.hash || '/integrations'
+            returnTo = repaired.toString()
+            target = repaired
+          }
+        } catch { /* keep the origin-only target */ }
+      }
+    }
     const pkce = await pkcePair()
     await run(env, 'INSERT INTO oauth_states (state, verifier, return_to, expires_at) VALUES (?, ?, ?, ?)',
       pkce.state, pkce.verifier, returnTo, Date.now() + 10 * 60_000)
@@ -559,9 +577,18 @@ export async function handleRequest(request, env, ctx = {}) {
       ?? await kickApi(fetchImpl, accessToken, '/public/v1/channels').then((b) => (b.data ?? [])[0] ?? null).catch(() => null)
     if (!user?.user_id) return text(request, env, 502, 'Kick did not return an authorized user identity')
 
-    let subscriptions = []
+    const previous = await one(env, 'SELECT subscriptions FROM connections WHERE account_user_id = ?', Number(user.user_id))
+    const previousSubscriptions = JSON.parse(previous?.subscriptions || '[]')
+    // Re-authorizing must not stack a second set of subscriptions on the same app+channel, and a
+    // failed re-subscribe must not erase a set that is already delivering. Drop the old ones
+    // first, then keep the previous list if the new call does not come back.
+    let subscriptions = previousSubscriptions
     let webhookError = null
-    try { subscriptions = await subscribeToEvents(fetchImpl, accessToken) } catch (error) { webhookError = error.message }
+    try {
+      const staleIds = previousSubscriptions.map((item) => item.subscription_id ?? item.id).filter(Boolean)
+      if (staleIds.length) await unsubscribeFromEvents(fetchImpl, accessToken, staleIds).catch(() => null)
+      subscriptions = await subscribeToEvents(fetchImpl, accessToken)
+    } catch (error) { webhookError = error.message }
 
     const stored = {
       access_token: accessToken,

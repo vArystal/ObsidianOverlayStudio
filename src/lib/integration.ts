@@ -41,6 +41,10 @@ export async function integrationRequest<T>(path: string, options: RequestInit =
 }
 
 export function startKickOAuth() {
-  const returnTo = `${window.location.origin}${window.location.pathname}#/integrations`
+  // Keep the full mount path (project pages live under /<repo>/) and drop any stale query,
+  // otherwise the OAuth round-trip lands on the Pages root, which is a 404.
+  const here = new URL(window.location.href)
+  here.search = ''
+  const returnTo = here.toString()
   window.location.assign(`${getBackendUrl()}/api/auth/kick/start?return_to=${encodeURIComponent(returnTo)}`)
 }
