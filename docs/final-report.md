@@ -87,3 +87,16 @@ explicitly published and the supporter slot never publishes; Kick exposes no fol
 latest follower is shown; a browser cannot capture another application's window, so game capture stays a
 transparent layout guide; and OBS must grant camera access for the browser camera mode, otherwise the
 output says CAMERA BLOCKED rather than showing a stale frame.
+
+## CP13 / CP14 — and a production URL change
+
+CP13 (Preview) and CP14 (Thorn & Rose) are in `docs/checkpoint-cp13.md` and `docs/checkpoint-cp14.md`.
+Verified on the deployed build: preview shows all 15 element types, gallery shows 5 themes, 4/4 thorn
+frames in preview, 12 rose sprigs, resolved vine edges in output, transparent page, journey 14/14, axe 0
+on library/editor/integrations.
+
+**The repository was renamed, so the live site moved.** The app is now served from
+`https://varystal.github.io/ObsidianOverlayStudio/`; the previous URL
+`https://varystal.github.io/jubilant-octo-lamp/` returns 404. Any OBS Browser Source still pointing at the
+old path must be updated. The API origin and CORS are unaffected because both URLs share the
+`varystal.github.io` origin.
