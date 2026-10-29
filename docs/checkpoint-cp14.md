@@ -62,3 +62,23 @@ the whole declaration, so no vine drew at all), and `.decorated-widget.has-highl
 raises specificity and keeps panel fill and vines in one stack.
 
 Screenshots: `artifacts/cp14-editor.png`, `artifacts/cp14-editor-preview.png`, `artifacts/cp14-runtime.png`.
+
+## The artwork is the owner's sheet, not generated geometry
+
+The first pass drew the vine as a sine tile and the rose as a petalled circle. It read as a pattern, not an
+illustration, so it was replaced with pieces cut from the botanical sheet the owner supplied (thorns,
+leafed vine, corner frames, five roses and two clusters).
+
+Selection was measured, not guessed: the sheet is white-paper, so ink was separated by distance to white,
+labelled into 34 components, and pieces were chosen by geometry and colour (a 250px square with no red is a
+plain corner; a 117px square that is 25% red and 0% green is a bare bloom; 250x80 strips are dividers).
+Alpha comes from an intensity ramp so the paper disappears while highlights survive; each piece is
+re-encoded as WebP at roughly 2x its display size (31 KB of base64 for all five, carried in CSS, so a live
+source makes no extra request).
+
+Corners use rose art on the top-left and bottom-right and plain vine on the other two, mirrored and rotated
+so the frame is not symmetrical. Roses sit at irregular offsets. The vine tiles along the long axis only, so
+a 900px webcam frame and a 300px counter both keep proportion instead of stretching.
+
+Verified on production (`index-u_vMwS6N.js`): 5 gallery cards, 4/4 preview widgets framed, 16 corners, 12
+blooms, WebP tile resolved in preview and output, transparent page, journey 14/14, no console errors.
