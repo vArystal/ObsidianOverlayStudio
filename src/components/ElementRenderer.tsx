@@ -3,7 +3,6 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, UserRound } from 'lucide-react'
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
-import { ThornRoseSprig } from './ThornRoseSprig'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -54,7 +53,14 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
   const thorn = theme?.id === 'thorn-rose'
   return (
     <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} ${thorn ? 'thorn-framed' : ''}`} style={style}>
-      {thorn && <><ThornRoseSprig className="sprig-a" /><ThornRoseSprig className="sprig-b" /><ThornRoseSprig className="sprig-c" /></>}
+      {/* Hand-illustrated corners and blooms, carried on spans so the vine never intercepts a click. */}
+      {thorn && (
+        <span className="thorn-ornaments" aria-hidden="true">
+          <i className="thorn-corner tl" /><i className="thorn-corner tr" />
+          <i className="thorn-corner br" /><i className="thorn-corner bl" />
+          <i className="thorn-bloom a" /><i className="thorn-bloom b" /><i className="thorn-bloom c" />
+        </span>
+      )}
       {decoration.cornerOrnaments && !thorn && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}
       {decoration.separator && <span className="ornamental-separator"><b /><i /> <b /></span>}
       <div className="decorated-content" dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily') || undefined, fontSize: element.props.fontSize ? num(element, 'fontSize') : undefined, textAlign: (text(element, 'contentAlign') || undefined) as CSSProperties['textAlign'] }}>{children}</div>

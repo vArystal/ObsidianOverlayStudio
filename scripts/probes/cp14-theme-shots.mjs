@@ -68,7 +68,9 @@ const preview = await page.evaluate(() => {
   return {
     widgets: widgets.length,
     thornFramed: widgets.filter((node) => node.classList.contains('thorn-framed')).length,
-    roseSprigs: document.querySelectorAll('.thorn-rose-sprig').length,
+    roseSprigs: document.querySelectorAll('.thorn-bloom').length,
+    corners: document.querySelectorAll('.thorn-corner').length,
+    artResolved: widgets[0] ? getComputedStyle(document.documentElement).getPropertyValue('--thorn-corner-rose').trim().slice(0, 30) : '',
     vineEdge: widgets[0] ? getComputedStyle(widgets[0]).backgroundImage.slice(0, 60) : '',
     badges: [...document.querySelectorAll('.preview-badge')].map((node) => node.textContent),
   }
@@ -88,8 +90,8 @@ const runtime = await output.evaluate(() => {
     pageBackground: body,
     widgets: widgets.length,
     thornFramed: widgets.filter((node) => node.classList.contains('thorn-framed')).length,
-    roses: document.querySelectorAll('.thorn-rose-sprig').length,
-    edges: widgets.map((node) => getComputedStyle(node).backgroundImage.includes('data:image/svg+xml')),
+    roses: document.querySelectorAll('.thorn-bloom').length,
+    edges: widgets.map((node) => getComputedStyle(node).backgroundImage.includes('data:image/webp')),
     textVisible: document.body.innerText.trim().slice(0, 60),
   }
 })
