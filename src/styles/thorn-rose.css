@@ -1,0 +1,209 @@
+/* ------------------------------------------------------------------ Thorn & Rose
+   Palette first: everything below reads these variables, so a colour change is one edit. The frame art
+   itself is vector, generated in src/lib/thornGeometry.ts and drawn by ThornFrame. */
+.theme-thorn-rose {
+  --thorn-bg-1: #0b1210;
+  --thorn-bg-2: #101a16;
+  --thorn-rose-1: #3d0610;
+  --thorn-rose-2: #8e1226;
+  --thorn-rose-3: #b3162f;
+  --thorn-rose-4: #d9304a;
+  --thorn-leaf-1: #1f4a34;
+  --thorn-leaf-2: #2f6b49;
+  --thorn-leaf-3: #5f9a6e;
+  --thorn-thorn: #2a2417;
+  --thorn-thorn-edge: #7a6a3a;
+  --thorn-gold: #b8924a;
+  --thorn-gold-lit: #e6c77a;
+  --thorn-gold-dark: #5c4520;
+  --thorn-ivory: #f6efdc;
+  /* One multiplier for every idle animation: 1 is the shipped feel, 0.001 stops the movement. */
+  --thorn-motion: 1;
+  --thorn-motion-dur: calc(var(--thorn-motion) * 1s);
+}
+
+/* The ornament layer is inert: it must never eat a click meant for the widget or the canvas. */
+.thorn-layer { position: absolute; inset: 0; pointer-events: none; z-index: 3; overflow: visible; }
+/* The app's icon reset sizes every bare <svg> at 18px, which flattened this frame into a thumbnail.
+   The class wins over that element selector, so the artwork fills the widget it belongs to. */
+.thorn-frame { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.thorn-layer .thorn-frame { pointer-events: none; }
+
+/* Panel interior: deep green-black, a warm vignette and a faint grain so it reads as material.
+   Camera and capture frames get no fill at all: that rectangle belongs to the video. */
+.theme-thorn-rose .decorated-widget.thorn-framed {
+  background-image:
+    radial-gradient(120% 90% at 24% 8%, rgba(95, 154, 110, .10), transparent 58%),
+    radial-gradient(90% 80% at 82% 108%, rgba(0, 0, 0, .55), transparent 62%),
+    linear-gradient(168deg, var(--thorn-bg-2), var(--thorn-bg-1) 62%, #070d0b),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
+  background-color: transparent;
+  border: 1px solid rgba(184, 146, 74, .34);
+  box-shadow:
+    inset 0 1px 0 rgba(230, 199, 122, .10),
+    inset 0 0 34px rgba(0, 0, 0, .55),
+    0 18px 46px rgba(0, 0, 0, .42);
+}
+.theme-thorn-rose .decorated-widget.thorn-framed::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* Open frames keep their interior free for the OBS video source. */
+.theme-thorn-rose .decorated-widget.thorn-framed:has(.thorn-layer.thorn-open) {
+  background-image: none;
+  box-shadow: inset 0 0 26px rgba(0, 0, 0, .35);
+}
+
+/* Idle motion: canes sway less than roses, leaves sit between the two. Transform and opacity only. */
+@keyframes thorn-sway { from { transform: rotate(-1.4deg); } to { transform: rotate(1.6deg); } }
+@keyframes thorn-leaf-sway { from { transform: rotate(-2.2deg); } to { transform: rotate(2.4deg); } }
+@keyframes thorn-shimmer-move { 0%, 72% { transform: translateX(-30%); opacity: 0; } 78% { opacity: .8; } 92% { transform: translateX(210%); opacity: 0; } 100% { transform: translateX(210%); opacity: 0; } }
+@keyframes thorn-petal-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 0; }
+  6% { opacity: .85; }
+  55% { transform: translate(14px, 42%) rotate(140deg); opacity: .7; }
+  85% { opacity: 0; }
+  100% { transform: translate(26px, 78%) rotate(260deg); opacity: 0; }
+}
+@keyframes thorn-cane-grow { from { stroke-dashoffset: var(--cane-len, 900); opacity: .2; } to { stroke-dashoffset: 0; opacity: 1; } }
+@keyframes thorn-bloom-open { from { transform: scale(.35) rotate(-18deg); opacity: 0; } 60% { opacity: 1; } to { transform: scale(1) rotate(0deg); opacity: 1; } }
+@keyframes thorn-count-pop { 0% { transform: scale(1); } 32% { transform: scale(1.12); } 100% { transform: scale(1); } }
+@keyframes thorn-burst-out { 0% { transform: scale(.2); opacity: .95; } 70% { opacity: .35; } 100% { transform: scale(1.55); opacity: 0; } }
+@keyframes thorn-breathe { from { opacity: .55; } to { opacity: .85; } }
+
+.thorn-frame .thorn-rose-body.sway {
+  transform-origin: 0 0;
+  transform-box: fill-box;
+  animation: thorn-sway calc(var(--sway, 9s) * var(--thorn-motion)) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+}
+.thorn-frame .thorn-foliage {
+  animation: thorn-leaf-sway calc(9s * var(--thorn-motion)) ease-in-out infinite alternate;
+  transform-box: view-box;
+  transform-origin: 50% 0;
+}
+.thorn-frame .thorn-foliage.front { animation-duration: calc(12s * var(--thorn-motion)); animation-direction: alternate-reverse; transform-origin: 50% 100%; }
+.thorn-frame .thorn-gold-line { animation: thorn-breathe calc(9s * var(--thorn-motion)) ease-in-out infinite alternate; }
+.thorn-frame .thorn-shimmer { animation: thorn-shimmer-move calc(16s * var(--thorn-motion)) linear infinite; }
+.thorn-frame .thorn-drift {
+  animation: thorn-petal-fall calc(var(--drift-dur, 16s) * var(--thorn-motion)) ease-in infinite;
+  animation-delay: var(--drift-delay, 0s);
+  transform-box: view-box;
+  transform-origin: var(--drift-x) 0;
+}
+.thorn-frame .thorn-burst { animation: thorn-burst-out .85s ease-out 1 both; transform-box: view-box; }
+
+/* Alert: canes draw in, the bloom opens petal ring by petal, gold sweeps, then everything closes. */
+.thorn-frame[data-alerting='true'] .thorn-cane path { animation: thorn-cane-grow .9s ease-out both; stroke-dasharray: var(--cane-len, 900); }
+.thorn-frame[data-alerting='true'] .thorn-petal-ring { animation: thorn-bloom-open .62s cubic-bezier(.2, .8, .3, 1) both; }
+.thorn-frame[data-alerting='true'] .ring-0 { animation-delay: .12s; }
+.thorn-frame[data-alerting='true'] .ring-1 { animation-delay: .22s; }
+.thorn-frame[data-alerting='true'] .ring-2 { animation-delay: .32s; }
+.thorn-frame[data-alerting='true'] .ring-3 { animation-delay: .42s; }
+.thorn-frame[data-alerting='true'] .thorn-shimmer { animation: thorn-shimmer-move 1.5s ease-out .5s 1 both; }
+
+/* Counter: the number pops and a ring of petals flies out on each change (the key remount restarts it). */
+.thorn-framed .metric-widget strong.number-transition { animation: thorn-count-pop .46s cubic-bezier(.2, .8, .3, 1); }
+.theme-thorn-rose .metric-widget small {
+  text-transform: uppercase;
+  letter-spacing: .22em;
+  font-size: .58em;
+  color: var(--thorn-gold-lit);
+  opacity: .92;
+}
+.theme-thorn-rose .metric-widget strong {
+  font-family: Georgia, 'Times New Roman', serif;
+  letter-spacing: .02em;
+  color: var(--thorn-ivory);
+  text-shadow: 0 0 12px rgba(230, 199, 122, .35), 0 2px 0 rgba(0, 0, 0, .5);
+}
+
+/* Chat sits on the darkest surface of the set: a wash behind the text keeps names readable. */
+.theme-thorn-rose .chat-widget {
+  background: linear-gradient(180deg, rgba(6, 12, 10, .62), rgba(11, 18, 16, .34));
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.theme-thorn-rose .chat-message {
+  border-inline-start: 2px solid rgba(184, 146, 74, .55);
+  background: linear-gradient(90deg, rgba(16, 26, 22, .78), rgba(16, 26, 22, .12));
+}
+.theme-thorn-rose .chat-message strong { color: var(--thorn-ivory); }
+
+/* Alert plaque: gold medallion, ivory title, follower name larger. */
+.theme-thorn-rose .alert-widget {
+  background: linear-gradient(168deg, rgba(16, 26, 22, .96), rgba(7, 13, 11, .94));
+  border: 1px solid rgba(184, 146, 74, .4);
+  border-radius: 14px;
+  padding: 14px 20px 16px;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, .55), 0 16px 40px rgba(0, 0, 0, .45);
+}
+.theme-thorn-rose .alert-widget .alert-art { color: var(--thorn-gold-lit); }
+.theme-thorn-rose .alert-widget strong { color: var(--thorn-ivory); font-size: 1.06em; letter-spacing: .04em; }
+.theme-thorn-rose .alert-widget strong + span { color: var(--thorn-ivory); font-size: 1.22em; font-weight: 700; }
+.theme-thorn-rose .alert-widget small { color: rgba(230, 199, 122, .75); }
+
+@media (prefers-reduced-motion: reduce) {
+  .thorn-frame .thorn-rose-body.sway,
+  .thorn-frame .thorn-foliage,
+  .thorn-frame .thorn-gold-line,
+  .thorn-frame .thorn-shimmer,
+  .thorn-frame .thorn-drift,
+  .thorn-frame .thorn-burst,
+  .thorn-frame .thorn-cane path,
+  .thorn-frame .thorn-petal-ring { animation: none !important; }
+}
+.static-motion .thorn-frame .thorn-rose-body.sway,
+.static-motion .thorn-frame .thorn-foliage,
+.static-motion .thorn-frame .thorn-gold-line,
+.static-motion .thorn-frame .thorn-shimmer,
+.static-motion .thorn-frame .thorn-drift { animation: none !important; }
+
+/* The alert's emblem becomes a struck medallion rather than a floating glyph. */
+.theme-thorn-rose .alert-widget .alert-art {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #2a1d08;
+  background:
+    radial-gradient(circle at 34% 28%, #f6efdc 0%, #e6c77a 34%, #b8924a 62%, #5c4520 100%);
+  box-shadow: 0 0 0 1px rgba(92, 69, 32, .9), 0 0 16px rgba(230, 199, 122, .35), inset 0 -2px 4px rgba(0, 0, 0, .45);
+}
+.theme-thorn-rose .alert-widget .alert-art svg { width: 17px; height: 17px; }
+.theme-thorn-rose .alert-widget { gap: 2px; }
+.theme-thorn-rose .alert-widget strong { margin-top: 2px; }
+
+/* Blooms are HTML layers, not animated SVG groups: an inner-SVG transform animation repaints the whole
+   frame every tick, while a composited layer just moves. This is what took the canvas from 50 to 60fps. */
+.thorn-bloom-layer {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: transform;
+}
+.thorn-bloom-layer:not(.small) {
+  animation: thorn-sway calc(var(--sway, 9s) * var(--thorn-motion)) ease-in-out infinite alternate;
+  animation-delay: var(--delay, 0s);
+  transform-origin: 50% 78%;
+}
+.thorn-bloom-layer.small { animation: none; }
+.thorn-burst-layer {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: thorn-burst 900ms cubic-bezier(.2, .8, .3, 1) 1 both;
+}
+@keyframes thorn-burst {
+  0% { transform: translate(-50%, -50%) scale(.25); opacity: 0; }
+  35% { opacity: .95; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thorn-bloom-layer, .thorn-burst-layer { animation: none !important; }
+}
+.static-motion .thorn-bloom-layer, .static-motion .thorn-burst-layer { animation: none !important; }

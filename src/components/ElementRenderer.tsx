@@ -3,6 +3,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, UserRound } from 'lucide-react'
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
+import { variantForType } from '../lib/thornGeometry'
+import { ThornFrame } from './thorn/ThornFrame'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -51,14 +53,22 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
   } as CSSProperties
   // Thorn & Rose swaps the geometric corner runners for its own botanical edge art.
   const thorn = theme?.id === 'thorn-rose'
+  const live = useLiveData()
   return (
     <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} ${thorn ? 'thorn-framed' : ''}`} style={style}>
-      {/* Hand-illustrated corners and blooms, carried on spans so the vine never intercepts a click. */}
+      {/* The botanical frame is vector artwork sized to this element, so it follows the shape rather than
+          stretching a pattern. A webcam or capture frame keeps its interior open: the video comes from OBS. */}
       {thorn && (
-        <span className="thorn-ornaments" aria-hidden="true">
-          <i className="thorn-corner tl" /><i className="thorn-corner tr" />
-          <i className="thorn-corner br" /><i className="thorn-corner bl" />
-          <i className="thorn-bloom a" /><i className="thorn-bloom b" /><i className="thorn-bloom c" />
+        <span className={`thorn-layer ${element.type === 'webcam' || element.type === 'capture' ? 'thorn-open' : ''}`} aria-hidden="true">
+          <ThornFrame
+            id={element.id}
+            width={element.width}
+            height={element.height}
+            variant={variantForType(element.type)}
+            radius={decoration.radius}
+            signal={element.type === 'counter' ? text(element, 'value') : element.type === 'alert' ? String(live.lastEventAt ?? '') : undefined}
+            alerting={element.type === 'alert'}
+          />
         </span>
       )}
       {decoration.cornerOrnaments && !thorn && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}

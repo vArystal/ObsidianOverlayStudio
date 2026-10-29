@@ -68,11 +68,28 @@ const preview = await page.evaluate(() => {
   return {
     widgets: widgets.length,
     thornFramed: widgets.filter((node) => node.classList.contains('thorn-framed')).length,
-    roseSprigs: document.querySelectorAll('.thorn-bloom').length,
-    corners: document.querySelectorAll('.thorn-corner').length,
-    artResolved: widgets[0] ? getComputedStyle(document.documentElement).getPropertyValue('--thorn-corner-rose').trim().slice(0, 30) : '',
+    roses: document.querySelectorAll('.thorn-rose').length,
+    canes: document.querySelectorAll('.thorn-cane').length,
+    thorns: document.querySelectorAll('.thorn-spike').length,
+    leaves: document.querySelectorAll('.thorn-leaf').length,
+    filigree: document.querySelectorAll('.thorn-gold-line').length,
     vineEdge: widgets[0] ? getComputedStyle(widgets[0]).backgroundImage.slice(0, 60) : '',
     badges: [...document.querySelectorAll('.preview-badge')].map((node) => node.textContent),
+    // Decoration must not sit on the words: report how much of each content box is covered by roses.
+    overlaps: [...document.querySelectorAll('.decorated-widget.thorn-framed')].map((widget) => {
+      const content = widget.querySelector('.decorated-content')
+      if (!content) return 0
+      const c = content.getBoundingClientRect()
+      let covered = 0
+      widget.querySelectorAll('.thorn-rose, .thorn-gold-line').forEach((art) => {
+        if (art.classList.contains('thorn-gold-line')) return
+        const r = art.getBoundingClientRect()
+        const w = Math.max(0, Math.min(c.right, r.right) - Math.max(c.left, r.left))
+        const h = Math.max(0, Math.min(c.bottom, r.bottom) - Math.max(c.top, r.top))
+        covered += w * h
+      })
+      return Math.round((covered / Math.max(1, c.width * c.height)) * 100)
+    }),
   }
 })
 await page.screenshot({ path: 'artifacts/cp14-editor-preview.png' })
@@ -90,8 +107,8 @@ const runtime = await output.evaluate(() => {
     pageBackground: body,
     widgets: widgets.length,
     thornFramed: widgets.filter((node) => node.classList.contains('thorn-framed')).length,
-    roses: document.querySelectorAll('.thorn-bloom').length,
-    edges: widgets.map((node) => getComputedStyle(node).backgroundImage.includes('data:image/webp')),
+    roses: document.querySelectorAll('.thorn-rose').length,
+    edges: widgets.map((node) => getComputedStyle(node).backgroundImage.includes('radial-gradient')),
     textVisible: document.body.innerText.trim().slice(0, 60),
   }
 })
