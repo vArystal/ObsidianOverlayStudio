@@ -117,9 +117,9 @@ export function Canvas(props: CanvasProps) {
     props.onInteractionEnd()
   }
 
-  const displayedElements = props.preview
-    ? props.overlay.elements.filter((element) => element.visible && element.includeInOutput)
-    : props.overlay.elements.filter((element) => element.visible)
+  // Preview shows every configured layer. The old filter kept only `includeInOutput` layers, which is why
+  // the webcam frame, the game-capture guide and every data-gated widget disappeared from Preview.
+  const displayedElements = props.overlay.elements.filter((element) => element.visible)
 
   return (
     <div
@@ -174,7 +174,7 @@ export function Canvas(props: CanvasProps) {
                   className={`element-content element-anim-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.type}`}
                   style={{ animationDuration: `${element.animation.duration}ms`, animationDelay: `${element.animation.delay}ms`, animationTimingFunction: element.animation.easing, '--anim-intensity': element.animation.intensity, '--slide-x': element.animation.direction === 'left' ? '-42px' : element.animation.direction === 'right' ? '42px' : '0px', '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px' } as CSSProperties}
                 >
-                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><ElementRenderer element={element} theme={props.overlay.theme} runtime={props.preview} testAlertNonce={props.testAlertNonce} /></div>
+                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} testAlertNonce={props.testAlertNonce} /></div>
                 </div>
                 {props.selectedId === element.id && !props.preview && (
                   <>
@@ -200,7 +200,7 @@ export function Canvas(props: CanvasProps) {
           </div>
         </div>
       </div>
-      {props.preview && <div className="preview-badge"><ZoomIn /> Output preview · editor guides hidden</div>}
+      {props.preview && <div className="preview-badge"><ZoomIn /> Preview · every layer, editor guides hidden</div>}
     </div>
   )
 }

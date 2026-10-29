@@ -1,20 +1,33 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createElement, createEmptyOverlay } from './elements'
 import { decodeOverlaySnapshot, encodeOverlaySnapshot, normalizeOverlay, sanitizeOverlayForPublish } from './storage'
-import { createDecoration, getTheme, resolveDecoration, THEMES } from './themes'
+import { createDecoration, DECORATION_PRESETS, getTheme, resolveDecoration, THEMES } from './themes'
 import type { Overlay } from '../types'
 
 beforeEach(() => localStorage.clear())
 
 describe('premium Persian model', () => {
-  it('provides four complete editable themes', () => {
-    expect(Object.keys(THEMES)).toEqual(['royal-persian', 'persian-turquoise', 'imperial-night', 'minimal-esports'])
+  it('provides five complete editable themes, existing four unchanged', () => {
+    // Order matters to the selectors: the new theme is appended so saved overlays keep their preset.
+    expect(Object.keys(THEMES)).toEqual(['royal-persian', 'persian-turquoise', 'imperial-night', 'minimal-esports', 'thorn-rose'])
     for (const theme of Object.values(THEMES)) {
       expect(theme.nameFa).toBeTruthy()
       expect(theme.primary).toMatch(/^#/)
       expect(theme.accent).toMatch(/^#/)
       expect(theme.surface).toMatch(/^#/)
     }
+  })
+
+  it('adds Thorn & Rose as a botanical preset with its own palette and decoration', () => {
+    const thorn = THEMES['thorn-rose']
+    expect(thorn.name).toBe('Thorn & Rose')
+    // Forest base, ivory type, emerald and rose accents: the art direction the theme is built on.
+    expect(thorn.surface).toBe('#0b1410')
+    expect(thorn.text).toBe('#f4efe4')
+    expect(thorn.accent).toBe('#c9a24a')
+    expect(DECORATION_PRESETS['thorn-vine'].inheritTheme).toBe(true)
+    // The four earlier presets are untouched by the addition.
+    expect(THEMES['royal-persian'].surface).toBe('#170b20')
   })
 
   it('changes theme tokens without changing composition or content', () => {

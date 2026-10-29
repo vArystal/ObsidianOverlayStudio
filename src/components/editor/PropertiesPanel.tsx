@@ -27,7 +27,8 @@ import {
   Zap,
 } from 'lucide-react'
 import type { Overlay, OverlayElement } from '../../types'
-import { DECORATION_PRESETS, toggleDecoration } from '../../lib/themes'
+import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
+import { ThemeGallery } from './ThemeGallery'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -70,6 +71,29 @@ const asString = (element: OverlayElement, key: string, fallback = '') => String
 const asNumber = (element: OverlayElement, key: string, fallback = 0) => Number(element.props[key] ?? fallback)
 const asBoolean = (element: OverlayElement, key: string, fallback = false) => Boolean(element.props[key] ?? fallback)
 
+
+/**
+ * Every element is asked one question before it is configured: what does it need to be truthful?
+ * Answering it next to the controls stops the "do I have to be live for this?" guesswork.
+ */
+const DATA_REQUIREMENTS: Record<string, { label: string; detail: string; tone: 'offline' | 'live' | 'event' | 'permission' | 'provider' | 'manual' }> = {
+  text: { label: 'Works offline', detail: 'Static text you type. No connection needed.', tone: 'offline' },
+  shape: { label: 'Works offline', detail: 'Decorative panel, no data source.', tone: 'offline' },
+  frame: { label: 'Works offline', detail: 'Ornamental frame, no data source.', tone: 'offline' },
+  image: { label: 'Works offline', detail: 'Stored in this project and carried in the published snapshot.', tone: 'offline' },
+  counter: { label: 'Manual value', detail: 'You set the number yourself; nothing updates it automatically.', tone: 'manual' },
+  countdown: { label: 'Works offline', detail: 'Counts to your target time. A duration fallback restarts when the source reloads.', tone: 'offline' },
+  chat: { label: 'Needs a live channel', detail: 'Messages arrive by verified Kick webhooks while you are streaming. The frame renders before that.', tone: 'live' },
+  alert: { label: 'Needs a real event', detail: 'Shows your alert text until a verified follow, subscription or gift arrives.', tone: 'event' },
+  viewerCount: { label: 'Needs a connected channel', detail: 'Read from the official Kick API. Offline, stale and unreachable are shown as different states.', tone: 'live' },
+  sessionFollowers: { label: 'Needs a real event', detail: 'Counts real follows received while this overlay is open, not a historical total.', tone: 'event' },
+  latestFollower: { label: 'Needs a real event', detail: 'Fills in on the next verified follow; until then it shows your empty text.', tone: 'event' },
+  webcam: { label: 'Needs camera permission, or an OBS source', detail: 'Browser camera mode asks for permission. Frame mode is alignment geometry for a camera you add in OBS.', tone: 'permission' },
+  capture: { label: 'Needs an OBS source', detail: 'Browsers cannot capture another application. This is a transparent guide to place your game capture behind.', tone: 'permission' },
+  goal: { label: 'Manual value', detail: 'No donation provider is connected, so the numbers are yours to maintain. Publishing it is an explicit opt-in.', tone: 'manual' },
+  supporter: { label: 'Needs a provider', detail: 'No donation provider is connected, so this stays editor-only until one exists.', tone: 'provider' },
+}
+
 export function PropertiesPanel(props: PropertiesPanelProps) {
   const element = props.element
   if (!element) {
@@ -86,7 +110,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           </Section>
           <Section title="Persian theme">
             <div className="theme-preview" style={{ '--preview-primary': props.overlay.theme.primary, '--preview-accent': props.overlay.theme.accent } as CSSProperties}><Palette /><div><strong>{props.overlay.theme.nameFa}</strong><span>{props.overlay.theme.name}</span></div></div>
-            <Field label="Theme preset"><select value={props.overlay.theme.id} onChange={(event) => props.onTheme(event.target.value)}><option value="royal-persian">Royal Persian · پارسی سلطنتی</option><option value="persian-turquoise">Persian Turquoise · فیروزه پارسی</option><option value="imperial-night">Imperial Night · شب شاهانه</option><option value="minimal-esports">Minimal Esports</option></select></Field>
+            <Field label="Theme preset"><select value={props.overlay.theme.id} onChange={(event) => props.onTheme(event.target.value)}>{Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{theme.name} · {theme.nameFa}</option>)}</select></Field>
+            <ThemeGallery value={props.overlay.theme.id} onChange={props.onTheme} />
             <Toggle checked={props.overlay.staticMotion} onChange={props.onStaticMotion} label="Static / reduced-motion output" description="Disables all entrance and idle effects in OBS." />
           </Section>
           <Section title="Live runtime">
@@ -124,6 +149,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           <Toggle checked={element.visible} onChange={(visible) => props.onPatch({ visible })} label={element.visible ? 'Visible' : 'Hidden'} />
           <Toggle checked={element.locked} onChange={(locked) => props.onPatch({ locked })} label={element.locked ? 'Locked' : 'Unlocked'} description="Locked layers cannot be moved or resized." />
           <Toggle checked={element.includeInOutput} onChange={(includeInOutput) => props.onPatch({ includeInOutput })} label="Include in OBS output" description={element.type === 'capture' || element.type === 'webcam' ? 'Off by default for planning placeholders.' : 'Hidden layers are always excluded.'} />
+          {DATA_REQUIREMENTS[element.type] && (
+            <div className={`requirement-card req-${DATA_REQUIREMENTS[element.type].tone}`}>
+              <Info />
+              <div><strong>{DATA_REQUIREMENTS[element.type].label}</strong><p>{DATA_REQUIREMENTS[element.type].detail}</p></div>
+            </div>
+          )}
         </Section>
 
         <Section title="Position & size">

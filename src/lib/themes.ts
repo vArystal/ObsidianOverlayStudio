@@ -21,6 +21,16 @@ export const THEMES: Record<ThemeId, OverlayTheme> = {
     primary: '#7c3aed', secondary: '#111119', accent: '#a78bfa', accentSoft: '#ddd6fe',
     surface: '#0e0e14', surfaceAlt: '#1a1a24', text: '#f8fafc', muted: '#9ca3af', glow: '#7c3aed', pattern: 'none',
   },
+  /**
+   * Thorn & Rose: a dark botanical frame. The palette is deliberately restrained (forest base, ivory
+   * type, one emerald, one muted gold, one rose) because the vine artwork already carries the detail;
+   * pattern stays 'none' so the inside of a widget never competes with legible content.
+   */
+  'thorn-rose': {
+    id: 'thorn-rose', name: 'Thorn & Rose', nameFa: 'خار و گل سرخ',
+    primary: '#1b3a2c', secondary: '#08110c', accent: '#c9a24a', accentSoft: '#f4efe4',
+    surface: '#0b1410', surfaceAlt: '#12211a', text: '#f4efe4', muted: '#a9b9ad', glow: '#2f7a5f', pattern: 'none',
+  },
 }
 
 export const DEFAULT_THEME = THEMES['royal-persian']
@@ -56,6 +66,8 @@ export const DECORATION_PRESETS: Record<DecorationPresetId, ElementDecoration> =
   'imperial-card': { ...baseDecoration, preset: 'imperial-card', borderWidth: 2, radius: 10, pattern: 'diamonds', glow: false, cornerOrnaments: true },
   'esports-line': { ...baseDecoration, preset: 'esports-line', borderWidth: 2, radius: 8, innerBorder: false, cornerOrnaments: false, gradient: false, pattern: 'none', glow: false, padding: 14 },
   'ornamental-frame': { ...baseDecoration, preset: 'ornamental-frame', backgroundOpacity: 0, borderWidth: 6, innerBorder: true, cornerOrnaments: true, separator: false, padding: 8 },
+  // The vine lives at the edges, so the content keeps a wider inset and no corner runners of its own.
+  'thorn-vine': { ...baseDecoration, preset: 'thorn-vine', borderWidth: 2, radius: 14, cornerOrnaments: false, innerBorder: false, pattern: 'none', backgroundOpacity: 0.72, padding: 24, glow: false },
 }
 
 export function createDecoration(preset: DecorationPresetId = 'royal-panel'): ElementDecoration {

@@ -216,7 +216,8 @@ describe('production output carries no test data', () => {
     expect(live.queryByText(/NOT A REAL KICK EVENT/)).toBeNull()
     live.unmount()
     const testMode = withLive(<ElementRenderer element={alert} runtime />, { alerts: [synthetic], testMode: true })
-    expect(testMode.getByText(/NOT A REAL KICK EVENT/)).toBeTruthy()
+    // Test mode is the only place a synthetic event may be labelled on a live surface.
+    expect(testMode.getByText(/NOT A KICK DELIVERY/)).toBeTruthy()
   })
 
   // The shared alert history keeps the last 20 events. An index cursor pointed past that window and the
@@ -265,5 +266,59 @@ describe('production output carries no test data', () => {
       expect(container.textContent).toBe('')
       unmount()
     }
+  })
+})
+
+describe('preview mode shows design, never fake data or TEST labels', () => {
+  it('never prints TEST text in the editor or the preview for a follower widget', () => {
+    const element = createElement('latestFollower')
+    const editor = render(<ElementRenderer element={element} />)
+    expect(editor.container.textContent).not.toMatch(/TEST/)
+    editor.unmount()
+
+    const preview = render(<ElementRenderer element={element} preview />)
+    expect(preview.container.textContent).not.toMatch(/TEST/)
+    expect(preview.container.textContent).toContain(String(element.props.emptyText))
+  })
+
+  it('renders an alert’s own title and message in preview instead of hiding the element', () => {
+    const alert = createElement('alert')
+    const { container } = render(<ElementRenderer element={alert} preview />)
+    expect(container.textContent).not.toMatch(/TEST/)
+    expect(container.textContent?.trim().length).toBeGreaterThan(0)
+  })
+
+  it('shows the chat frame in preview without inventing messages', () => {
+    const chat = createElement('chat')
+    const { container } = render(<ElementRenderer element={chat} preview />)
+    expect(container.textContent).not.toMatch(/TEST|SAMPLE ONLY|قاب جدید/)
+    expect(container.textContent).toContain('Chat messages appear here')
+  })
+
+  it('keeps the capture guide out of output but visible in preview', () => {
+    const capture = createElement('capture')
+    const output = render(<ElementRenderer element={capture} runtime />)
+    expect(output.container.textContent).toBe('')
+    output.unmount()
+
+    const preview = render(<ElementRenderer element={capture} preview />)
+    expect(preview.container.textContent).toContain('capture your game window in OBS')
+  })
+
+  it('shows the webcam frame in preview and never its instructions in output', () => {
+    const webcam = createElement('webcam')
+    const preview = render(<ElementRenderer element={webcam} preview />)
+    expect(preview.container.textContent).toContain('align your OBS camera here')
+    preview.unmount()
+
+    const output = render(<ElementRenderer element={webcam} runtime />)
+    expect(output.container.textContent).toBe('')
+  })
+
+  it('does not claim a live API reading in the editor', () => {
+    const viewer = createElement('viewerCount')
+    const { container } = render(<ElementRenderer element={viewer} preview />)
+    expect(container.textContent).toContain('LIVE WHEN CONNECTED')
+    expect(container.textContent).not.toContain('LIVE API PREVIEW')
   })
 })

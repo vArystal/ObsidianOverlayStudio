@@ -3,9 +3,18 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, UserRound } from 'lucide-react'
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
+import { ThornRoseSprig } from './ThornRoseSprig'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
-interface ElementRendererProps { element: OverlayElement; theme?: OverlayTheme; runtime?: boolean; testAlertNonce?: number }
+interface ElementRendererProps {
+  element: OverlayElement
+  theme?: OverlayTheme
+  /** Published output: live data or nothing, never placeholders. */
+  runtime?: boolean
+  /** Editor preview: every configured element, clean of editor chrome, no fabricated live data. */
+  preview?: boolean
+  testAlertNonce?: number
+}
 const text = (element: OverlayElement, key: string, fallback = '') => String(element.props[key] ?? fallback)
 const num = (element: OverlayElement, key: string, fallback = 0) => Number(element.props[key] ?? fallback)
 const bool = (element: OverlayElement, key: string, fallback = false) => Boolean(element.props[key] ?? fallback)
@@ -41,16 +50,19 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
     '--frame-padding': `${decoration.padding}px`,
     '--frame-glow': theme?.glow ?? decoration.borderColor,
   } as CSSProperties
+  // Thorn & Rose swaps the geometric corner runners for its own botanical edge art.
+  const thorn = theme?.id === 'thorn-rose'
   return (
-    <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''}`} style={style}>
-      {decoration.cornerOrnaments && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}
+    <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} ${thorn ? 'thorn-framed' : ''}`} style={style}>
+      {thorn && <><ThornRoseSprig className="sprig-a" /><ThornRoseSprig className="sprig-b" /><ThornRoseSprig className="sprig-c" /></>}
+      {decoration.cornerOrnaments && !thorn && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}
       {decoration.separator && <span className="ornamental-separator"><b /><i /> <b /></span>}
       <div className="decorated-content" dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily') || undefined, fontSize: element.props.fontSize ? num(element, 'fontSize') : undefined, textAlign: (text(element, 'contentAlign') || undefined) as CSSProperties['textAlign'] }}>{children}</div>
     </div>
   )
 }
 
-function ChatWidget({ element, runtime }: { element: OverlayElement; runtime: boolean }) {
+function ChatWidget({ element, runtime, preview }: { element: OverlayElement; runtime: boolean; preview: boolean }) {
   const live = useLiveData()
   const [clock, setClock] = useState(Date.now())
   const duration = Math.max(3, num(element, 'messageDuration', 28)) * 1000
@@ -58,11 +70,15 @@ function ChatWidget({ element, runtime }: { element: OverlayElement; runtime: bo
   const max = Math.max(1, Math.min(20, num(element, 'maxMessages', 7)))
   const messages = runtime
     ? live.messages.filter((message) => clock - Date.parse(message.createdAt) < duration).slice(-max).map((message) => ({ ...message, color: message.usernameColor || '#f1d89a', avatar: message.avatar, exiting: clock - Date.parse(message.createdAt) > duration - 700 }))
-    : sampleMessages.slice(0, max)
+    : preview
+      // A design preview must show the frame and its typography without inventing a conversation.
+      ? []
+      : sampleMessages.slice(0, max)
   if (runtime && !messages.length) return null
   return (
     <div className={`chat-widget premium-chat ${bool(element, 'scrolling', true) ? 'chat-scroll' : 'chat-stack'}`} dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily', 'Vazirmatn, Tahoma, sans-serif'), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
-      {!runtime && <div className="preview-chip">نمونه نمایشی · SAMPLE ONLY</div>}
+      {!runtime && !preview && <div className="preview-chip">نمونه نمایشی · SAMPLE ONLY</div>}
+      {preview && !messages.length && <div className="chat-empty"><span>{text(element, 'emptyText', 'Chat messages appear here')}</span><small>Your frame, type and colours render now · real messages arrive when the channel is live</small></div>}
       {messages.map((message, index) => (
         <div className={`chat-message live-message entrance-${text(element, 'entrance', 'ornamental')} ${'exiting' in message && message.exiting ? `message-exit-${text(element, 'exit', 'fade')}` : ''}`} key={message.id} style={{ animationDelay: `${index * 60}ms` }}>
           {bool(element, 'showAvatars', true) && <span className="chat-avatar" style={{ background: message.color }}>{typeof message.avatar === 'string' && message.avatar.length < 3 ? message.avatar : message.username[0]}</span>}
@@ -90,13 +106,13 @@ type CameraState = 'idle' | 'requesting' | 'live' | 'denied' | 'unsupported'
  * genuinely performs. Everything else in this widget is a frame to align an OBS source with, which is
  * what the editor text says; nothing here pretends to read another application's window.
  */
-function WebcamElement({ element, runtime }: { element: OverlayElement; runtime: boolean }) {
+function WebcamElement({ element, runtime, preview }: { element: OverlayElement; runtime: boolean; preview: boolean }) {
   const mode = text(element, 'captureMode', 'frame')
   const video = useRef<HTMLVideoElement>(null)
   const [camera, setCamera] = useState<CameraState>('idle')
   const radius = text(element, 'shape') === 'circle' ? '50%' : num(element, 'borderRadius', 24)
   useEffect(() => {
-    if (!runtime || mode !== 'camera') return
+    if ((!runtime && !preview) || mode !== 'camera') return
     if (!navigator.mediaDevices?.getUserMedia) { setCamera('unsupported'); return }
     let stream: MediaStream | null = null
     let cancelled = false
@@ -111,7 +127,7 @@ function WebcamElement({ element, runtime }: { element: OverlayElement; runtime:
       })
       .catch(() => { if (!cancelled) setCamera('denied') })
     return () => { cancelled = true; stream?.getTracks().forEach((track) => track.stop()) }
-  }, [runtime, mode])
+  }, [runtime, preview, mode])
 
   if (mode === 'camera') {
     return (
@@ -131,7 +147,8 @@ function WebcamElement({ element, runtime }: { element: OverlayElement; runtime:
   // Frame mode is alignment geometry, not a picture: in OBS it must never cover the real camera feed.
   return (
     <div className="placeholder-element webcam-placeholder" style={{ borderRadius: radius, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#170b20'), num(element, 'fillOpacity', .2)) }}>
-      {!runtime && <><Camera /><span>{text(element, 'label')}</span><small>Frame only · place your OBS camera behind this source</small></>}
+      {!runtime && !preview && <><Camera /><span>{text(element, 'label')}</span><small>Frame only · place your OBS camera behind this source</small></>}
+      {preview && <div className="camera-state"><Camera /><span>{text(element, 'label')}</span><small>Frame only · align your OBS camera here, or switch Camera source to this browser</small></div>}
     </div>
   )
 }
@@ -177,7 +194,7 @@ function alertCopy(event: LiveOverlayEvent | null, element: OverlayElement) {
   return { title: text(element, 'title'), message: text(element, 'message') }
 }
 
-function LiveAlert({ element, runtime, nonce }: { element: OverlayElement; runtime: boolean; nonce: number }) {
+function LiveAlert({ element, runtime, preview, nonce }: { element: OverlayElement; runtime: boolean; preview: boolean; nonce: number }) {
   const live = useLiveData(); const [phase, setPhase] = useState<'enter' | 'exit'>('enter'); const played = useRef('')
   // The shared history keeps only the last 20 alerts, so an index cursor could point past the end and the
   // widget would never render again. This local queue holds what has not been played yet and is drained
@@ -209,27 +226,29 @@ function LiveAlert({ element, runtime, nonce }: { element: OverlayElement; runti
     <div key={runtime ? event?.id : nonce} className={`alert-widget alert-phase-${phase} ${phase === 'exit' ? `element-exit-${element.animation.exit}` : ''}`} style={{ color: text(element, 'textColor', '#fff8e7'), animationDuration: `${phase === 'exit' ? element.animation.exitDuration : element.animation.duration}ms` }}>
       <div className="alert-art" style={{ color: text(element, 'accentColor', '#d8ad55') }}>{text(element, 'imageSrc') ? <img src={text(element, 'imageSrc')} alt="" /> : <Sparkles />}</div>
       <strong>{copy.title}</strong><span>{copy.message}</span>
-      {(!runtime || (event?.test && live.testMode)) && <small className="test-event-mark">TEST PREVIEW · NOT A REAL KICK EVENT</small>}
+      {/* The alert's configured title/message is a design state, not a claim that an event happened. */}
+      {!runtime && !preview && <small className="data-note">SHOWS YOUR ALERT TEXT · FILLS IN WHEN A REAL EVENT ARRIVES</small>}
+      {runtime && event?.test && live.testMode && <small className="test-event-mark">TEST EVENT · NOT A KICK DELIVERY</small>}
     </div>
   )
 }
 
-function ElementContent({ element, runtime, testAlertNonce }: { element: OverlayElement; runtime: boolean; testAlertNonce: number }) {
+function ElementContent({ element, runtime, preview, testAlertNonce }: { element: OverlayElement; runtime: boolean; preview: boolean; testAlertNonce: number }) {
   const live = useLiveData(); const p = element.props
   switch (element.type) {
     case 'text': return <div className="text-element" dir={text(element, 'direction', 'auto') as 'ltr' | 'rtl' | 'auto'} style={{ fontFamily: text(element, 'fontFamily'), fontSize: num(element, 'fontSize', 52), fontWeight: num(element, 'fontWeight', 700), color: text(element, 'color', '#fff8e7'), textAlign: text(element, 'textAlign', 'right') as 'left' | 'center' | 'right', lineHeight: num(element, 'lineHeight', 1.3) }}>{text(element, 'text', 'Text')}</div>
     case 'image': return text(element, 'src')
       ? <img className="image-element" draggable={false} src={text(element, 'src')} alt={text(element, 'alt')} style={{ objectFit: text(element, 'fit', 'contain') as 'contain' | 'cover' | 'fill' }} />
       : runtime ? null : <div className="empty-image"><ImageIcon /><span>Upload an image in Properties</span></div>
-    case 'webcam': return <WebcamElement element={element} runtime={runtime} />
+    case 'webcam': return <WebcamElement element={element} runtime={runtime} preview={preview} />
     case 'capture': {
       // No browser API can read a game window, so in OBS this element is a layout guide only: transparent
       // interior, optional border, and no label that could read as a captured picture.
       const shape = text(element, 'shape') === 'circle' ? '50%' : num(element, 'borderRadius', 24)
-      return <div className="placeholder-element capture-placeholder" style={{ borderRadius: shape, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Layout guide only · add your game source in OBS</small></>}</div>
+      return <div className="placeholder-element capture-placeholder" style={{ borderRadius: shape, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && !preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Layout guide only · add your game source in OBS</small></>}{preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Transparent guide · capture your game window in OBS, not here</small></>}</div>
     }
-    case 'chat': return <ChatWidget element={element} runtime={runtime} />
-    case 'alert': return <LiveAlert element={element} runtime={runtime} nonce={testAlertNonce} />
+    case 'chat': return <ChatWidget element={element} runtime={runtime} preview={preview} />
+    case 'alert': return <LiveAlert element={element} runtime={runtime} preview={preview} nonce={testAlertNonce} />
     case 'goal': {
       if (runtime && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
       const target = Math.max(1, num(element, 'target', 1000)); const current = Math.max(0, num(element, 'current', 0)); const progress = Math.min(100, current / target * 100)
@@ -248,22 +267,24 @@ function ElementContent({ element, runtime, testAlertNonce }: { element: Overlay
       // fixes; showing UNREACHABLE for an unconnected overlay sends the operator hunting a broken API.
       const connected = live.configured !== false
       const value = known ? live.viewer.count : status === 'offline' ? text(element, 'offlineText', 'آفلاین') : text(element, 'unavailableText', connected ? 'Unavailable' : 'Not connected')
-      const caption = !runtime ? 'LIVE API PREVIEW' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
+      const caption = !runtime ? 'LIVE WHEN CONNECTED' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
       return <div className={`metric-widget live-metric viewer-${status}`} style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></div>
     }
-    case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>follows this session</em></div>
-    case 'latestFollower': return <div className="supporter-widget" style={{ color: text(element, 'color', '#fff8e7') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{runtime ? live.latestFollower?.username || text(element, 'emptyText') : 'Roya · TEST PREVIEW'}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
+    case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>{runtime ? 'follows this session' : 'follows this session · live'}</em></div>
+    case 'latestFollower': return <div className="supporter-widget" style={{ color: text(element, 'color', '#fff8e7') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{live.latestFollower?.username || text(element, 'emptyText', 'No follower yet')}</strong></span><em>{live.latestFollower ? 'latest follow' : 'updates on the next real follow'}</em></div>
     case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <div className="supporter-widget" style={{ color: text(element, 'color') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
     default: return <div>{String(p.label ?? element.name)}</div>
   }
 }
 
-export function ElementRenderer({ element, theme, runtime = false, testAlertNonce = 0 }: ElementRendererProps) {
+export function ElementRenderer({ element, theme, runtime = false, preview = false, testAlertNonce = 0 }: ElementRendererProps) {
   const live = useLiveData()
+  // These gates describe what a published source may put on air. Applying them to the editor preview
+  // is what made configured elements vanish from Preview.
   if (runtime && element.type === 'alert' && !live.alerts.length) return null
   if (runtime && element.type === 'chat' && !live.messages.length) return null
   if (runtime && element.type === 'supporter' && text(element, 'dataSource', 'none') === 'none') return null
   if (runtime && element.type === 'goal' && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
-  const content = <ElementContent element={element} runtime={runtime} testAlertNonce={testAlertNonce} />
+  const content = <ElementContent element={element} runtime={runtime} preview={preview} testAlertNonce={testAlertNonce} />
   return <DecoratedWidget element={element} theme={theme}>{content}</DecoratedWidget>
 }

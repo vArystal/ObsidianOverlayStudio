@@ -74,3 +74,33 @@ describe('canvas pointer interactions', () => {
     })
   })
 })
+
+describe('preview completeness', () => {
+  // Regression: preview used to render like OBS output, so it dropped every layer with
+  // includeInOutput=false and every widget whose live data was absent. Configuring a webcam frame or
+  // alert with the channel offline looked like the element did not exist.
+  it('shows every configured layer, including editor-only and data-gated ones', () => {
+    const overlay = createEmptyOverlay()
+    const types = ['text', 'image', 'shape', 'frame', 'webcam', 'capture', 'chat', 'alert', 'goal', 'counter', 'countdown', 'viewerCount', 'sessionFollowers', 'latestFollower', 'supporter'] as const
+    types.forEach((type) => { const element = createElement(type); element.includeInOutput = false; overlay.elements.push(element) })
+
+    const { container } = render(
+      <Canvas
+        overlay={overlay}
+        selectedId={null}
+        preview
+        zoom={1}
+        testAlertNonce={0}
+        onSelect={vi.fn()}
+        onLiveElement={vi.fn()}
+        onInteractionStart={vi.fn()}
+        onInteractionEnd={vi.fn()}
+        onScaleChange={vi.fn()}
+      />,
+    )
+
+    expect(container.querySelectorAll('.canvas-element')).toHaveLength(types.length)
+    expect(container.querySelectorAll('.canvas-element.selected')).toHaveLength(0)
+    expect(container.textContent).toContain('Preview · every layer, editor guides hidden')
+  })
+})

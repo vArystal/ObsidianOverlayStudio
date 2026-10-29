@@ -19,8 +19,8 @@ export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornam
 export type IdleAnimationType = 'none' | 'shimmer' | 'glow' | 'float' | 'sparkle'
 export type AnimationDirection = 'up' | 'down' | 'left' | 'right'
 export type TextDirection = 'ltr' | 'rtl' | 'auto'
-export type ThemeId = 'royal-persian' | 'persian-turquoise' | 'imperial-night' | 'minimal-esports'
-export type DecorationPresetId = 'none' | 'royal-panel' | 'turquoise-panel' | 'imperial-card' | 'esports-line' | 'ornamental-frame'
+export type ThemeId = 'royal-persian' | 'persian-turquoise' | 'imperial-night' | 'minimal-esports' | 'thorn-rose'
+export type DecorationPresetId = 'none' | 'royal-panel' | 'turquoise-panel' | 'imperial-card' | 'esports-line' | 'ornamental-frame' | 'thorn-vine'
 
 export interface OverlayAnimation {
   /** Entrance effect. `type` is retained for backward-compatible saved overlays. */

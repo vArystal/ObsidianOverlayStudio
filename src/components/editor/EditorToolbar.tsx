@@ -14,6 +14,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
+import { THEMES } from '../../lib/themes'
 
 interface EditorToolbarProps {
   name: string
@@ -66,10 +67,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
       <label className="select-control theme-control">
         <Palette />
         <select aria-label="Overlay theme" value={props.themeId} onChange={(event) => props.onTheme(event.target.value)}>
-          <option value="royal-persian">Royal Persian</option>
-          <option value="persian-turquoise">Persian Turquoise</option>
-          <option value="imperial-night">Imperial Night</option>
-          <option value="minimal-esports">Minimal Esports</option>
+          {Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{theme.name}</option>)}
         </select>
         <ChevronDown />
       </label>
