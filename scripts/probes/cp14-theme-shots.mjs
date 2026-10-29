@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 
 const PORT = 4331
+const SITE = process.env.SITE ? process.env.SITE.replace(/\/$/, '') : ''
+const ORIGIN = SITE || `http://localhost:${PORT}`
 const root = new URL('../../dist/', import.meta.url).pathname
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png' }
 
@@ -21,7 +23,7 @@ const server = http.createServer(async (req, res) => {
     res.end(body)
   }
 })
-await new Promise((resolve) => server.listen(PORT, resolve))
+if (!SITE) await new Promise((resolve) => server.listen(PORT, resolve))
 
 const decoration = {
   enabled: true, preset: 'thorn-vine', inheritTheme: true, borderVisible: true, borderWidth: 2,
@@ -52,7 +54,7 @@ const errors = []
 page.on('pageerror', (message) => errors.push(String(message)))
 await page.addInitScript((data) => localStorage.setItem('obsidian-overlays-v1', JSON.stringify([data])), overlay)
 
-await page.goto(`http://localhost:${PORT}/#/overlays/editor/ov_cp14`)
+await page.goto(`${ORIGIN}/#/overlays/editor/ov_cp14`)
 await page.waitForTimeout(1600)
 const activeTheme = await page.locator('.theme-thumb.active .theme-thumb-name').textContent().catch(() => null)
 const galleryCount = await page.locator('.theme-thumb').count()
@@ -76,7 +78,7 @@ await page.screenshot({ path: 'artifacts/cp14-editor-preview.png' })
 // Published output is its own surface.
 const output = await browser.newPage({ viewport: { width: 1600, height: 900 } })
 await output.addInitScript((data) => localStorage.setItem('obsidian-overlays-v1', JSON.stringify([data])), overlay)
-await output.goto(`http://localhost:${PORT}/#/overlay/pubcp14`)
+await output.goto(`${ORIGIN}/#/overlay/pubcp14`)
 await output.waitForTimeout(1400)
 await output.screenshot({ path: 'artifacts/cp14-runtime.png' })
 const runtime = await output.evaluate(() => {
@@ -97,4 +99,4 @@ const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('obs
 
 console.log(JSON.stringify({ activeTheme, galleryCount, preview, runtime, persisted, errors }, null, 2))
 await browser.close()
-server.close()
+if (!SITE) server.close()
