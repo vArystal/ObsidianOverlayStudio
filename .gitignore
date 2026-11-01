@@ -11,3 +11,7 @@ coverage/
 !.env.example
 !.env.production
 data/
+
+# Local Cloudflare dev artifacts (SQLite state, WAL/SHM, compiled bundles)
+.wrangler/
+worker/.wrangler/
