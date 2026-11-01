@@ -42,6 +42,19 @@ export async function integrationRequest<T>(path: string, options: RequestInit =
   return body as T
 }
 
+/** Item 9: a deleted overlay must not leave a live runtime key behind. Idempotent on the server. */
+export async function deletePublication(overlayId: string): Promise<{ ok: boolean; error?: string }> {
+  const session = getIntegrationSession()
+  if (!session) return { ok: true } // nothing was ever published from this browser
+  try {
+    await integrationRequest(`/api/overlays/${encodeURIComponent(overlayId)}/publication`, { method: 'DELETE' })
+    return { ok: true }
+  } catch (error) {
+    // Offline or a dead backend must not block the local delete, but the user has to know the key may live on.
+    return { ok: false, error: error instanceof Error ? error.message : 'Could not revoke the published output' }
+  }
+}
+
 /**
  * The OAuth callback hands back a one-time exchange code. Depending on who built the redirect it
  * can sit in the router's hash query, the hash itself, or the browser query, so accept all three

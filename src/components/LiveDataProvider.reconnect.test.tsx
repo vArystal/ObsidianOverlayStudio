@@ -40,6 +40,36 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
 
+  it('stops retrying when the backend reports a disconnected integration (409 terminal)', async () => {
+    // The backend answers 409 integration_disconnected for a revoked connection. EventSource hides the status,
+    // so the provider asks /state and must treat a positive "not connected" as final instead of looping.
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async (url: string) => {
+      if (String(url).endsWith('/state')) return { ok: true, status: 200, json: async () => ({ connected: false, viewer: { status: 'unavailable', count: null, updatedAt: null } }) }
+      return { ok: true, status: 200, json: async () => ({ sessionFollowerCount: 0 }) }
+    }))
+    render(<LiveDataProvider config={config}><Probe /></LiveDataProvider>)
+    act(() => StreamMock.latest.open())
+    act(() => StreamMock.latest.failFatal())
+
+    await act(async () => { await Promise.resolve() })
+    expect(read().state).toBe('disconnected')
+
+    // Every pending and future tick must stay quiet: no new stream may be opened.
+    await act(async () => { vi.advanceTimersByTime(120_000) })
+    expect(StreamMock.instances).toHaveLength(1)
+    expect(read().state).toBe('disconnected')
+  })
+
+  it('keeps retrying when the state probe cannot answer', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    render(<LiveDataProvider config={config}><Probe /></LiveDataProvider>)
+    act(() => StreamMock.latest.open())
+    act(() => StreamMock.latest.failFatal())
+    await act(async () => { await Promise.resolve() })
+    await act(async () => { vi.advanceTimersByTime(1000) })
+    expect(StreamMock.instances, 'an unknown state is not evidence of a disconnect').toHaveLength(2)
+  })
+
 describe('live stream self-repair', () => {
   it('reconnects after a fatal close instead of leaving a dead overlay', async () => {
     render(<LiveDataProvider config={config}><Probe /></LiveDataProvider>)

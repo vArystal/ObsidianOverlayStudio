@@ -45,7 +45,11 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
           ...value,
           // A successful poll says nothing about the event channel, so it must not overwrite
           // 'reconnecting' or 'error' with a softer state and hide a stream that is still down.
-          state: value.state === 'disconnected' || value.state === 'connecting' ? 'connecting' : value.state,
+          // /state reports `connected`, and a false answer is terminal for the stream, so it wins over
+          // 'connecting' rather than being mapped away (item 8: no reconnect loop on a dead integration).
+          state: state.connected === false
+            ? 'disconnected'
+            : value.state === 'disconnected' || value.state === 'connecting' ? 'connecting' : value.state,
           viewer: state.viewer ?? value.viewer,
           latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null,
           // Deliberately not state.sessionFollowerCount: that is a lifetime total kept by the backend,
@@ -71,6 +75,22 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
     let lastSignalAt = Date.now()
 
     const signal = () => { lastSignalAt = Date.now() }
+
+    /**
+     * Resolves false only when the backend positively reports a disconnected connection. A network failure or
+     * an unreadable body resolves undefined, which keeps the transient retry path intact.
+     */
+    const probeConnectionState = async (): Promise<boolean | undefined> => {
+      try {
+        const response = await fetch(`${backend}/api/runtime/${encodeURIComponent(config.runtimeKey)}/state`, { headers: { accept: 'application/json' } })
+        if (response.status === 404) return false
+        if (!response.ok) return undefined
+        const value = (await response.json()) as { connected?: boolean }
+        return value.connected === false ? false : true
+      } catch {
+        return undefined
+      }
+    }
 
     const scheduleReconnect = () => {
       // Single flight: the watchdog ticks every 30s and the backoff ceiling is also 30s, so without this
@@ -104,10 +124,21 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
       }
       stream.onerror = () => {
         if (cancelled) return
-        // Both cases are "reconnecting" to the viewer, but only a CLOSED stream needs our own retry;
-        // EventSource already retries the transient kind.
+        // Both cases look the same to EventSource, but a CLOSED stream is fatal and only we retry it, and one
+        // of the fatal cases is terminal: the backend answers 409 integration_disconnected when the Kick
+        // connection is gone. Retrying that forever meant an overlay re-connecting every 30s all night and
+        // never saying why, so ask /state before scheduling another attempt.
         setData((value) => ({ ...value, state: 'reconnecting' }))
-        if (stream.readyState === EventSource.CLOSED) scheduleReconnect()
+        if (stream.readyState !== EventSource.CLOSED) return
+        // Schedule first, then cancel: recovery must not wait on a network round trip, and an unknown answer
+        // has to keep the old retry behaviour. Only a positive "disconnected" cancels the attempt.
+        scheduleReconnect()
+        void probeConnectionState().then((connected) => {
+          if (cancelled || connected !== false) return
+          window.clearTimeout(retryTimer)
+          retryPending = false
+          setData((value) => ({ ...value, state: 'disconnected', configured: true }))
+        })
       }
       // Heartbeats are how a quiet channel stays trusted; without them the watchdog would reconnect
       // every couple of minutes during slow chat.

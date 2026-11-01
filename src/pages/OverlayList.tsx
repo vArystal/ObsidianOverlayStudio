@@ -15,6 +15,7 @@ import { AppShell } from '../components/AppShell'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
 import { deleteOverlay, encodeOverlaySnapshot, loadOverlays, saveOverlay } from '../lib/storage'
+import { deletePublication } from '../lib/integration'
 import { snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig } from '../lib/integration'
 import { buildHashUrl } from '../lib/urls'
@@ -58,10 +59,14 @@ export function OverlayList() {
 
   function confirmDelete() {
     if (!pendingDelete) return
-    const result = deleteOverlay(pendingDelete.id)
+    const target = pendingDelete
+    const result = deleteOverlay(target.id)
     if (!result.ok) { setError(result.error ?? 'Could not delete overlay'); setPendingDelete(null); return }
-    setOverlays((items) => items.filter((item) => item.id !== pendingDelete.id))
+    setOverlays((items) => items.filter((item) => item.id !== target.id))
     setPendingDelete(null)
+    // Revoke the backend publication so the old OBS URL stops resolving. A failure is surfaced, not swallowed:
+    // the overlay is already gone locally, but the streamer needs to know the key may still answer.
+    void deletePublication(target.id).then((revoked) => { if (!revoked.ok) setError(`Overlay deleted, but its published output could not be revoked: ${revoked.error}. Paste the output URL in OBS to replace it.`) })
   }
 
   return (
