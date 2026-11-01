@@ -97,6 +97,20 @@ The webhook endpoint to expose is:
 https://overlay-api.example.com/api/webhooks/kick
 ```
 
+### Webhook response contract
+
+Kick retries on `5xx` and treats `4xx` as final, so each failure class has a deliberate status:
+
+| Status | Meaning | Kick behavior | Cause |
+| --- | --- | --- | --- |
+| `204` | Delivered (or already delivered) | no retry | valid signature, known broadcaster |
+| `202` | Accepted, nothing to do | no retry | signed event for a broadcaster with no active connection |
+| `400` | Malformed | no retry | unreadable JSON body, missing broadcaster id, unsupported event version |
+| `401` | Untrusted | no retry | missing headers, stale timestamp, signature that fails verification |
+| `500` | Transient | retry | internal failure while recording or publishing the event |
+
+A transient failure never returns `401`: a retry that is refused as untrusted is an event lost forever, while a `500` is the only answer that asks Kick to deliver it again.
+
 A remote Kick webhook cannot call your machine's `localhost`. Production OAuth and webhooks require publicly reachable HTTPS infrastructure. Use an HTTPS tunnel only for controlled development; do not describe that as a production deployment.
 
 ### Minimum scopes

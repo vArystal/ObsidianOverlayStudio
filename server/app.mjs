@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { URL } from 'node:url'
 import { createPkce, randomToken } from './security.mjs'
 import { createEventBus } from './event-bus.mjs'
-import { createKickClient, validAccessToken } from './kick-client.mjs'
+import { createKickClient, createTokenRefresher, validAccessToken } from './kick-client.mjs'
 import { createIntegrationStore } from './store.mjs'
 import { createEventProcessor, normalizeKickEvent } from './event-processor.mjs'
 import { createDonationRegistry } from './donations.mjs'
@@ -62,11 +62,19 @@ function publicStatus(store, connection, config) {
 }
 
 export async function createApp({ config, fetchImpl = fetch, persist = true } = {}) {
+  // Token material is encrypted with this key. In production a missing or short key means every stored refresh
+  // token is effectively plaintext, so refuse to start rather than degrade silently.
+  const key = config.tokenEncryptionKey || ''
+  if (process.env.NODE_ENV === 'production' && key.length < 32) {
+    throw new Error('TOKEN_ENCRYPTION_KEY must be set to at least 32 characters in production')
+  }
+  if (!key && process.env.NODE_ENV !== 'production') console.warn('[security] Using the development encryption key. Set TOKEN_ENCRYPTION_KEY before deploying.')
   const bus = createEventBus()
   const store = createIntegrationStore({ filePath: config.dataFile, encryptionKey: config.tokenEncryptionKey || 'development-only-encryption-key-32', persist })
   await store.init()
   const kick = createKickClient({ clientId: config.kickClientId, clientSecret: config.kickClientSecret, redirectUri: config.kickRedirectUri, fetchImpl })
   const donations = createDonationRegistry()
+  const refresher = createTokenRefresher()
   let cachedKey = null; let keyFetchedAt = 0
   async function getPublicKey(force = false) {
     if (!force && cachedKey && Date.now() - keyFetchedAt < 60 * 60_000) return cachedKey
@@ -76,10 +84,17 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
 
   async function managedConnection(request) { return store.authenticate(bearer(request)) }
 
+  let polling = false
+  let skippedPolls = 0
   async function pollViewerCounts() {
+    // A tick that arrives while the previous poll is still talking to Kick is skipped, not queued: overlapping
+    // polls used to race on the same connection row.
+    if (polling) { skippedPolls += 1; return { skipped: true } }
+    polling = true
+    try {
     for (const connection of await store.listConnected()) {
       try {
-        const token = await validAccessToken({ connection, store, client: kick })
+        const token = await validAccessToken({ connection, store, client: kick, refresher })
         const live = await kick.getLivestream(token, connection.account.userId)
         const viewer = live ? { status: 'live', count: Number(live.viewer_count ?? 0), updatedAt: new Date().toISOString() } : { status: 'offline', count: 0, updatedAt: new Date().toISOString() }
         await store.updateConnection(connection.id, { viewer, lastSyncAt: new Date().toISOString(), syncError: null })
@@ -93,6 +108,8 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
         ;(await store.runtimeKeysForConnection(connection.id)).forEach((runtimeKey) => bus.publish(runtimeKey, event))
       }
     }
+    return { skipped: false }
+    } finally { polling = false }
   }
 
   async function handler(request, response) {
@@ -160,9 +177,18 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
         return sendJson(response, 200, { publicationId: publication.id, overlayId: publication.overlayId, runtimeKey: publication.runtimeKey, createdAt: publication.createdAt, updatedAt: publication.updatedAt })
       }
 
+      if (request.method === 'DELETE' && /^\/api\/overlays\/[^/]+\/publication$/.test(url.pathname)) {
+        const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
+        const overlayId = decodeURIComponent(url.pathname.split('/')[3] || '')
+        if (!/^[A-Za-z0-9_-]{1,120}$/.test(overlayId)) return sendJson(response, 400, { error: 'invalid_overlay_id' })
+        const removed = await store.removePublication({ overlayId, connectionId: connection.id })
+        // Idempotent: a delete after the publication was already gone still reports success.
+        return sendJson(response, 200, { removed: removed.length, overlayId })
+      }
+
       if (request.method === 'POST' && url.pathname === '/api/integrations/kick/resubscribe') {
         const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
-        const token = await validAccessToken({ connection, store, client: kick })
+        const token = await validAccessToken({ connection, store, client: kick, refresher })
         const existingIds = (connection.subscriptions ?? []).map((item) => item.subscription_id ?? item.id).filter(Boolean)
         if (existingIds.length) await kick.unsubscribe(token, existingIds)
         const subscriptions = await kick.subscribe(token, KICK_EVENT_TYPES)
@@ -172,7 +198,7 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
 
       if (request.method === 'POST' && url.pathname === '/api/integrations/kick/disconnect') {
         const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
-        try { const token = await validAccessToken({ connection, store, client: kick }); if (connection.subscriptions?.length) await kick.unsubscribe(token, connection.subscriptions.map((item) => item.subscription_id ?? item.id).filter(Boolean)); await kick.revoke(token) } catch { /* Local disconnect still clears stored credentials. */ }
+        try { const token = await validAccessToken({ connection, store, client: kick, refresher }); if (connection.subscriptions?.length) await kick.unsubscribe(token, connection.subscriptions.map((item) => item.subscription_id ?? item.id).filter(Boolean)); await kick.revoke(token) } catch { /* Local disconnect still clears stored credentials. */ }
         await store.disconnect(connection.id)
         return sendJson(response, 200, { state: 'DISCONNECTED' })
       }
@@ -210,7 +236,13 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
       }
 
       if (request.method === 'POST' && url.pathname === '/api/webhooks/kick') {
-        const result = await processor.process(request.headers, await readBody(request))
+        let result
+        try {
+          result = await processor.process(request.headers, await readBody(request))
+        } catch {
+          // 500 means retry. A signature or body failure is decided inside the processor and never lands here.
+          response.writeHead(500); return response.end()
+        }
         response.writeHead(result.status); return response.end()
       }
 

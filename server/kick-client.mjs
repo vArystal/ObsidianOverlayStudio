@@ -47,12 +47,39 @@ export function createKickClient({ clientId, clientSecret, redirectUri, fetchImp
   }
 }
 
-export async function validAccessToken({ connection, store, client, now = Date.now() }) {
+/**
+ * Kick rotates refresh tokens: two concurrent refreshes for one connection invalidate each other and can drop
+ * the streamer's connection entirely. Callers that overlap share a single in-flight refresh instead.
+ */
+export function createTokenRefresher() {
+  const inFlight = new Map()
+  return {
+    clear() { inFlight.clear() },
+    get size() { return inFlight.size },
+    run(connectionId, task) {
+      const existing = inFlight.get(connectionId)
+      if (existing) return existing
+      const run = Promise.resolve()
+        .then(task)
+        .finally(() => { inFlight.delete(connectionId) })
+      inFlight.set(connectionId, run)
+      return run
+    },
+  }
+}
+
+export async function validAccessToken({ connection, store, client, now = Date.now(), refresher }) {
   const tokens = await store.getTokens(connection.id)
   if (!tokens) throw new KickApiError('Kick connection has no stored token', 401)
   if (!tokens.expiresAt || tokens.expiresAt > now + 60_000) return tokens.access_token
-  const refreshed = await client.refresh(tokens.refresh_token)
-  const next = { ...refreshed, expiresAt: now + Number(refreshed.expires_in || 3600) * 1000 }
-  await store.setTokens(connection.id, next)
-  return next.access_token
+  const refresh = async () => {
+    // Re-read inside the shared refresh: a caller that lost the race would otherwise refresh an already-rotated token.
+    const latest = await store.getTokens(connection.id)
+    if (latest?.expiresAt && latest.expiresAt > Date.now() + 60_000) return latest.access_token
+    const refreshed = await client.refresh((latest ?? tokens).refresh_token)
+    const next = { ...refreshed, expiresAt: Date.now() + Number(refreshed.expires_in || 3600) * 1000 }
+    await store.setTokens(connection.id, next)
+    return next.access_token
+  }
+  return refresher ? refresher.run(connection.id, refresh) : refresh()
 }
