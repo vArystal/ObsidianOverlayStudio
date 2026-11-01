@@ -40,23 +40,32 @@ export function createEventProcessor({ store, bus, getPublicKey, now = () => Dat
         verification = verifyKickWebhook({ headers, rawBody, publicKey, now: now() })
       }
       if (!verification.ok) return { accepted: false, status: 401, reason: verification.reason }
-      if (await store.isProcessed(verification.messageId)) return { accepted: true, duplicate: true, status: 204 }
       let payload
       try { payload = JSON.parse(rawBody.toString('utf8')) } catch { return { accepted: false, status: 400, reason: 'malformed_json' } }
       const broadcasterId = payload.broadcaster?.user_id
       if (!broadcasterId) return { accepted: false, status: 400, reason: 'missing_broadcaster' }
       const connection = await store.findByBroadcasterId(broadcasterId)
       if (!connection) return { accepted: false, status: 202, reason: 'unknown_broadcaster' }
+      // Claim before delivering, but record the claim atomically: two identical deliveries can no longer both
+      // pass a check and then both publish.
+      if (!(await store.claimMessage(verification.messageId))) return { accepted: true, duplicate: true, status: 204 }
       const event = normalizeKickEvent({ id: verification.messageId, type: verification.eventType, payload })
-      await store.markProcessed(verification.messageId)
       const timestamp = new Date().toISOString()
-      const patch = { lastEventAt: timestamp, lastEventType: verification.eventType }
-      if (verification.eventType === 'chat.message.sent') Object.assign(patch, { lastChatAt: timestamp, lastChatUser: payload.sender?.username ?? null })
-      if (verification.eventType === 'channel.followed') Object.assign(patch, { lastFollowAt: timestamp, lastFollower: person(payload.follower), sessionFollowerCount: Number(connection.sessionFollowerCount || 0) + 1 })
-      if (verification.eventType.startsWith('channel.subscription.')) Object.assign(patch, { lastSubscriptionAt: timestamp, lastSubscriber: person(payload.subscriber ?? payload.gifter) })
-      await store.updateConnection(connection.id, patch)
-      const runtimeKeys = await store.runtimeKeysForConnection(connection.id)
-      runtimeKeys.forEach((runtimeKey) => bus.publish(runtimeKey, event))
+      try {
+        const patch = { lastEventAt: timestamp, lastEventType: verification.eventType }
+        if (verification.eventType === 'chat.message.sent') Object.assign(patch, { lastChatAt: timestamp, lastChatUser: payload.sender?.username ?? null })
+        if (verification.eventType === 'channel.followed') Object.assign(patch, { lastFollowAt: timestamp, lastFollower: person(payload.follower) })
+        if (verification.eventType.startsWith('channel.subscription.')) Object.assign(patch, { lastSubscriptionAt: timestamp, lastSubscriber: person(payload.subscriber ?? payload.gifter) })
+        await store.updateConnection(connection.id, patch)
+        // Counted inside the store's write queue, so concurrent follows cannot overwrite each other.
+        if (verification.eventType === 'channel.followed') await store.incrementSessionFollowers(connection.id)
+        const runtimeKeys = await store.runtimeKeysForConnection(connection.id)
+        runtimeKeys.forEach((runtimeKey) => bus.publish(runtimeKey, event))
+      } catch (error) {
+        // Delivery failed: release the claim so Kick's retry is processed instead of silently dropped.
+        await store.releaseClaim(verification.messageId).catch(() => {})
+        throw error
+      }
       return { accepted: true, duplicate: false, status: 204, event }
     },
   }
