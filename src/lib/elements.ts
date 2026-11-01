@@ -1,5 +1,5 @@
 import type { AnimationType, DecorationPresetId, ElementType, Overlay, OverlayAnimation, OverlayElement } from '../types'
-import { createDecoration, DEFAULT_THEME } from './themes'
+import { createDecoration, DEFAULT_THEME, DEFAULT_THORN_TUNING } from './themes'
 
 export const ELEMENT_LABELS: Record<ElementType, string> = {
   text: 'Text', image: 'Image / Logo', webcam: 'Webcam Frame', capture: 'Screen / Game plan',
@@ -22,7 +22,7 @@ export function createEmptyOverlay(name = 'Untitled overlay'): Overlay {
   return {
     id: uid('overlay'), publicId: uid('pub'), name, width: 1920, height: 1080, elements: [],
     settings: { showGrid: false, snap: true, showSafeArea: false, transparent: true, backgroundImage: null },
-    theme: structuredClone(DEFAULT_THEME), staticMotion: false, live: null,
+    theme: structuredClone(DEFAULT_THEME), thorn: { ...DEFAULT_THORN_TUNING }, staticMotion: false, live: null,
     createdAt: now, updatedAt: now, publishedAt: null,
   }
 }

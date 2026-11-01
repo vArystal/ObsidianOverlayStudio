@@ -207,3 +207,16 @@
   .thorn-bloom-layer, .thorn-burst-layer { animation: none !important; }
 }
 .static-motion .thorn-bloom-layer, .static-motion .thorn-burst-layer { animation: none !important; }
+
+/* Inspector: three radio groups, styled like the rest of the panel. */
+.thorn-tuning { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid rgba(184, 146, 74, .22); border-radius: 10px; background: linear-gradient(160deg, rgba(16, 26, 22, .85), rgba(11, 18, 16, .7)); }
+.thorn-tuning-row { display: flex; flex-direction: column; gap: 6px; }
+.thorn-tuning-head { display: flex; align-items: center; gap: 6px; color: #e6c77a; }
+.thorn-tuning-head svg { width: 13px; height: 13px; }
+.thorn-tuning-head strong { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: #f6efdc; }
+.thorn-tuning p { margin: 0; font-size: 10px; line-height: 1.45; color: #a9b9ad; }
+.thorn-tuning .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 7px; background: rgba(6, 11, 9, .8); border: 1px solid rgba(184, 146, 74, .18); }
+.thorn-tuning .segmented button { padding: 5px 4px; border: 0; border-radius: 5px; background: transparent; color: #b9c7bd; font-size: 10.5px; text-transform: capitalize; cursor: pointer; }
+.thorn-tuning .segmented button:hover { background: rgba(184, 146, 74, .12); color: #f6efdc; }
+.thorn-tuning .segmented button.active { background: linear-gradient(160deg, rgba(184, 146, 74, .3), rgba(184, 146, 74, .14)); color: #f6efdc; box-shadow: inset 0 0 0 1px rgba(230, 199, 122, .4); }
+.thorn-tuning .segmented button:focus-visible { outline: 2px solid #e6c77a; outline-offset: 1px; }

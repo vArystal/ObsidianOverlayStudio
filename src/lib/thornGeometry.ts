@@ -247,24 +247,27 @@ export function buildFrameSpec(options: {
     roses.push({ x: round(x), y: round(y), angle: round(angle), size: round(base * roseScale[kind]), kind, sway: sway() })
   }
 
+  // Blooms ride the frame itself: their centre sits `size * 0.18` inside the border, so half a bloom hangs
+  // past the panel edge (the layer is not clipped) and only a sliver reaches the padded content.
   if (variant === 'camera') {
-    addRose(width - inset - 30, inset + 24, 'hero', 76, -12)
-    addRose(inset + 30, height - inset - 26, 'bud', 46, 18)
-    addRose(inset + 12, height * 0.42, 'small', 34, -8)
-    addRose(width - inset - 16, height * 0.62, 'small', 30, 14)
+    addRose(width - inset - 20, inset + 16, 'hero', 76, -12)
+    addRose(inset + 22, height - inset - 18, 'bud', 46, 18)
+    addRose(inset + 8, height * 0.42, 'small', 34, -8)
+    addRose(width - inset - 10, height * 0.62, 'small', 30, 14)
   } else if (variant === 'alert') {
-    addRose(width / 2 + 6, inset + 16, 'hero', 64, 6)
-    addRose(inset + 26, height - inset - 20, 'bud', 40, -14)
-    addRose(width - inset - 22, height - inset - 24, 'small', 30, 20)
+    // The medallion owns the top centre, so the alert's hero blooms at the top-right corner instead.
+    addRose(width - inset - 18, inset + 14, 'hero', 54, 8)
+    addRose(inset + 18, height - inset - 14, 'bud', 38, -14)
+    addRose(width - inset - 14, height - inset - 16, 'small', 28, 20)
   } else if (variant === 'chat') {
-    addRose(width - inset - 18, inset + 16, 'bud', 34, -16)
-    addRose(inset + 14, height * 0.7, 'small', 24, 10)
+    addRose(width - inset - 12, inset + 12, 'bud', 26, -16)
+    addRose(inset + 10, height * 0.7, 'small', 20, 10)
   } else if (variant === 'plaque') {
-    addRose(inset + 14, height / 2, 'small', 30, -20)
-    addRose(width - inset - 14, height / 2, 'small', 30, 22)
+    addRose(inset + 11, height / 2, 'small', 22, -20)
+    addRose(width - inset - 11, height / 2, 'small', 22, 22)
   } else {
-    addRose(width - inset - 22, inset + 18, 'bud', 38, -10)
-    addRose(inset + 20, height - inset - 18, 'small', 28, 16)
+    addRose(width - inset - 14, inset + 13, 'bud', 30, -10)
+    addRose(inset + 13, height - inset - 13, 'small', 24, 16)
   }
 
   return {

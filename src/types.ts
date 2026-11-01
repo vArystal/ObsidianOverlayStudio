@@ -111,6 +111,17 @@ export interface CanvasSettings {
   backgroundImage: string | null
 }
 
+export type ThornRose = 'crimson' | 'wine' | 'blush'
+export type ThornFoliage = 'light' | 'full' | 'lush'
+export type ThornMotion = 'still' | 'subtle' | 'lively'
+
+/** Botanical tuning for the Thorn & Rose theme, stored per overlay so it survives reload and publish. */
+export interface ThornTuning {
+  rose: ThornRose
+  foliage: ThornFoliage
+  motion: ThornMotion
+}
+
 export interface Overlay {
   id: string
   publicId: string
@@ -120,6 +131,7 @@ export interface Overlay {
   elements: OverlayElement[]
   settings: CanvasSettings
   theme: OverlayTheme
+  thorn: ThornTuning
   staticMotion: boolean
   live: LiveIntegrationConfig | null
   createdAt: string

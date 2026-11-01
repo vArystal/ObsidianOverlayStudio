@@ -1,5 +1,7 @@
-import { useId, useMemo } from 'react'
+import { useContext, useId, useMemo } from 'react'
 import { buildFrameSpec, type RosePart, type ThornVariant } from '../../lib/thornGeometry'
+import { THORN_FOLIAGE_DENSITY, THORN_MOTION_SCALE } from '../../lib/themes'
+import { ThornTuningContext } from './tuningContext'
 
 /**
  * The botanical frame.
@@ -71,7 +73,13 @@ function Rose({ part, uid }: { part: RosePart; uid: string }) {
 
 export function ThornFrame({ id, width, height, variant, radius, signal, alerting }: ThornFrameProps) {
   const uid = useId().replace(/[:]/g, '')
-  const spec = useMemo(() => buildFrameSpec({ id, width, height, variant, radius }), [id, width, height, variant, radius])
+  const tuning = useContext(ThornTuningContext)
+  const density = THORN_FOLIAGE_DENSITY[tuning.foliage]
+  const motionScale = THORN_MOTION_SCALE[tuning.motion]
+  const spec = useMemo(
+    () => buildFrameSpec({ id, width, height, variant, radius, density, motionScale }),
+    [id, width, height, variant, radius, density, motionScale],
+  )
   if (width < 24 || height < 24) return null
 
   return (

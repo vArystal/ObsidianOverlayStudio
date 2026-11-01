@@ -1,7 +1,7 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, StorageResult } from '../types'
 import { createAnimation } from './elements'
-import { createDecoration, getTheme } from './themes'
+import { createDecoration, getTheme, normalizeThornTuning } from './themes'
 
 const STORAGE_KEY = 'obsidian-overlays-v1'
 const FORBIDDEN_PUBLIC_KEYS = new Set(['accesstoken', 'refreshtoken', 'clientsecret', 'managementtoken', 'tokenencryptionkey', 'codeverifier', 'oauthverifier', 'authorization', 'password'])
@@ -33,6 +33,7 @@ export function normalizeOverlay(overlay: Overlay): Overlay {
   return {
     ...overlay,
     theme: { ...getTheme(overlay.theme?.id), ...(overlay.theme ?? {}) },
+    thorn: normalizeThornTuning(overlay.thorn),
     staticMotion: Boolean(overlay.staticMotion),
     live: overlay.live ?? null,
     elements: overlay.elements.map(normalizeElement),

@@ -26,9 +26,10 @@ import {
   Upload,
   Zap,
 } from 'lucide-react'
-import type { Overlay, OverlayElement } from '../../types'
+import type { Overlay, OverlayElement, ThornTuning } from '../../types'
 import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
 import { ThemeGallery } from './ThemeGallery'
+import { ThornTuningCard } from './ThornTuningCard'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -44,6 +45,7 @@ interface PropertiesPanelProps {
   onCanvasSize: (width: number, height: number) => void
   onAttachLive: () => void
   onTheme: (themeId: string) => void
+  onThornTuning: (tuning: ThornTuning) => void
   onStaticMotion: (value: boolean) => void
 }
 
@@ -112,6 +114,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             <div className="theme-preview" style={{ '--preview-primary': props.overlay.theme.primary, '--preview-accent': props.overlay.theme.accent } as CSSProperties}><Palette /><div><strong>{props.overlay.theme.nameFa}</strong><span>{props.overlay.theme.name}</span></div></div>
             <Field label="Theme preset"><select value={props.overlay.theme.id} onChange={(event) => props.onTheme(event.target.value)}>{Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{theme.name} · {theme.nameFa}</option>)}</select></Field>
             <ThemeGallery value={props.overlay.theme.id} onChange={props.onTheme} />
+            {props.overlay.theme.id === 'thorn-rose' && <ThornTuningCard value={props.overlay.thorn} onChange={props.onThornTuning} />}
             <Toggle checked={props.overlay.staticMotion} onChange={props.onStaticMotion} label="Static / reduced-motion output" description="Disables all entrance and idle effects in OBS." />
           </Section>
           <Section title="Live runtime">

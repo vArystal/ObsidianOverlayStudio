@@ -473,6 +473,7 @@ export function OverlayEditor() {
             onDuplicate={() => selectedId && duplicate(selectedId)} onDelete={() => selectedId && deleteElement(selectedId)}
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}
             onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
+            onThornTuning={(thorn) => commit((item) => ({ ...item, thorn }))}
             onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
             onAttachLive={() => { const live = getPublicIntegrationConfig(); if (!live) { setNotice('Connect Kick from Integrations first'); return } commit((item) => ({ ...item, live })); setNotice(`Kick channel ${live.channelName} attached`) }}
           />

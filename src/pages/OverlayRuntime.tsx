@@ -4,6 +4,8 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { ElementRenderer } from '../components/ElementRenderer'
 import { LiveDataProvider } from '../components/LiveDataProvider'
 import { decodeOverlaySnapshot, getOverlayByPublicId } from '../lib/storage'
+import { getTheme, normalizeThornTuning, thornCssVars } from '../lib/themes'
+import { ThornTuningContext } from '../components/thorn/tuningContext'
 
 export function OverlayRuntime() {
   const { publicId = '' } = useParams(); const [params] = useSearchParams()
@@ -23,8 +25,9 @@ export function OverlayRuntime() {
   const testMode = params.get('test') === '1'
   return (
     <LiveDataProvider config={overlay.live} testMode={testMode}>
-      <main className={`overlay-runtime theme-${theme.id || 'royal-persian'} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={{ '--theme-accent': theme.accent, '--theme-primary': theme.primary, '--theme-surface': theme.surface } as CSSProperties}>
+      <main className={`overlay-runtime theme-${theme.id || 'royal-persian'} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={{ '--theme-accent': theme.accent, '--theme-primary': theme.primary, '--theme-surface': theme.surface, ...thornCssVars(normalizeThornTuning(overlay.thorn)) } as CSSProperties}>
         {testMode && <div className="runtime-test-mode" role="status">TEST MODE · SYNTHETIC EVENTS · NOT FOR AIR</div>}
+        <ThornTuningContext.Provider value={normalizeThornTuning(overlay.thorn)}>
         <div className="runtime-stage" style={{ width: overlay.width, height: overlay.height, transform: `scale(${scale})` }}>
           {overlay.elements.filter((element) => element.visible && element.includeInOutput).map((element, index) => (
             <div className="runtime-element" key={element.id} style={{ left: element.x, top: element.y, width: element.width, height: element.height, opacity: element.opacity, transform: `rotate(${element.rotation}deg)`, zIndex: index + 1 }}>
@@ -45,6 +48,7 @@ export function OverlayRuntime() {
             </div>
           ))}
         </div>
+        </ThornTuningContext.Provider>
       </main>
     </LiveDataProvider>
   )

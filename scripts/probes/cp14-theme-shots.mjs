@@ -76,6 +76,20 @@ const preview = await page.evaluate(() => {
     vineEdge: widgets[0] ? getComputedStyle(widgets[0]).backgroundImage.slice(0, 60) : '',
     badges: [...document.querySelectorAll('.preview-badge')].map((node) => node.textContent),
     // Decoration must not sit on the words: report how much of each content box is covered by roses.
+    textOverlaps: [...document.querySelectorAll('.decorated-widget.thorn-framed')].map((widget) => {
+      const texts = [...widget.querySelectorAll('.decorated-content strong, .decorated-content small, .decorated-content p, .chat-message')]
+      let hits = 0
+      widget.querySelectorAll('.thorn-bloom-layer').forEach((bloom) => {
+        const b = bloom.getBoundingClientRect()
+        texts.forEach((node) => {
+          const t = node.getBoundingClientRect()
+          const w = Math.max(0, Math.min(b.right, t.right) - Math.max(b.left, t.left))
+          const h = Math.max(0, Math.min(b.bottom, t.bottom) - Math.max(b.top, t.top))
+          if (w * h > 40) hits++
+        })
+      })
+      return hits
+    }),
     overlaps: [...document.querySelectorAll('.decorated-widget.thorn-framed')].map((widget) => {
       const content = widget.querySelector('.decorated-content')
       if (!content) return 0

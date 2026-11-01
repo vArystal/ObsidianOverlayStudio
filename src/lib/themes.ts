@@ -1,4 +1,4 @@
-import type { DecorationPresetId, ElementDecoration, OverlayTheme, ThemeId } from '../types'
+import type { DecorationPresetId, ElementDecoration, OverlayTheme, ThemeId, ThornFoliage, ThornMotion, ThornRose, ThornTuning } from '../types'
 
 export const THEMES: Record<ThemeId, OverlayTheme> = {
   'royal-persian': {
@@ -31,6 +31,54 @@ export const THEMES: Record<ThemeId, OverlayTheme> = {
     primary: '#1b3a2c', secondary: '#08110c', accent: '#c9a24a', accentSoft: '#f4efe4',
     surface: '#0b1410', surfaceAlt: '#12211a', text: '#f4efe4', muted: '#a9b9ad', glow: '#2f7a5f', pattern: 'none',
   },
+}
+
+
+/**
+ * Thorn & Rose presets.
+ *
+ * A streamer should not have to edit a stylesheet to change the mood, so the palette, the foliage budget
+ * and the animation speed are data. Each palette only moves the rose ramp (shadow -> deep -> mid -> lit);
+ * the greens and golds stay put so a recoloured overlay still reads as the same garden.
+ */
+export const THORN_ROSE_PALETTES: Record<ThornRose, { label: string; shadow: string; deep: string; mid: string; lit: string }> = {
+  crimson: { label: 'Crimson', shadow: '#3d0610', deep: '#8e1226', mid: '#b3162f', lit: '#d9304a' },
+  wine: { label: 'Wine', shadow: '#2b0410', deep: '#5d0f22', mid: '#7e1630', lit: '#a82844' },
+  blush: { label: 'Blush', shadow: '#5c2531', deep: '#a34456', mid: '#c4677a', lit: '#e79aa8' },
+}
+
+/** Foliage budget multipliers: how much grows out of each cane. */
+export const THORN_FOLIAGE_DENSITY: Record<ThornFoliage, number> = { light: 0.6, full: 1, lush: 1.45 }
+
+/** Animation speed: larger is slower, and `still` parks the idle motion without removing the art. */
+export const THORN_MOTION_SCALE: Record<ThornMotion, number> = { still: 400, subtle: 1, lively: 0.62 }
+
+export const DEFAULT_THORN_TUNING: ThornTuning = { rose: 'crimson', foliage: 'full', motion: 'subtle' }
+
+/**
+ * CSS custom properties for a tuning: the rose ramp plus the motion multiplier. Applying them to the stage
+ * means a preview, the editor and a published source all resolve identical values.
+ */
+export function thornCssVars(tuning: ThornTuning): Record<string, string> {
+  const palette = THORN_ROSE_PALETTES[tuning.rose]
+  return {
+    '--thorn-rose-shadow': palette.shadow,
+    '--thorn-rose-deep': palette.deep,
+    '--thorn-rose-mid': palette.mid,
+    '--thorn-rose-lit': palette.lit,
+    '--thorn-motion': String(THORN_MOTION_SCALE[tuning.motion]),
+  }
+}
+
+export function normalizeThornTuning(input?: Partial<ThornTuning> | null): ThornTuning {
+  const rose = input?.rose as ThornRose
+  const foliage = input?.foliage as ThornFoliage
+  const motion = input?.motion as ThornMotion
+  return {
+    rose: rose in THORN_ROSE_PALETTES ? rose : DEFAULT_THORN_TUNING.rose,
+    foliage: foliage in THORN_FOLIAGE_DENSITY ? foliage : DEFAULT_THORN_TUNING.foliage,
+    motion: motion in THORN_MOTION_SCALE ? motion : DEFAULT_THORN_TUNING.motion,
+  }
 }
 
 export const DEFAULT_THEME = THEMES['royal-persian']
