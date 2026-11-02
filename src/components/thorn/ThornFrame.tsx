@@ -25,47 +25,72 @@ interface ThornFrameProps {
 }
 
 /** A cup-shaped petal in unit space, pointing up, base at the origin. */
-const PETAL = 'M0 0C-0.36 -0.14 -0.44 -0.62 -0.18 -0.92C-0.07 -1.04 0.07 -1.04 0.18 -0.92C0.44 -0.62 0.36 -0.14 0 0Z'
+const PETAL = 'M0 0C-0.42 -0.12 -0.58 -0.46 -0.5 -0.74C-0.44 -0.98 -0.16 -1.08 0.06 -0.98C0.34 -0.86 0.5 -0.54 0.4 -0.24C0.34 -0.06 0.18 0.02 0 0Z'
+
+/** The vein layout of a rose leaf: one midrib and three pairs, drawn in leaf-local space. */
+const LEAF_VEINS = ['M0 0L0 -0.9', 'M0 -0.2L0.16 -0.36', 'M0 -0.42L-0.16 -0.56', 'M0 -0.5L0.14 -0.66', 'M0 -0.68L-0.12 -0.8']
 
 /** Serrated rose leaf: three lobes with a midrib and two veins. */
 const LEAF = 'M0 0C0.22 -0.18 0.3 -0.42 0.24 -0.62L0.34 -0.58L0.3 -0.74L0.42 -0.72L0.36 -0.9L0.16 -0.98C0.06 -1.02 -0.06 -1.02 -0.16 -0.98L-0.36 -0.9L-0.42 -0.72L-0.3 -0.74L-0.34 -0.58L-0.24 -0.62C-0.3 -0.42 -0.22 -0.18 0 0Z'
 
+/** A single rose leaf: serrated silhouette, a fold shadow, and vein work drawn in leaf space. */
+function RoseLeaf({ uid, x, y, angle, size, shade }: { uid: string; x: number; y: number; angle: number; size: number; shade: 'dark' | 'mid' | 'lit' }) {
+  const fill = `url(#${uid}-leaf-${shade})`
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${angle}) scale(${size})`}>
+      <path d={LEAF} fill={fill} stroke="#0a1310" strokeWidth={0.06} />
+      {/* The fold: one half catching less light is what stops it looking like a flat cutout. */}
+      <path d={LEAF} fill="#04100b" opacity=".22" transform="scale(-1 1)" />
+      <g stroke="#0b1a13" strokeWidth={0.035} strokeLinecap="round" opacity=".55" fill="none">
+        {LEAF_VEINS.map((d, index) => <path key={index} d={d} />)}
+      </g>
+      <path d="M0 0L0 -0.86" stroke="#6fae86" strokeWidth={0.028} strokeLinecap="round" opacity=".38" fill="none" />
+    </g>
+  )
+}
+
 function Rose({ part, uid }: { part: RosePart; uid: string }) {
   const size = part.size
-  const rings: { count: number; scale: number; tilt: number; fill: string }[] = [
-    { count: 6, scale: 1, tilt: 0, fill: `url(#${uid}-petal-outer)` },
-    { count: 5, scale: 0.76, tilt: 26, fill: `url(#${uid}-petal-mid)` },
-    { count: 4, scale: 0.54, tilt: 12, fill: `url(#${uid}-petal-inner)` },
-    { count: 3, scale: 0.34, tilt: 34, fill: `url(#${uid}-petal-heart)` },
+  // Outer petals alternate between two ramps and carry an edge light; inner rings tighten and darken. The
+  // jitter is index arithmetic, not RNG, so a re-render draws the identical flower.
+  const rings: { count: number; scale: number; tilt: number; fills: string[]; rim: boolean }[] = [
+    { count: 6, scale: 1, tilt: 0, fills: [`url(#${uid}-petal-outer)`, `url(#${uid}-petal-outer-alt)`], rim: true },
+    { count: 5, scale: 0.78, tilt: 26, fills: [`url(#${uid}-petal-mid)`, `url(#${uid}-petal-outer)`], rim: false },
+    { count: 4, scale: 0.55, tilt: 12, fills: [`url(#${uid}-petal-inner)`, `url(#${uid}-petal-mid)`], rim: false },
+    { count: 3, scale: 0.33, tilt: 34, fills: [`url(#${uid}-petal-heart)`, `url(#${uid}-petal-inner)`], rim: false },
   ]
   return (
     <g className="thorn-rose" transform={`rotate(${part.angle})`}>
       <g className={`thorn-rose-body ${part.kind === 'small' ? '' : 'sway'}`}>
-        {/* Two leaves under the bloom give the rose a place to sit instead of floating on the cane. */}
-        <path d={LEAF} transform={`translate(-2 ${size * 0.16}) rotate(-152) scale(${size * 0.6})`} fill={`url(#${uid}-leaf-dark)`} />
-        <path d={LEAF} transform={`translate(3 ${size * 0.18}) rotate(-28) scale(${size * 0.55})`} fill={`url(#${uid}-leaf-mid)`} />
+        {/* Two veined leaves under the bloom give the rose a place to sit instead of floating on the cane. */}
+        <RoseLeaf uid={uid} x={-2} y={size * 0.16} angle={-152} size={size * 0.62} shade="dark" />
+        <RoseLeaf uid={uid} x={3} y={size * 0.18} angle={-28} size={size * 0.56} shade="mid" />
         {rings.map((ring, ringIndex) => (
           <g key={ringIndex} className={`thorn-petal-ring ring-${ringIndex}`}>
             {Array.from({ length: ring.count }).map((_, petalIndex) => {
               const angle = (360 / ring.count) * petalIndex + ring.tilt + (part.kind === 'bud' ? 8 : 0)
               const length = size * ring.scale * (part.kind === 'bud' ? 0.82 : 1)
               return (
-                <path
-                  key={petalIndex}
-                  d={PETAL}
-                  fill={ring.fill}
-                  stroke="rgba(61,6,16,.55)"
-                  strokeWidth={size * 0.012}
-                  transform={`rotate(${angle}) scale(${length * 0.52} ${length}) translate(0 ${-size * 0.02})`}
-                />
+                <g key={petalIndex} transform={`rotate(${angle + (petalIndex % 2 ? 3 : -3)}) scale(${length * 0.52} ${length * (petalIndex % 3 === 0 ? 1.04 : 1)}) translate(0 ${-size * 0.02})`}>
+                  <path d={PETAL} fill={ring.fills[petalIndex % ring.fills.length]} stroke="rgba(40,4,10,.6)" strokeWidth={size * 0.011} />
+                  {ring.rim && <path d={PETAL} fill={`url(#${uid}-petal-rim)`} opacity=".7" />}
+                </g>
               )
             })}
           </g>
         ))}
-        {/* Velvet sheen and the shadow that makes the centre read as recessed. */}
-        <ellipse cx={-size * 0.1} cy={-size * 0.16} rx={size * 0.26} ry={size * 0.16} fill={`url(#${uid}-sheen)`} opacity=".5" />
-        <circle r={size * 0.11} fill={`url(#${uid}-heart-shadow)`} />
-        <circle cx={-size * 0.03} cy={-size * 0.04} r={size * 0.035} fill="#e6c77a" opacity=".45" />
+        {/* Velvet sheen, then a spiral heart: a real rose furls in on itself instead of ending in a dot. */}
+        <ellipse cx={-size * 0.09} cy={-size * 0.18} rx={size * 0.24} ry={size * 0.14} fill={`url(#${uid}-sheen)`} opacity=".45" />
+        <path
+          d={`M0 ${-size * 0.02}C${size * 0.1} ${-size * 0.06} ${size * 0.11} ${size * 0.08} ${size * 0.01} ${size * 0.09}C${-size * 0.11} ${size * 0.1} ${-size * 0.13} ${-size * 0.08} ${-size * 0.01} ${-size * 0.14}C${size * 0.09} ${-size * 0.19} ${size * 0.16} ${-size * 0.06} ${size * 0.12} ${size * 0.04}`}
+          fill="none"
+          stroke={`url(#${uid}-heart-shadow)`}
+          strokeWidth={size * 0.05}
+          strokeLinecap="round"
+          opacity=".92"
+        />
+        <circle r={size * 0.055} fill="#2a040b" opacity=".85" />
+        <circle cx={-size * 0.015} cy={-size * 0.03} r={size * 0.02} fill={ `url(#${uid}-gold)` } opacity=".5" />
       </g>
     </g>
   )
@@ -138,6 +163,21 @@ export function ThornFrame({ id, width, height, variant, radius, signal, alertin
         <radialGradient id={`${uid}-petal-heart`} cx="50%" cy="60%" r="62%">
           <stop offset="0%" stopColor="#2a040b" />
           <stop offset="100%" stopColor="#7a101f" />
+        </radialGradient>
+        {/* Edge light and a warmer outer variant: alternating these around a ring gives a rose its bloom. */}
+        <radialGradient id={`${uid}-petal-outer-alt`} cx="46%" cy="82%" r="80%">
+          <stop offset="0%" stopColor="var(--thorn-rose-shadow, #3d0610)" />
+          <stop offset="58%" stopColor="var(--thorn-rose-mid, #b3162f)" />
+          <stop offset="100%" stopColor="var(--thorn-rose-lit, #d9304a)" />
+        </radialGradient>
+        <linearGradient id={`${uid}-petal-rim`} x1="0" y1="1" x2="0.2" y2="0">
+          <stop offset="0%" stopColor="var(--thorn-rose-lit, #d9304a)" stopOpacity="0" />
+          <stop offset="72%" stopColor="#f0a6b4" stopOpacity=".55" />
+          <stop offset="100%" stopColor="#ffe2e8" stopOpacity=".8" />
+        </linearGradient>
+        <radialGradient id={`${uid}-vignette`} cx="50%" cy="46%" r="72%">
+          <stop offset="52%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="100%" stopColor="#04100b" stopOpacity=".55" />
         </radialGradient>
         <radialGradient id={`${uid}-sheen`} cx="50%" cy="50%" r="50%">
           <stop offset="0%" stopColor="#f4d0d9" stopOpacity=".55" />
@@ -235,9 +275,8 @@ export function ThornFrame({ id, width, height, variant, radius, signal, alertin
         style={{ ['--drift-x' as string]: `${spec.drift.x}px`, ['--drift-dur' as string]: `${spec.drift.duration}s`, ['--drift-delay' as string]: `${spec.drift.delay}s` }}
       />
 
-      {false && <g className="thorn-burst">
-        {null}
-      </g>}
+      {/* Depth only: the artwork frames itself, and any rule drawn inside it reads as a box on the art. */}
+      <rect x="0" y="0" width={width} height={height} rx={radius} fill={`url(#${uid}-vignette)`} pointerEvents="none" />
     </svg>
 
     {/* Blooms live in their own composited layers so the sway never repaints the canes. */}
