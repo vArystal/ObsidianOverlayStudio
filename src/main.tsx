@@ -12,6 +12,7 @@ import './premium.css'
 import './styles/studio.css'
 // Loaded last: the botanical theme overrides panel surfaces, so it must win the cascade.
 import './styles/thorn-rose.css'
+import './styles/monochrome.css'
 import './styles/integrations-receipts.css'
 
 const router = createHashRouter([

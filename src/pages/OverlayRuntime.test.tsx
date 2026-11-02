@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { createElement, createEmptyOverlay } from '../lib/elements'
 import { encodeOverlaySnapshot } from '../lib/storage'
 import { OverlayRuntime } from './OverlayRuntime'
+import { getTheme } from '../lib/themes'
 
 afterEach(() => {
   cleanup()
@@ -69,7 +70,8 @@ describe('runtime resilience for legacy data', () => {
     expect(screen.getByText('Legacy title')).toBeTruthy()
     expect(container.querySelector('.runtime-stage')).not.toBeNull()
     const main = container.querySelector('.overlay-runtime') as HTMLElement
-    expect(main.style.getPropertyValue('--theme-accent')).toBe('#d8ad55')
+    // Assert against the theme data, not a literal: the palette was rebuilt as monochrome.
+    expect(main.style.getPropertyValue('--theme-accent')).toBe(getTheme('royal-persian').accent)
   })
 
   it('gives idle glow and sparkle their own compositor layer instead of animating the widget', () => {

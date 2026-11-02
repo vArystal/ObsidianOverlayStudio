@@ -1,0 +1,113 @@
+/* --------------------------------------------------------------- Monochrome chrome
+   The editor is a tool, not a poster: one dark graphite surface, white ink, hairlines. No hue in the
+   chrome at all, so the overlay on the canvas is the only colour on screen. Hierarchy comes from
+   brightness and weight, not from tint. Loaded last so it settles the older premium rules. */
+
+:root {
+  --mono-ink: #ffffff;
+  --mono-ink-soft: #d8d8da;
+  --mono-ink-dim: #bfbfc4;
+  --muted: #bcbcc2;
+  --mono-surface: #17171a;
+  --mono-surface-raised: #1d1d21;
+  --mono-surface-sunk: #101012;
+  --mono-line: #2c2c31;
+  --mono-line-strong: #3a3a40;
+}
+
+.app-shell,
+.library-page,
+.editor-page,
+.integrations-page,
+.settings-page {
+  background: radial-gradient(120% 90% at 50% -10%, #1a1a1d 0%, #141416 55%, #111113 100%);
+  color: var(--mono-ink);
+}
+
+/* Display type carries the brand now that colour does not: tight, heavy, confident. */
+.library-hero h1,
+.library-hero h2,
+.page-title {
+  letter-spacing: -.025em;
+  font-weight: 650;
+}
+
+/* One button family: solid white for the primary action, hairline for everything secondary. */
+.primary-button,
+.button-primary {
+  background: var(--mono-ink);
+  border: 1px solid var(--mono-ink);
+  color: #121214;
+  box-shadow: none;
+}
+.primary-button:hover,
+.button-primary:hover { background: #e8e8e8; border-color: #e8e8e8; }
+.primary-button:focus-visible,
+.button-primary:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; box-shadow: none; }
+
+.ghost-button,
+.secondary-button,
+.icon-button {
+  background: transparent;
+  border: 1px solid var(--mono-line-strong);
+  color: var(--mono-ink-soft);
+}
+.ghost-button:hover,
+.secondary-button:hover,
+.icon-button:hover { border-color: var(--mono-ink); color: var(--mono-ink); background: rgba(255, 255, 255, .04); }
+
+/* Panels: flat graphite cards with a hairline. No glow, no gold, no blur filters. */
+.panel,
+.card,
+.section-card,
+.properties-panel,
+.sidebar,
+.topbar {
+  background: var(--mono-surface);
+  border-color: var(--mono-line);
+  box-shadow: none;
+}
+.card:hover, .section-card:hover { border-color: var(--mono-line-strong); }
+
+/* Inputs read as instruments: recessed, monospace numerals, white caret. */
+input, select, textarea {
+  background: var(--mono-surface-sunk);
+  border: 1px solid var(--mono-line);
+  color: var(--mono-ink);
+  border-radius: 7px;
+  caret-color: #fff;
+}
+input:hover, select:hover, textarea:hover { border-color: var(--mono-line-strong); }
+
+/* Eyebrows and section labels: small, wide, quiet. */
+.section-title,
+.panel-title,
+.eyebrow,
+.field-label {
+  text-transform: uppercase;
+  letter-spacing: .16em;
+  font-size: 10px;
+  color: var(--mono-ink-dim);
+}
+
+/* Badges keep meaning without hue: filled white for positive, outlined for neutral, solid for problems. */
+.badge, .chip, .status-pill {
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--mono-line-strong);
+  color: var(--mono-ink-soft);
+}
+
+/* Small copy on the empty states was still the dimmest thing on the page. */
+.empty-library,
+.empty-library p,
+.empty-state,
+.empty-state p,
+.requirement-card p { color: #c6c6cb; }
+
+/* The connect action is the page's primary move, not a brand billboard: white, ink text. */
+.kick-connect-button { color: #121214 !important; font-weight: 600; }
+.kick-connect-button:hover { background: #e6e6e6 !important; }
+.kick-logo { background: #1d1d21; border: 1px solid var(--mono-line-strong); }

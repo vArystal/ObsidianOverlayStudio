@@ -32,7 +32,7 @@ describe('decorative frame toggle', () => {
     const base = { ...createDecoration('none'), inheritTheme: false }
     const enabled = toggleDecoration(base, true)
     expect(enabled.inheritTheme).toBe(false)
-    expect(enabled.borderColor).toBe('#d8ad55')
+    expect(enabled.borderColor).toBe('#e8e8e6')
     expect(enabled.enabled).toBe(true)
   })
 
@@ -55,10 +55,10 @@ describe('decorative frame toggle', () => {
 
   it('still resolves inherited gold colours once the frame is on', () => {
     const enabled = toggleDecoration(createElement('text').decoration, true)
-    const theme = { id: 'royal-persian' as const, name: 'Royal Persian', nameFa: 'پارسی سلطنتی', primary: '#6d28a8', secondary: '#2a0f36', accent: '#d8ad55', accentSoft: '#f1d89a', surface: '#170b20', surfaceAlt: '#2b1238', text: '#fff8e7', muted: '#c8b9cf', glow: '#a855f7', pattern: 'girih' as const }
+    const theme = { id: 'royal-persian' as const, name: 'Royal Persian', nameFa: 'پارسی سلطنتی', primary: '#6d28a8', secondary: '#2a0f36', accent: '#e8e8e6', accentSoft: '#ffffff', surface: '#121214', surfaceAlt: '#2b1238', text: '#fff8e7', muted: '#c8b9cf', glow: '#a855f7', pattern: 'girih' as const }
     const resolved = resolveDecoration(enabled, theme)
-    expect(resolved.borderColor).toBe('#d8ad55')
-    expect(resolved.innerBorderColor).toBe('#f1d89a')
+    expect(resolved.borderColor).toBe('#e8e8e6')
+    expect(resolved.innerBorderColor).toBe('#ffffff')
     expect(resolved.backgroundOpacity).toBeGreaterThan(0)
   })
 })

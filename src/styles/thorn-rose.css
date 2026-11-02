@@ -2,8 +2,8 @@
    Palette first: everything below reads these variables, so a colour change is one edit. The frame art
    itself is vector, generated in src/lib/thornGeometry.ts and drawn by ThornFrame. */
 .theme-thorn-rose {
-  --thorn-bg-1: #0b1210;
-  --thorn-bg-2: #101a16;
+  --thorn-bg-1: #151515;
+  --thorn-bg-2: #151515;
   --thorn-rose-1: #3d0610;
   --thorn-rose-2: #8e1226;
   --thorn-rose-3: #b3162f;
@@ -11,7 +11,7 @@
   --thorn-leaf-1: #1f4a34;
   --thorn-leaf-2: #2f6b49;
   --thorn-leaf-3: #5f9a6e;
-  --thorn-thorn: #2a2417;
+  --thorn-thorn: #222222;
   --thorn-thorn-edge: #7a6a3a;
   --thorn-gold: #b8924a;
   --thorn-gold-lit: #e6c77a;
@@ -34,15 +34,15 @@
 .theme-thorn-rose .decorated-widget.thorn-framed {
   background-image:
     radial-gradient(120% 90% at 24% 8%, rgba(95, 154, 110, .10), transparent 58%),
-    radial-gradient(90% 80% at 82% 108%, rgba(0, 0, 0, .55), transparent 62%),
-    linear-gradient(168deg, var(--thorn-bg-2), var(--thorn-bg-1) 62%, #070d0b),
+    radial-gradient(90% 80% at 82% 108%, rgba(16, 16, 18, .55), transparent 62%),
+    linear-gradient(168deg, var(--thorn-bg-2), var(--thorn-bg-1) 62%, #151515),
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.05'/%3E%3C/svg%3E");
   background-color: transparent;
   border: 1px solid rgba(184, 146, 74, .34);
   box-shadow:
     inset 0 1px 0 rgba(230, 199, 122, .10),
-    inset 0 0 34px rgba(0, 0, 0, .55),
-    0 18px 46px rgba(0, 0, 0, .42);
+    inset 0 0 34px rgba(16, 16, 18, .55),
+    0 18px 46px rgba(16, 16, 18, .42);
 }
 .theme-thorn-rose .decorated-widget.thorn-framed::after {
   content: '';
@@ -54,7 +54,7 @@
 /* Open frames keep their interior free for the OBS video source. */
 .theme-thorn-rose .decorated-widget.thorn-framed:has(.thorn-layer.thorn-open) {
   background-image: none;
-  box-shadow: inset 0 0 26px rgba(0, 0, 0, .35);
+  box-shadow: inset 0 0 26px rgba(16, 16, 18, .35);
 }
 
 /* Idle motion: canes sway less than roses, leaves sit between the two. Transform and opacity only. */
@@ -118,28 +118,28 @@
   font-family: Georgia, 'Times New Roman', serif;
   letter-spacing: .02em;
   color: var(--thorn-ivory);
-  text-shadow: 0 0 12px rgba(230, 199, 122, .35), 0 2px 0 rgba(0, 0, 0, .5);
+  text-shadow: 0 0 12px rgba(230, 199, 122, .35), 0 2px 0 rgba(16, 16, 18, .5);
 }
 
 /* Chat sits on the darkest surface of the set: a wash behind the text keeps names readable. */
 .theme-thorn-rose .chat-widget {
-  background: linear-gradient(180deg, rgba(6, 12, 10, .62), rgba(11, 18, 16, .34));
+  background: linear-gradient(180deg, rgba(16, 16, 18, .62), rgba(11, 18, 16, .34));
   border-radius: 10px;
   padding: 10px 12px;
 }
 .theme-thorn-rose .chat-message {
   border-inline-start: 2px solid rgba(184, 146, 74, .55);
-  background: linear-gradient(90deg, rgba(16, 26, 22, .78), rgba(16, 26, 22, .12));
+  background: linear-gradient(90deg, rgba(21, 21, 21, .78), rgba(21, 21, 21, .12));
 }
 .theme-thorn-rose .chat-message strong { color: var(--thorn-ivory); }
 
 /* Alert plaque: gold medallion, ivory title, follower name larger. */
 .theme-thorn-rose .alert-widget {
-  background: linear-gradient(168deg, rgba(16, 26, 22, .96), rgba(7, 13, 11, .94));
+  background: linear-gradient(168deg, rgba(21, 21, 21, .96), rgba(16, 16, 18, .94));
   border: 1px solid rgba(184, 146, 74, .4);
   border-radius: 14px;
   padding: 14px 20px 16px;
-  box-shadow: inset 0 0 30px rgba(0, 0, 0, .55), 0 16px 40px rgba(0, 0, 0, .45);
+  box-shadow: inset 0 0 30px rgba(16, 16, 18, .55), 0 16px 40px rgba(16, 16, 18, .45);
 }
 .theme-thorn-rose .alert-widget .alert-art { color: var(--thorn-gold-lit); }
 .theme-thorn-rose .alert-widget strong { color: var(--thorn-ivory); font-size: 1.06em; letter-spacing: .04em; }
@@ -172,7 +172,7 @@
   color: #2a1d08;
   background:
     radial-gradient(circle at 34% 28%, #f6efdc 0%, #e6c77a 34%, #b8924a 62%, #5c4520 100%);
-  box-shadow: 0 0 0 1px rgba(92, 69, 32, .9), 0 0 16px rgba(230, 199, 122, .35), inset 0 -2px 4px rgba(0, 0, 0, .45);
+  box-shadow: 0 0 0 1px rgba(92, 69, 32, .9), 0 0 16px rgba(230, 199, 122, .35), inset 0 -2px 4px rgba(16, 16, 18, .45);
 }
 .theme-thorn-rose .alert-widget .alert-art svg { width: 17px; height: 17px; }
 .theme-thorn-rose .alert-widget { gap: 2px; }
@@ -209,14 +209,14 @@
 .static-motion .thorn-bloom-layer, .static-motion .thorn-burst-layer { animation: none !important; }
 
 /* Inspector: three radio groups, styled like the rest of the panel. */
-.thorn-tuning { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid rgba(184, 146, 74, .22); border-radius: 10px; background: linear-gradient(160deg, rgba(16, 26, 22, .85), rgba(11, 18, 16, .7)); }
+.thorn-tuning { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid rgba(184, 146, 74, .22); border-radius: 10px; background: linear-gradient(160deg, rgba(21, 21, 21, .85), rgba(11, 18, 16, .7)); }
 .thorn-tuning-row { display: flex; flex-direction: column; gap: 6px; }
 .thorn-tuning-head { display: flex; align-items: center; gap: 6px; color: #e6c77a; }
 .thorn-tuning-head svg { width: 13px; height: 13px; }
 .thorn-tuning-head strong { font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: #f6efdc; }
-.thorn-tuning p { margin: 0; font-size: 10px; line-height: 1.45; color: #a9b9ad; }
-.thorn-tuning .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 7px; background: rgba(6, 11, 9, .8); border: 1px solid rgba(184, 146, 74, .18); }
-.thorn-tuning .segmented button { padding: 5px 4px; border: 0; border-radius: 5px; background: transparent; color: #b9c7bd; font-size: 10.5px; text-transform: capitalize; cursor: pointer; }
+.thorn-tuning p { margin: 0; font-size: 10px; line-height: 1.45; color: #b0b0b0; }
+.thorn-tuning .segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; border-radius: 7px; background: rgba(16, 16, 18, .8); border: 1px solid rgba(184, 146, 74, .18); }
+.thorn-tuning .segmented button { padding: 5px 4px; border: 0; border-radius: 5px; background: transparent; color: #bfbfbf; font-size: 10.5px; text-transform: capitalize; cursor: pointer; }
 .thorn-tuning .segmented button:hover { background: rgba(184, 146, 74, .12); color: #f6efdc; }
 .thorn-tuning .segmented button.active { background: linear-gradient(160deg, rgba(184, 146, 74, .3), rgba(184, 146, 74, .14)); color: #f6efdc; box-shadow: inset 0 0 0 1px rgba(230, 199, 122, .4); }
 .thorn-tuning .segmented button:focus-visible { outline: 2px solid #e6c77a; outline-offset: 1px; }

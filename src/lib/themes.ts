@@ -3,29 +3,24 @@ import type { DecorationPresetId, ElementDecoration, OverlayTheme, ThemeId, Thor
 export const THEMES: Record<ThemeId, OverlayTheme> = {
   'royal-persian': {
     id: 'royal-persian', name: 'Royal Persian', nameFa: 'پارسی سلطنتی',
-    primary: '#6d28a8', secondary: '#2a0f36', accent: '#d8ad55', accentSoft: '#f1d89a',
-    surface: '#170b20', surfaceAlt: '#2b1238', text: '#fff8e7', muted: '#c8b9cf', glow: '#a855f7', pattern: 'girih',
+    primary: '#f4f4f2', secondary: '#0e0e10', accent: '#ffffff', accentSoft: '#fafafa',
+    surface: '#101012', surfaceAlt: '#17171a', text: '#f7f7f5', muted: '#a6a6ac', glow: '#ffffff', pattern: 'girih',
   },
   'persian-turquoise': {
     id: 'persian-turquoise', name: 'Persian Turquoise', nameFa: 'فیروزه پارسی',
-    primary: '#087f8c', secondary: '#071d2d', accent: '#d7ad55', accentSoft: '#f4dda0',
-    surface: '#071820', surfaceAlt: '#0c3540', text: '#f8f4e8', muted: '#a8c8cb', glow: '#20c7c9', pattern: 'eslimi',
+    primary: '#e6e6e4', secondary: '#0c0c0e', accent: '#f2f2f0', accentSoft: '#ffffff',
+    surface: '#0d0d0f', surfaceAlt: '#141417', text: '#f2f2f0', muted: '#9c9ca2', glow: '#e8e8e6', pattern: 'eslimi',
   },
   'imperial-night': {
     id: 'imperial-night', name: 'Imperial Night', nameFa: 'شب شاهانه',
-    primary: '#4b183f', secondary: '#160d19', accent: '#b99a62', accentSoft: '#e8d8b5',
-    surface: '#120b14', surfaceAlt: '#281429', text: '#f4ecdd', muted: '#b8aab6', glow: '#7f476f', pattern: 'diamonds',
+    primary: '#d8d8d6', secondary: '#0a0a0c', accent: '#ececea', accentSoft: '#ffffff',
+    surface: '#131315', surfaceAlt: '#1b1b1e', text: '#ededeb', muted: '#a0a0a6', glow: '#d8d8d6', pattern: 'diamonds',
   },
   'minimal-esports': {
     id: 'minimal-esports', name: 'Minimal Esports', nameFa: 'اسپرت مینیمال',
-    primary: '#7c3aed', secondary: '#111119', accent: '#a78bfa', accentSoft: '#ddd6fe',
-    surface: '#0e0e14', surfaceAlt: '#1a1a24', text: '#f8fafc', muted: '#9ca3af', glow: '#7c3aed', pattern: 'none',
+    primary: '#ffffff', secondary: '#111113', accent: '#ffffff', accentSoft: '#ffffff',
+    surface: '#0f0f11', surfaceAlt: '#19191c', text: '#ffffff', muted: '#9a9aa0', glow: '#ffffff', pattern: 'none',
   },
-  /**
-   * Thorn & Rose: a dark botanical frame. The palette is deliberately restrained (forest base, ivory
-   * type, one emerald, one muted gold, one rose) because the vine artwork already carries the detail;
-   * pattern stays 'none' so the inside of a widget never competes with legible content.
-   */
   'thorn-rose': {
     id: 'thorn-rose', name: 'Thorn & Rose', nameFa: 'خار و گل سرخ',
     primary: '#1b3a2c', secondary: '#08110c', accent: '#c9a24a', accentSoft: '#f4efe4',
@@ -89,15 +84,15 @@ const baseDecoration: ElementDecoration = {
   inheritTheme: true,
   borderVisible: true,
   borderWidth: 3,
-  borderColor: '#d8ad55',
+  borderColor: '#e8e8e6',
   borderOpacity: 0.92,
   radius: 18,
   innerBorder: true,
-  innerBorderColor: '#f1d89a',
+  innerBorderColor: '#ffffff',
   innerBorderOpacity: 0.3,
   cornerOrnaments: true,
   separator: false,
-  backgroundColor: '#170b20',
+  backgroundColor: '#121214',
   backgroundOpacity: 0.82,
   gradient: true,
   pattern: 'girih',

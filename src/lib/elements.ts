@@ -47,35 +47,35 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
   const item = base(type, index)
   switch (type) {
     case 'text':
-      return { ...item, width: 600, height: 126, props: { text: 'به استریم من خوش آمدید', fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 52, fontWeight: 700, color: '#fff8e7', textAlign: 'right', lineHeight: 1.3, direction: 'rtl' } }
+      return { ...item, width: 600, height: 126, props: { text: 'به استریم من خوش آمدید', fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 52, fontWeight: 700, color: '#f6f6f4', textAlign: 'right', lineHeight: 1.3, direction: 'rtl' } }
     case 'image':
       return { ...item, width: 360, height: 220, maintainAspectRatio: true, props: { src: '', alt: 'Uploaded overlay asset', fit: 'contain' } }
     case 'webcam':
-      return { ...item, name: 'Persian webcam frame', width: 480, height: 270, includeInOutput: false, props: { shape: 'rounded', borderWidth: 0, borderColor: '#d8ad55', borderRadius: 24, fillColor: '#170b20', fillOpacity: 0.22, label: 'وب‌کم — راهنمای چیدمان' } }
+      return { ...item, name: 'Persian webcam frame', width: 480, height: 270, includeInOutput: false, props: { shape: 'rounded', borderWidth: 0, borderColor: '#e8e8e6', borderRadius: 24, fillColor: '#121214', fillOpacity: 0.22, label: 'وب‌کم — راهنمای چیدمان' } }
     case 'capture':
-      return { ...item, name: 'Persian game frame', x: 150, y: 120, width: 1280, height: 720, includeInOutput: false, maintainAspectRatio: true, props: { borderColor: '#d8ad55', borderWidth: 0, fillColor: '#0b0610', fillOpacity: 0.34, label: 'GAME / DISPLAY CAPTURE — ADD IN OBS' } }
+      return { ...item, name: 'Persian game frame', x: 150, y: 120, width: 1280, height: 720, includeInOutput: false, maintainAspectRatio: true, props: { borderColor: '#e8e8e6', borderWidth: 0, fillColor: '#101012', fillOpacity: 0.34, label: 'GAME / DISPLAY CAPTURE — ADD IN OBS' } }
     case 'chat':
-      return { ...item, width: 460, height: 560, props: { fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 20, textColor: '#fff8e7', backgroundColor: '#170b20', backgroundOpacity: 0.72, messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', borderRadius: 18, direction: 'auto' }, animation: { ...createAnimation('ornamental'), idle: 'none' } }
+      return { ...item, width: 460, height: 560, props: { fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 20, textColor: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', borderRadius: 18, direction: 'auto' }, animation: { ...createAnimation('ornamental'), idle: 'none' } }
     case 'alert':
-      return { ...item, x: 700, y: 100, width: 560, height: 280, props: { title: 'رویداد جدید', message: 'از همراهی شما سپاسگزاریم', textColor: '#fff8e7', accentColor: '#d8ad55', backgroundColor: '#170b20', imageSrc: '', soundName: 'No sound selected', soundEnabled: false, provider: 'kick', eventTypes: 'channel.followed,channel.subscription.new,channel.subscription.gifts,kicks.gifted' }, animation: { ...createAnimation('pop'), exit: 'scale', idle: 'sparkle', holdDuration: 5500 } }
+      return { ...item, x: 700, y: 100, width: 560, height: 280, props: { title: 'رویداد جدید', message: 'از همراهی شما سپاسگزاریم', textColor: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', imageSrc: '', soundName: 'No sound selected', soundEnabled: false, provider: 'kick', eventTypes: 'channel.followed,channel.subscription.new,channel.subscription.gifts,kicks.gifted' }, animation: { ...createAnimation('pop'), exit: 'scale', idle: 'sparkle', holdDuration: 5500 } }
     case 'goal':
-      return { ...item, width: 580, height: 132, props: { title: 'هدف حمایت', target: 1000, current: 0, currency: '€', trackColor: '#2b1238', fillColor: '#d8ad55', textColor: '#fff8e7', dataSource: 'preview', borderRadius: 12, includePreviewOutput: false } }
+      return { ...item, width: 580, height: 132, props: { title: 'هدف حمایت', target: 1000, current: 0, currency: '€', trackColor: '#232326', fillColor: '#e8e8e6', textColor: '#f6f6f4', dataSource: 'preview', borderRadius: 12, includePreviewOutput: false } }
     case 'shape':
-      return { ...item, width: 420, height: 240, props: { shape: 'rectangle', fillColor: '#6d28a8', fillOpacity: 0.16, borderColor: '#d8ad55', borderWidth: 2, borderRadius: 24 } }
+      return { ...item, width: 420, height: 240, props: { shape: 'rectangle', fillColor: '#6d28a8', fillOpacity: 0.16, borderColor: '#e8e8e6', borderWidth: 2, borderRadius: 24 } }
     case 'frame':
       return { ...item, width: 720, height: 420, decoration: createDecoration('ornamental-frame'), props: { label: 'Decorative frame' }, animation: { ...createAnimation('ornamental'), idle: 'shimmer', duration: 900 } }
     case 'counter':
-      return { ...item, width: 320, height: 138, props: { label: 'پیروزی‌ها', value: 12, color: '#fff8e7', backgroundColor: '#170b20', accentColor: '#d8ad55' }, animation: { ...createAnimation('pop'), idle: 'glow' } }
+      return { ...item, width: 320, height: 138, props: { label: 'پیروزی‌ها', value: 12, color: '#f6f6f4', backgroundColor: '#121214', accentColor: '#e8e8e6' }, animation: { ...createAnimation('pop'), idle: 'glow' } }
     case 'countdown':
-      return { ...item, width: 390, height: 145, props: { label: 'شروع استریم تا', minutes: 10, color: '#fff8e7', backgroundColor: '#170b20', accentColor: '#d8ad55' } }
+      return { ...item, width: 390, height: 145, props: { label: 'شروع استریم تا', minutes: 10, color: '#f6f6f4', backgroundColor: '#121214', accentColor: '#e8e8e6' } }
     case 'supporter':
-      return { ...item, width: 430, height: 108, props: { label: 'آخرین حامی', value: 'Donation provider not connected', color: '#fff8e7', accentColor: '#d8ad55', backgroundColor: '#170b20', dataSource: 'none' } }
+      return { ...item, width: 430, height: 108, props: { label: 'آخرین حامی', value: 'Donation provider not connected', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', dataSource: 'none' } }
     case 'viewerCount':
-      return { ...item, width: 300, height: 126, props: { label: 'بیننده زنده', color: '#fff8e7', accentColor: '#d8ad55', backgroundColor: '#170b20', offlineText: 'آفلاین' }, animation: { ...createAnimation('fade'), idle: 'glow' } }
+      return { ...item, width: 300, height: 126, props: { label: 'بیننده زنده', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', offlineText: 'آفلاین' }, animation: { ...createAnimation('fade'), idle: 'glow' } }
     case 'sessionFollowers':
-      return { ...item, width: 330, height: 126, props: { label: 'دنبال‌کننده این نشست', color: '#fff8e7', accentColor: '#d8ad55', backgroundColor: '#170b20', startValue: 0 }, animation: createAnimation('pop') }
+      return { ...item, width: 330, height: 126, props: { label: 'دنبال‌کننده این نشست', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', startValue: 0 }, animation: createAnimation('pop') }
     case 'latestFollower':
-      return { ...item, width: 430, height: 108, props: { label: 'آخرین دنبال‌کننده', emptyText: 'منتظر رویداد واقعی Kick', color: '#fff8e7', accentColor: '#d8ad55', backgroundColor: '#170b20' }, animation: { ...createAnimation('slide'), idle: 'shimmer' } }
+      return { ...item, width: 430, height: 108, props: { label: 'آخرین دنبال‌کننده', emptyText: 'منتظر رویداد واقعی Kick', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214' }, animation: { ...createAnimation('slide'), idle: 'shimmer' } }
   }
 }
 

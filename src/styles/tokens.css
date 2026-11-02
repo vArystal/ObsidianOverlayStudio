@@ -7,52 +7,52 @@
   color-scheme: dark;
 
   /* Aubergine ground */
-  --ink-950: #07040C;
-  --ink-900: #0A0510;
-  --ink-850: #100817;
-  --ink-800: #150C20;
-  --ink-750: #1A0F26;
-  --ink-700: #20132E;
-  --ink-600: #2A1A3B;
-  --ink-500: #372447;
+  --ink-950: #101012;
+  --ink-900: #151515;
+  --ink-850: #151515;
+  --ink-800: #151515;
+  --ink-750: #1a1a1a;
+  --ink-700: #202020;
+  --ink-600: #2b2b2b;
+  --ink-500: #363636;
 
   /* Royal purple */
-  --royal-700: #4A2070;
-  --royal-600: #5B2A86;
-  --royal-500: #7B3FB0;
-  --royal-400: #A472D8;
-  --royal-300: #C6A5E8;
+  --royal-700: #6a6a6a;
+  --royal-600: #7a7a7a;
+  --royal-500: #9a9a9a;
+  --royal-400: #a5a5a5;
+  --royal-300: #c6c6c6;
 
   /* Gold */
-  --gold-700: #8A6A2F;
-  --gold-600: #B98F3E;
-  --gold-500: #D8AD55;
-  --gold-400: #E8C87F;
-  --gold-300: #F0D9A6;
-  --gold-200: #F7E9C9;
+  --gold-700: #acacac;
+  --gold-600: #a9a9a9;
+  --gold-500: #ebebeb;
+  --gold-400: #ebebeb;
+  --gold-300: #ebebeb;
+  --gold-200: #ebebeb;
 
   /* Warm ivory text */
-  --ivory-100: #FBF3E4;
-  --ivory-200: #F1E5D2;
-  --ivory-300: #D9C9B4;
-  --ivory-400: #B9A9C4;
+  --ivory-100: #f0f0f0;
+  --ivory-200: #ebebeb;
+  --ivory-300: #ebebeb;
+  --ivory-400: #b6b6b6;
 
   /* Semantic */
-  --ok-500: #4FB286;
-  --ok-200: #9FE0C1;
-  --warn-500: #E0A940;
-  --danger-500: #E0607A;
-  --danger-200: #F6A6B6;
-  --info-500: #7FA8E0;
+  --ok-500: #4fb286;
+  --ok-200: #9fe0c1;
+  --warn-500: #ebebeb;
+  --danger-500: #e0607a;
+  --danger-200: #f6a6b6;
+  --info-500: #b0b0b0;
 
   /* Surfaces and lines */
   --surface-1: var(--ink-900);
   --surface-2: var(--ink-850);
   --surface-3: var(--ink-800);
   --surface-4: var(--ink-750);
-  --hairline: rgba(216, 173, 85, .18);
-  --hairline-strong: rgba(216, 173, 85, .38);
-  --line-subtle: rgba(216, 173, 85, .10);
+  --hairline: rgba(235, 235, 235, .18);
+  --hairline-strong: rgba(235, 235, 235, .38);
+  --line-subtle: rgba(235, 235, 235, .10);
 
   /* Type */
   --font-ui: 'Vazirmatn', Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -73,9 +73,9 @@
   --space-1: 4px;  --space-2: 6px;  --space-3: 8px;  --space-4: 12px;
   --space-5: 16px; --space-6: 22px; --space-7: 30px; --space-8: 40px;
   --radius-sm: 7px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px;
-  --shadow-lift: 0 18px 42px rgba(4, 1, 9, .55), 0 2px 8px rgba(4, 1, 9, .4);
-  --shadow-inset: inset 0 1px 0 rgba(247, 233, 201, .07);
-  --glow-gold: 0 0 0 1px rgba(216, 173, 85, .22), 0 10px 34px rgba(216, 173, 85, .10);
+  --shadow-lift: 0 18px 42px rgba(16, 16, 18, .55), 0 2px 8px rgba(16, 16, 18, .4);
+  --shadow-inset: inset 0 1px 0 rgba(235, 235, 235, .07);
+  --glow-gold: 0 0 0 1px rgba(235, 235, 235, .22), 0 10px 34px rgba(235, 235, 235, .10);
 
   /* Motion */
   --dur-fast: 130ms;
@@ -95,13 +95,13 @@
   --panel: var(--ink-850);
   --panel-2: var(--ink-800);
   --panel-3: var(--ink-750);
-  --line: rgba(216, 173, 85, .16);
-  --line-soft: rgba(216, 173, 85, .09);
+  --line: rgba(235, 235, 235, .16);
+  --line-soft: rgba(235, 235, 235, .09);
   --muted: var(--ivory-400);
-  --muted-2: #8E7F9B;
+  --muted-2: #afafaf;
   --accent: var(--gold-500);
   --accent-bright: var(--gold-300);
-  --accent-soft: rgba(216, 173, 85, .12);
+  --accent-soft: rgba(235, 235, 235, .12);
   --cyan: var(--info-500);
   --danger: var(--danger-500);
   --success: var(--ok-500);
