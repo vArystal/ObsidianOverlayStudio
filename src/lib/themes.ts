@@ -3,26 +3,31 @@ import type { DecorationPresetId, ElementDecoration, OverlayTheme, ThemeId, Thor
 export const THEMES: Record<ThemeId, OverlayTheme> = {
   'royal-persian': {
     id: 'royal-persian', name: 'Royal Persian', nameFa: 'پارسی سلطنتی',
+    chrome: { radius: 4, borderWidth: 1, texture: 'none', innerBorder: false, cornerOrnaments: false, panelOpacity: 0.55, uppercaseLabels: true },
     primary: '#f4f4f2', secondary: '#0e0e10', accent: '#ffffff', accentSoft: '#fafafa',
-    surface: '#101012', surfaceAlt: '#17171a', text: '#f7f7f5', muted: '#a6a6ac', glow: '#ffffff', pattern: 'girih',
+    surface: '#0c0c0e', surfaceAlt: '#16161a', text: '#ffffff', muted: '#9a9aa0', glow: '#ffffff', pattern: 'none',
   },
   'persian-turquoise': {
     id: 'persian-turquoise', name: 'Persian Turquoise', nameFa: 'فیروزه پارسی',
+    chrome: { radius: 22, borderWidth: 3, texture: 'grain', innerBorder: true, cornerOrnaments: true, panelOpacity: 0.88, uppercaseLabels: false },
     primary: '#e6e6e4', secondary: '#0c0c0e', accent: '#f2f2f0', accentSoft: '#ffffff',
-    surface: '#0d0d0f', surfaceAlt: '#141417', text: '#f2f2f0', muted: '#9c9ca2', glow: '#e8e8e6', pattern: 'eslimi',
+    surface: '#26262b', surfaceAlt: '#303037', text: '#f4f4f2', muted: '#b4b4ba', glow: '#e8e8e6', pattern: 'eslimi',
   },
   'imperial-night': {
     id: 'imperial-night', name: 'Imperial Night', nameFa: 'شب شاهانه',
+    chrome: { radius: 0, borderWidth: 2, texture: 'grid', innerBorder: true, cornerOrnaments: true, panelOpacity: 0.72, uppercaseLabels: true },
     primary: '#d8d8d6', secondary: '#0a0a0c', accent: '#ececea', accentSoft: '#ffffff',
-    surface: '#131315', surfaceAlt: '#1b1b1e', text: '#ededeb', muted: '#a0a0a6', glow: '#d8d8d6', pattern: 'diamonds',
+    surface: '#131417', surfaceAlt: '#1d1e22', text: '#ffffff', muted: '#94949c', glow: '#d8d8d6', pattern: 'diamonds',
   },
   'minimal-esports': {
     id: 'minimal-esports', name: 'Minimal Esports', nameFa: 'اسپرت مینیمال',
+    chrome: { radius: 14, borderWidth: 1, texture: 'sheen', innerBorder: true, cornerOrnaments: false, panelOpacity: 0.42, uppercaseLabels: false },
     primary: '#ffffff', secondary: '#111113', accent: '#ffffff', accentSoft: '#ffffff',
-    surface: '#0f0f11', surfaceAlt: '#19191c', text: '#ffffff', muted: '#9a9aa0', glow: '#ffffff', pattern: 'none',
+    surface: '#1a1a1f', surfaceAlt: '#24242a', text: '#f7f7f5', muted: '#a8a8b0', glow: '#ffffff', pattern: 'none',
   },
   'thorn-rose': {
     id: 'thorn-rose', name: 'Thorn & Rose', nameFa: 'خار و گل سرخ',
+    chrome: { radius: 14, borderWidth: 0, texture: 'none', innerBorder: false, cornerOrnaments: false, panelOpacity: 0.82, uppercaseLabels: false },
     primary: '#1b3a2c', secondary: '#08110c', accent: '#c9a24a', accentSoft: '#f4efe4',
     surface: '#0b1410', surfaceAlt: '#12211a', text: '#f4efe4', muted: '#a9b9ad', glow: '#2f7a5f', pattern: 'none',
   },
@@ -156,6 +161,11 @@ export function resolveDecoration(decoration: ElementDecoration, theme: OverlayT
     borderColor: theme.accent,
     innerBorderColor: theme.accentSoft,
     backgroundColor: theme.surface,
+    radius: theme.chrome.radius,
+    borderWidth: theme.chrome.borderWidth,
+    innerBorder: theme.chrome.innerBorder,
+    cornerOrnaments: theme.chrome.cornerOrnaments,
+    backgroundOpacity: theme.chrome.panelOpacity,
     pattern: decoration.pattern === 'none' ? 'none' : theme.pattern,
   }
 }

@@ -40,6 +40,10 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
   if (children === null) return null
   const decoration = theme ? resolveDecoration(element.decoration, theme) : element.decoration
   if (!decoration?.enabled) return <>{children}</>
+  // Thorn & Rose swaps the geometric corner runners for its own botanical edge art, and the art IS the
+  // edge: a rectangle drawn on top of it read as a white box glued to the frame, so the border is zeroed.
+  const thorn = theme?.id === 'thorn-rose'
+  const texture = theme?.chrome.texture ?? 'none'
   const style = {
     '--frame-border': decoration.borderColor,
     '--frame-border-opacity': decoration.borderOpacity,
@@ -47,15 +51,13 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
     '--frame-inner-opacity': decoration.innerBorderOpacity,
     '--frame-bg': colorWithOpacity(decoration.backgroundColor, decoration.backgroundOpacity),
     '--frame-radius': `${decoration.radius}px`,
-    '--frame-width': `${decoration.borderVisible ? decoration.borderWidth : 0}px`,
+    '--frame-width': `${decoration.borderVisible && !thorn ? decoration.borderWidth : 0}px`,
     '--frame-padding': `${decoration.padding}px`,
     '--frame-glow': theme?.glow ?? decoration.borderColor,
   } as CSSProperties
-  // Thorn & Rose swaps the geometric corner runners for its own botanical edge art.
-  const thorn = theme?.id === 'thorn-rose'
   const live = useLiveData()
   return (
-    <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} ${thorn ? 'thorn-framed' : ''}`} style={style}>
+    <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} ${thorn ? 'thorn-framed' : ''} texture-${thorn ? 'none' : texture}`} style={style}>
       {/* The botanical frame is vector artwork sized to this element, so it follows the shape rather than
           stretching a pattern. A webcam or capture frame keeps its interior open: the video comes from OBS. */}
       {thorn && (

@@ -27,7 +27,7 @@ describe('premium Persian model', () => {
     expect(thorn.accent).toBe('#c9a24a')
     expect(DECORATION_PRESETS['thorn-vine'].inheritTheme).toBe(true)
     // The four earlier presets are untouched by the addition.
-    expect(THEMES['royal-persian'].surface).toBe('#101012')
+    expect(THEMES['royal-persian'].surface).toBe('#0c0c0e')
   })
 
   it('changes theme tokens without changing composition or content', () => {

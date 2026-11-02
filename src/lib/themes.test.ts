@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createElement } from './elements'
-import { createDecoration, hasVisibleFrame, resolveDecoration, toggleDecoration } from './themes'
+import { createDecoration, getTheme, hasVisibleFrame, resolveDecoration, toggleDecoration } from './themes'
 
 describe('decorative frame toggle', () => {
   it('gives text, image and shape layers a visible Persian frame when the toggle is turned on', () => {
@@ -53,12 +53,13 @@ describe('decorative frame toggle', () => {
     expect(toggleDecoration(off, true)).toEqual({ ...custom, enabled: true })
   })
 
-  it('still resolves inherited gold colours once the frame is on', () => {
+  it('still resolves inherited theme colours once the frame is on', () => {
     const enabled = toggleDecoration(createElement('text').decoration, true)
-    const theme = { id: 'royal-persian' as const, name: 'Royal Persian', nameFa: 'پارسی سلطنتی', primary: '#6d28a8', secondary: '#2a0f36', accent: '#e8e8e6', accentSoft: '#ffffff', surface: '#121214', surfaceAlt: '#2b1238', text: '#fff8e7', muted: '#c8b9cf', glow: '#a855f7', pattern: 'girih' as const }
+    const theme = getTheme('royal-persian')
     const resolved = resolveDecoration(enabled, theme)
-    expect(resolved.borderColor).toBe('#e8e8e6')
-    expect(resolved.innerBorderColor).toBe('#ffffff')
+    // Inherited colours come from the preset itself, so the test names the relationship, not a literal.
+    expect(resolved.borderColor).toBe(theme.accent)
+    expect(resolved.innerBorderColor).toBe(theme.accentSoft)
     expect(resolved.backgroundOpacity).toBeGreaterThan(0)
   })
 })

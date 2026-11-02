@@ -80,8 +80,25 @@ export interface OverlayElement {
   props: Record<string, string | number | boolean | null>
 }
 
+export type ThemeTexture = 'none' | 'grid' | 'grain' | 'hatch' | 'sheen'
+
+/** Per-theme chrome. Colour alone cannot separate monochrome presets, so geometry and texture do. */
+export interface ThemeChrome {
+  radius: number
+  borderWidth: number
+  texture: ThemeTexture
+  /** Structural switches, so two dark presets differ by construction and not only by shade. */
+  innerBorder: boolean
+  cornerOrnaments: boolean
+  /** How much of the panel is filled at all: 0.12 is an outline card, 0.86 a solid slab. */
+  panelOpacity: number
+  /** Small labels set in wide uppercase: part of a theme's voice, not a global style. */
+  uppercaseLabels: boolean
+}
+
 export interface OverlayTheme {
   id: ThemeId
+  chrome: ThemeChrome
   name: string
   nameFa: string
   primary: string
