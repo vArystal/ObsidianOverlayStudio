@@ -4,6 +4,7 @@ import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, U
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration, themeCssVars } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
+import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -235,7 +236,19 @@ function LiveAlert({ element, runtime, preview, nonce }: { element: OverlayEleme
 function ElementContent({ element, runtime, preview, testAlertNonce }: { element: OverlayElement; runtime: boolean; preview: boolean; testAlertNonce: number }) {
   const live = useLiveData(); const p = element.props
   switch (element.type) {
-    case 'text': return <div className="text-element" dir={text(element, 'direction', 'auto') as 'ltr' | 'rtl' | 'auto'} style={{ fontFamily: text(element, 'fontFamily'), fontSize: num(element, 'fontSize', 52), fontWeight: num(element, 'fontWeight', 700), color: text(element, 'color', '#fff8e7'), textAlign: text(element, 'textAlign', 'right') as 'left' | 'center' | 'right', lineHeight: num(element, 'lineHeight', 1.3) }}>{text(element, 'text', 'Text')}</div>
+    // CP23: text is painted entirely by the shared typography builders, so the editor canvas and the OBS runtime
+    // cannot disagree about family, weight, size, leading, tracking, direction, shadow, stroke or wrapping.
+    case 'text': return (
+      <div
+        className={`text-element ${isFontMissing(p.fontFamily) ? 'font-missing' : ''}`}
+        dir={text(element, 'direction', 'auto') as 'ltr' | 'rtl' | 'auto'}
+        style={{ ...typographyStyle(p), ...textBoxStyle(p) }}
+        data-font={readTypography(p).fontFamily}
+      >
+        {/* dir sits on the painted run as well as the box: bidi resolution must follow the text, and tests read it there. */}
+        <span className="text-element-run" dir={text(element, 'direction', 'auto') as 'ltr' | 'rtl' | 'auto'}>{text(element, 'text', 'Text')}</span>
+      </div>
+    )
     case 'image': return text(element, 'src')
       ? <img className="image-element" draggable={false} src={text(element, 'src')} alt={text(element, 'alt')} style={{ objectFit: text(element, 'fit', 'contain') as 'contain' | 'cover' | 'fill' }} />
       : runtime ? null : <div className="empty-image"><ImageIcon /><span>Upload an image in Properties</span></div>

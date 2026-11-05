@@ -207,6 +207,17 @@ export function OverlayEditor() {
     if (name) patchElementById(elementId, { name })
   }, [patchElementById])
 
+  // Batched prop patch: presets set twenty keys in one click, and separate writes per key would each spread the
+  // props snapshot captured at render time, so nineteen of them would be discarded.
+  const patchPropsById = useCallback((elementId: string, patch: Record<string, unknown>) => {
+    commit((current) => ({
+      ...current,
+      elements: current.elements.map((element) => element.id === elementId
+        ? clampElement({ ...element, props: { ...element.props, ...patch } as OverlayElement['props'] }, current.width, current.height)
+        : element),
+    }))
+  }, [commit])
+
   const alignSelected = useCallback((horizontal?: 'left' | 'center' | 'right', vertical?: 'top' | 'center' | 'bottom') => {
     if (!selectedId) return
     commit((current) => ({
@@ -468,7 +479,8 @@ export function OverlayEditor() {
           <PropertiesPanel
             overlay={overlay} element={selected}
             onPatch={(patch) => selectedId && patchElementById(selectedId, patch)}
-            onProp={(key, value) => selectedId && patchElementById(selectedId, { props: { ...(selected?.props ?? {}), [key]: value } })}
+            onProp={(key, value) => selectedId && patchPropsById(selectedId, { [key]: value })}
+            onPropPatch={(patch) => selectedId && patchPropsById(selectedId, patch)}
             onAlign={alignSelected} onLayerEdge={(edge) => selectedId && moveLayerEdge(selectedId, edge)}
             onDuplicate={() => selectedId && duplicate(selectedId)} onDelete={() => selectedId && deleteElement(selectedId)}
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}

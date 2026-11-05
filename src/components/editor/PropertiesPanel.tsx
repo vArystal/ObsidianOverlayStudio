@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import { TypographyStudio } from './TypographyStudio'
 import {
   AlignCenter,
   AlignHorizontalJustifyCenter,
@@ -37,6 +38,7 @@ interface PropertiesPanelProps {
   element: OverlayElement | null
   onPatch: (patch: Partial<OverlayElement>) => void
   onProp: (key: string, value: string | number | boolean | null) => void
+  onPropPatch?: (patch: Record<string, unknown>) => void
   onAlign: (horizontal?: 'left' | 'center' | 'right', vertical?: 'top' | 'center' | 'bottom') => void
   onLayerEdge: (edge: 'front' | 'back') => void
   onDuplicate: () => void
@@ -188,15 +190,14 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         {element.type === 'text' && (
           <Section title="Content & typography">
             <Field label="Text"><textarea rows={4} value={asString(element, 'text')} onChange={(event) => prop('text', event.target.value)} /></Field>
-            <Field label="Font family"><select value={asString(element, 'fontFamily', 'Inter')} onChange={(event) => prop('fontFamily', event.target.value)}><option>Inter</option><option>Arial</option><option>Georgia</option><option>Tahoma</option><option>Vazirmatn</option><option>monospace</option></select></Field>
-            <div className="two-columns">
-              <Field label="Font size"><NumberInput value={asNumber(element, 'fontSize', 54)} min={8} max={300} onChange={(value) => prop('fontSize', value)} suffix="px" /></Field>
-              <Field label="Weight"><select value={asNumber(element, 'fontWeight', 700)} onChange={(event) => prop('fontWeight', Number(event.target.value))}><option value="300">Light</option><option value="400">Regular</option><option value="600">Semibold</option><option value="700">Bold</option><option value="900">Black</option></select></Field>
-            </div>
-            <Field label="Text color"><ColorInput value={asString(element, 'color', '#ffffff')} onChange={(value) => prop('color', value)} /></Field>
-            <Field label="Direction"><select value={asString(element, 'direction', 'auto')} onChange={(event) => prop('direction', event.target.value)}><option value="auto">Auto detect</option><option value="ltr">Left to right</option><option value="rtl">Right to left</option></select></Field>
-            <div className="segmented-control"><button className={asString(element, 'textAlign') === 'left' ? 'active' : ''} onClick={() => prop('textAlign', 'left')}><AlignLeft /></button><button className={asString(element, 'textAlign') === 'center' ? 'active' : ''} onClick={() => prop('textAlign', 'center')}><AlignCenter /></button><button className={asString(element, 'textAlign') === 'right' ? 'active' : ''} onClick={() => prop('textAlign', 'right')}><AlignRight /></button></div>
-            <Field label="Line spacing"><NumberInput value={asNumber(element, 'lineHeight', 1.15)} min={0.7} max={3} step={0.05} onChange={(value) => prop('lineHeight', value)} /></Field>
+            <TypographyStudio
+              element={element}
+              onProp={prop}
+              onProps={(patch: Record<string, unknown>) => {
+                if (props.onPropPatch) props.onPropPatch(patch)
+                else for (const [key, value] of Object.entries(patch)) prop(key, value as string | number | boolean)
+              }}
+            />
           </Section>
         )}
 

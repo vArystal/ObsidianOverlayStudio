@@ -3,6 +3,7 @@ import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, Stor
 import { createAnimation, normalizeContainerProps } from './elements'
 import { createDecoration, getTheme, migrateThemeId } from './themes'
 import { normalizeBackground } from './backgrounds'
+import { normalizeTypography } from './typography'
 
 const STORAGE_KEY = 'obsidian-overlays-v1'
 const FORBIDDEN_PUBLIC_KEYS = new Set(['accesstoken', 'refreshtoken', 'clientsecret', 'managementtoken', 'tokenencryptionkey', 'codeverifier', 'oauthverifier', 'authorization', 'password'])
@@ -29,7 +30,10 @@ function normalizeDecoration(value: Partial<ElementDecoration> | undefined): Ele
 function normalizeElement(element: OverlayElement): OverlayElement {
   const base = { ...element, animation: normalizeAnimation(element.animation), decoration: normalizeDecoration(element.decoration) }
   // Legacy data predates containers entirely, so only a container is coerced here; shapes keep their own props.
-  return element.type === 'container' ? { ...base, props: normalizeContainerProps(element.props) } : base
+  if (element.type === 'container') return { ...base, props: normalizeContainerProps(element.props) }
+  // CP23 fills only the typography keys that are absent. A stack written by an earlier version stays verbatim.
+  if (element.type === 'text') return { ...base, props: normalizeTypography(element.props) }
+  return base
 }
 
 export function normalizeOverlay(overlay: Overlay): Overlay {
