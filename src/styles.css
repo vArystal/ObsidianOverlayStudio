@@ -209,11 +209,16 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .safe-area::before { left: 50%; top: 0; bottom: 0; width: 1px; }
 .safe-area::after { top: 50%; left: 0; right: 0; height: 1px; }
 .safe-area span { color: #ebebeb; background: rgba(58, 58, 58,.8); padding: 4px 7px; position: absolute; font-size: 11px; letter-spacing: .12em; }
-.canvas-element, .runtime-element { position: absolute; transform-origin: center; contain: layout paint style; }
+.canvas-element, .runtime-element { position: absolute; transform-origin: center; contain: layout style; }
+/* Paint containment would clip the selection outline and all eight handles, which live outside the box. */
+.canvas-element > .element-content, .runtime-element > .element-content { contain: layout paint style; }
 .element-content { width: 100%; height: 100%; overflow: hidden; }
 .canvas-element { cursor: move; touch-action: none; }
 .canvas-element.selected::after { content: ''; position: absolute; inset: -3px; border: 3px solid var(--accent); pointer-events: none; box-shadow: 0 0 0 2px rgba(16, 16, 18,.8), 0 0 24px rgba(169, 169, 169,.2); }
 .canvas-element.locked { cursor: default; }
+.layer-row { -webkit-appearance: none; appearance: none; background: transparent; border: 0; text-align: left; font: inherit; color: inherit; width: 100%; }
+.layer-actions button, .layer-expanded-actions button { -webkit-appearance: none; appearance: none; background: transparent; border: 0; padding: 2px; color: inherit; cursor: pointer; display: inline-flex; }
+.layer-expanded-actions button:focus-visible, .layer-actions button:focus-visible, .layer-row:focus-visible { outline: 2px solid var(--focus-ring, #ffffff); outline-offset: 2px; }
 .resize-handle { position: absolute; z-index: 100; width: 18px; height: 18px; border: 3px solid #fff; border-radius: 4px; background: var(--accent); box-shadow: 0 0 0 2px rgba(15, 15, 15,.8); }
 .handle-nw { left: -11px; top: -11px; cursor: nwse-resize; }
 .handle-n { left: calc(50% - 9px); top: -11px; cursor: ns-resize; }

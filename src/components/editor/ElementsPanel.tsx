@@ -118,27 +118,34 @@ export function ElementsPanel(props: ElementsPanelProps) {
             {[...props.elements].reverse().map((element, reverseIndex) => {
               const actualIndex = props.elements.length - 1 - reverseIndex
               return (
-                <button
+                <div
                   key={element.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={props.selectedId === element.id}
+                  aria-label={`${element.name} layer`}
                   className={`layer-row ${props.selectedId === element.id ? 'selected' : ''} ${!element.visible ? 'muted' : ''}`}
                   onClick={() => props.onSelect(element.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); props.onSelect(element.id) }
+                  }}
                   onDoubleClick={() => props.onRename(element.id)}
                 >
                   <MousePointer2 className="drag-dots" />
                   <span className="layer-copy"><strong>{element.name}</strong><small>{element.type}{!element.includeInOutput ? ' · editor only' : ''}</small></span>
                   <span className="layer-actions">
-                    <span role="button" aria-label="Toggle layer visibility" onClick={(event) => { event.stopPropagation(); props.onToggleVisible(element.id) }}>{element.visible ? <Eye /> : <EyeOff />}</span>
-                    <span role="button" aria-label="Toggle layer lock" onClick={(event) => { event.stopPropagation(); props.onToggleLock(element.id) }}>{element.locked ? <Lock /> : <Unlock />}</span>
+                    <button type="button" aria-label="Toggle layer visibility" onClick={(event) => { event.stopPropagation(); props.onToggleVisible(element.id) }}>{element.visible ? <Eye /> : <EyeOff />}</button>
+                    <button type="button" aria-label="Toggle layer lock" onClick={(event) => { event.stopPropagation(); props.onToggleLock(element.id) }}>{element.locked ? <Lock /> : <Unlock />}</button>
                   </span>
                   {props.selectedId === element.id && (
                     <span className="layer-expanded-actions">
-                      <span role="button" title="Move forward" className={actualIndex === props.elements.length - 1 ? 'disabled' : ''} onClick={(event) => { event.stopPropagation(); props.onMoveLayer(element.id, 'up') }}><ChevronUp /></span>
-                      <span role="button" title="Move backward" className={actualIndex === 0 ? 'disabled' : ''} onClick={(event) => { event.stopPropagation(); props.onMoveLayer(element.id, 'down') }}><ChevronDown /></span>
-                      <span role="button" title="Duplicate" onClick={(event) => { event.stopPropagation(); props.onDuplicate(element.id) }}><Copy /></span>
-                      <span role="button" title="Delete" className="danger" onClick={(event) => { event.stopPropagation(); props.onDelete(element.id) }}><Trash2 /></span>
+                      <button type="button" aria-label="Move layer forward" title="Move forward" className={actualIndex === props.elements.length - 1 ? 'disabled' : ''} onClick={(event) => { event.stopPropagation(); props.onMoveLayer(element.id, 'up') }}><ChevronUp /></button>
+                      <button type="button" aria-label="Move layer backward" title="Move backward" className={actualIndex === 0 ? 'disabled' : ''} onClick={(event) => { event.stopPropagation(); props.onMoveLayer(element.id, 'down') }}><ChevronDown /></button>
+                      <button type="button" aria-label="Duplicate layer" title="Duplicate" onClick={(event) => { event.stopPropagation(); props.onDuplicate(element.id) }}><Copy /></button>
+                      <button type="button" aria-label="Delete layer" title="Delete" className="danger" onClick={(event) => { event.stopPropagation(); props.onDelete(element.id) }}><Trash2 /></button>
                     </span>
                   )}
-                </button>
+                </div>
               )
             })}
           </div>
