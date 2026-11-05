@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, UserRound } from 'lucide-react'
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration, themeCssVars } from '../lib/themes'
+import { containerStyle } from '../lib/elements'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -251,6 +252,11 @@ function ElementContent({ element, runtime, preview, testAlertNonce }: { element
       if (runtime && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
       const target = Math.max(1, num(element, 'target', 1000)); const current = Math.max(0, num(element, 'current', 0)); const progress = Math.min(100, current / target * 100)
       return <div className="goal-widget" style={{ color: text(element, 'textColor', '#fff8e7') }}><div className="goal-copy"><strong>{text(element, 'title')}</strong><span>{text(element, 'currency', '€')}{current} / {text(element, 'currency', '€')}{target}</span></div><div className="goal-track" style={{ background: text(element, 'trackColor', '#2b1238') }}><div className="animated-progress" style={{ width: `${progress}%`, background: text(element, 'fillColor', '#d8ad55') }} /></div>{!runtime && <small className="data-note">MANUAL PREVIEW · NOT VERIFIED PAYMENT DATA</small>}</div>
+    }
+    case 'container': {
+      // A container is a single CSS box: no children, no images, nothing to lay out per frame.
+      const style = containerStyle(element.props, 1)
+      return <div className="container-element" style={style as CSSProperties} />
     }
     case 'shape': return <div className="shape-element" style={{ background: colorWithOpacity(text(element, 'fillColor', '#6d28a8'), num(element, 'fillOpacity', .16)), borderColor: text(element, 'borderColor', '#d8ad55'), borderWidth: num(element, 'borderWidth', 2), borderRadius: text(element, 'shape') === 'ellipse' ? '50%' : num(element, 'borderRadius', 24) }} />
     case 'frame': return <div className="standalone-frame" />

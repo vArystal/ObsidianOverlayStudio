@@ -1,6 +1,6 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, StorageResult } from '../types'
-import { createAnimation } from './elements'
+import { createAnimation, normalizeContainerProps } from './elements'
 import { createDecoration, getTheme, migrateThemeId } from './themes'
 import { normalizeBackground } from './backgrounds'
 
@@ -27,7 +27,9 @@ function normalizeDecoration(value: Partial<ElementDecoration> | undefined): Ele
 }
 
 function normalizeElement(element: OverlayElement): OverlayElement {
-  return { ...element, animation: normalizeAnimation(element.animation), decoration: normalizeDecoration(element.decoration) }
+  const base = { ...element, animation: normalizeAnimation(element.animation), decoration: normalizeDecoration(element.decoration) }
+  // Legacy data predates containers entirely, so only a container is coerced here; shapes keep their own props.
+  return element.type === 'container' ? { ...base, props: normalizeContainerProps(element.props) } : base
 }
 
 export function normalizeOverlay(overlay: Overlay): Overlay {

@@ -29,6 +29,7 @@ import {
 import type { Overlay, OverlayBackground, OverlayElement } from '../../types'
 import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
 import { ThemeGallery } from './ThemeGallery'
+import { CONTAINER_PRESETS, containerStyle } from '../../lib/elements'
 import { BackgroundSection } from './BackgroundSection'
 
 interface PropertiesPanelProps {
@@ -280,6 +281,89 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           </Section>
         )}
 
+        {element.type === 'container' && (
+          <Section title="Container appearance">
+            {/* Presets set appearance only; the box keeps its position, size and layer. */}
+            <div className="container-presets" role="group" aria-label="Container presets">
+              {CONTAINER_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  aria-pressed={asString(element, 'preset', '') === preset.id}
+                  onClick={() => props.onPatch({ props: { ...element.props, ...preset.props, preset: preset.id } })}
+                >
+                  <span className="container-swatch" style={containerStyle(preset.props) as CSSProperties} aria-hidden="true" />
+                  <strong>{preset.label}</strong>
+                  <small>{preset.blurb}</small>
+                </button>
+              ))}
+            </div>
+            <Field label="Fill">
+              <select value={asString(element, 'fill', 'solid')} onChange={(event) => prop('fill', event.target.value)}>
+                <option value="transparent">Transparent</option>
+                <option value="solid">Solid colour</option>
+                <option value="gradient">Gradient</option>
+              </select>
+            </Field>
+            {asString(element, 'fill', 'solid') !== 'transparent' && (
+              <>
+                <Field label={asString(element, 'fill', 'solid') === 'gradient' ? 'First colour' : 'Background colour'}>
+                  <ColorInput value={asString(element, 'fillColor', '#0e0e10')} onChange={(value) => prop('fillColor', value)} />
+                </Field>
+                {asString(element, 'fill', 'solid') === 'gradient' && (
+                  <>
+                    <Field label="Second colour"><ColorInput value={asString(element, 'fillColor2', '#17171a')} onChange={(value) => prop('fillColor2', value)} /></Field>
+                    <Field label="Gradient angle"><NumberInput value={asNumber(element, 'gradientAngle', 160)} min={0} max={360} onChange={(value) => prop('gradientAngle', value)} suffix="deg" /></Field>
+                  </>
+                )}
+                <Field label="Background opacity"><NumberInput value={asNumber(element, 'fillOpacity', .42) * 100} min={0} max={100} onChange={(value) => prop('fillOpacity', value / 100)} suffix="%" /></Field>
+              </>
+            )}
+            <Field label="Border">
+              <select value={asString(element, 'borderStyle', 'solid')} onChange={(event) => prop('borderStyle', event.target.value)}>
+                <option value="none">None</option>
+                <option value="solid">Solid</option>
+                <option value="dashed">Dashed</option>
+                <option value="dotted">Dotted</option>
+              </select>
+            </Field>
+            {asString(element, 'borderStyle', 'solid') !== 'none' && (
+              <>
+                <div className="two-columns">
+                  <Field label="Thickness"><NumberInput value={asNumber(element, 'borderWidth', 1)} min={0} max={24} onChange={(value) => prop('borderWidth', value)} suffix="px" /></Field>
+                  <Field label="Border opacity"><NumberInput value={asNumber(element, 'borderOpacity', .32) * 100} min={0} max={100} onChange={(value) => prop('borderOpacity', value / 100)} suffix="%" /></Field>
+                </div>
+                <Field label="Border colour"><ColorInput value={asString(element, 'borderColor', '#e8e8e6')} onChange={(value) => prop('borderColor', value)} /></Field>
+              </>
+            )}
+            <Field label="Corner radius"><NumberInput value={asNumber(element, 'radius', 10)} min={0} max={400} onChange={(value) => prop('radius', value)} suffix="px" /></Field>
+            <div className="two-columns">
+              <Field label="Shadow">
+                <select value={asString(element, 'shadow', 'soft')} onChange={(event) => prop('shadow', event.target.value)}>
+                  <option value="none">None</option>
+                  <option value="soft">Soft</option>
+                  <option value="deep">Deep</option>
+                </select>
+              </Field>
+              <Field label="Glow">
+                <select value={asString(element, 'glow', 'none')} onChange={(event) => prop('glow', event.target.value)}>
+                  <option value="none">None</option>
+                  <option value="subtle">Subtle</option>
+                  <option value="strong">Strong</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Inner highlight">
+              <select value={asString(element, 'inner', 'none')} onChange={(event) => prop('inner', event.target.value)}>
+                <option value="none">None</option>
+                <option value="subtle">Subtle top light</option>
+              </select>
+            </Field>
+            <Field label="Backdrop blur" hint="Blurs what is behind the box. Off by default: blur costs frames in OBS.">
+              <NumberInput value={asNumber(element, 'blur', 0)} min={0} max={24} onChange={(value) => prop('blur', value)} suffix="px" />
+            </Field>
+          </Section>
+        )}
         {element.type === 'shape' && (
           <Section title="Shape appearance">
             <Field label="Shape"><select value={asString(element, 'shape', 'rectangle')} onChange={(event) => prop('shape', event.target.value)}><option value="rectangle">Rectangle</option><option value="ellipse">Ellipse</option></select></Field>

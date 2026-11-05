@@ -376,3 +376,48 @@ textarea:focus-visible,
   .app-header { padding-inline: var(--cp-space-3); }
   .editor-panel, .left-panel, .right-panel { border-radius: var(--cp-radius-sm); }
 }
+
+/* ---------------------------------------------------------------- Empty container (CP22)
+   One element, one box. The published container is purely decorative, so it never eats a click meant for the page
+   behind it; the editor needs the click, so only the runtime is marked inert. */
+.container-element {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+}
+.canvas-element .container-element,
+.runtime-element .container-element {
+  /* The box is decoration. Clicks belong to the wrapper that carries selection, dragging and layer identity, so a
+     container can never swallow a click meant for the canvas or for the page behind it in OBS. */
+  pointer-events: none;
+}
+.container-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.container-presets button {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+  text-align: left;
+  border-radius: 8px;
+  border: 1px solid var(--line, #2a2a2e);
+  background: var(--field, #121214);
+  color: var(--text, #f6f6f4);
+  cursor: pointer;
+}
+.container-presets button[aria-pressed='true'] {
+  border-color: var(--text, #f6f6f4);
+  box-shadow: 0 0 0 1px var(--text, #f6f6f4) inset;
+}
+.container-presets strong { font-size: 11px; font-weight: 600; }
+.container-presets small { font-size: 10px; color: var(--muted, #9a9aa0); line-height: 1.3; }
+.container-swatch {
+  display: block;
+  height: 34px;
+  margin-bottom: 6px;
+  border-radius: inherit;
+  background-image: linear-gradient(135deg, #1a1a1e, #0e0e10);
+}

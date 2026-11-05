@@ -7,6 +7,7 @@ export type ElementType =
   | 'alert'
   | 'goal'
   | 'shape'
+  | 'container'
   | 'frame'
   | 'counter'
   | 'countdown'
