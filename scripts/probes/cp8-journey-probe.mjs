@@ -26,14 +26,15 @@ await page.waitForTimeout(900)
 step('02 create overlay', /overlays\/editor/.test(page.url()), page.url().split('#')[1])
 
 // 3. add elements from the library (content + live widgets)
-const addByDescription = async (description) => {
-  const button = page.locator('.element-list button', { hasText: description }).first()
-  await button.click()
+// CP24: the palette is generated from the widget registry, so blurbs are copy that changes. Target the stable
+// data-widget-type contract instead of a sentence, otherwise a wording tweak reads as a broken product.
+const addByType = async (type) => {
+  await page.locator(`[data-widget-type="${type}"]`).first().click()
   await page.waitForTimeout(350)
 }
-await addByDescription('Custom RTL or LTR copy')
-await addByDescription('Official Kick livestream metric')
-await addByDescription('Preview-ready integration slot')
+await addByType('text')
+await addByType('viewerCount')
+await addByType('chat')
 const countAfterAdd = await page.locator('.canvas-element').count()
 step('03 add three elements', countAfterAdd === 3, `${countAfterAdd} on canvas`)
 
