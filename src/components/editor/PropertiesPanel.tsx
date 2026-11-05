@@ -26,9 +26,10 @@ import {
   Upload,
   Zap,
 } from 'lucide-react'
-import type { Overlay, OverlayElement } from '../../types'
+import type { Overlay, OverlayBackground, OverlayElement } from '../../types'
 import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
 import { ThemeGallery } from './ThemeGallery'
+import { BackgroundSection } from './BackgroundSection'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -45,6 +46,7 @@ interface PropertiesPanelProps {
   onAttachLive: () => void
   onTheme: (themeId: string) => void
   onStaticMotion: (value: boolean) => void
+  onBackground: (background: OverlayBackground) => void
 }
 
 function Section({ title, children, open = true }: { title: string; children: ReactNode; open?: boolean }) {
@@ -113,6 +115,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             <Field label="Theme preset"><select value={props.overlay.theme.id} onChange={(event) => props.onTheme(event.target.value)}>{Object.values(THEMES).map((theme) => <option key={theme.id} value={theme.id}>{theme.name} · {theme.nameFa}</option>)}</select></Field>
             <ThemeGallery value={props.overlay.theme.id} onChange={props.onTheme} />
             <Toggle checked={props.overlay.staticMotion} onChange={props.onStaticMotion} label="Static / reduced-motion output" description="Disables all entrance and idle effects in OBS." />
+          </Section>
+          <Section title="Animated background">
+            <BackgroundSection background={props.overlay.background} onChange={props.onBackground} />
           </Section>
           <Section title="Live runtime">
             <div className={`integration-card ${props.overlay.live ? '' : 'warning'}`}><Link2 /><div><strong>{props.overlay.live ? `Kick linked · ${props.overlay.live.channelName}` : 'No live connection attached'}</strong><p>Static composition and live events use separate channels. OAuth credentials never enter the overlay snapshot.</p></div></div>

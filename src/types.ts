@@ -138,6 +138,27 @@ export interface LiveIntegrationConfig {
   channelName: string
 }
 
+export type BackgroundKind = 'none' | 'aurora-flow' | 'liquid-light' | 'cinematic-particles' | 'neon-grid' | 'deep-space' | 'ambient-gradient'
+
+/**
+ * The overlay's global backdrop. It lives on the document, never in `elements`, so it cannot be dragged,
+ * selected, reordered or counted as a layer, and it is independent of the theme.
+ */
+export interface OverlayBackground {
+  enabled: boolean
+  kind: BackgroundKind
+  primary: string
+  secondary: string
+  accent: string
+  opacity: number
+  speed: number
+  intensity: number
+  blur: number
+  density: number
+  scale: number
+  paused: boolean
+}
+
 export interface CanvasSettings {
   showGrid: boolean
   snap: boolean
@@ -154,6 +175,7 @@ export interface Overlay {
   width: number
   height: number
   elements: OverlayElement[]
+  background: OverlayBackground
   settings: CanvasSettings
   theme: OverlayTheme
   staticMotion: boolean

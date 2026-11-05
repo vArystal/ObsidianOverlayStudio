@@ -2,6 +2,7 @@ import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from
 import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, StorageResult } from '../types'
 import { createAnimation } from './elements'
 import { createDecoration, getTheme, migrateThemeId } from './themes'
+import { normalizeBackground } from './backgrounds'
 
 const STORAGE_KEY = 'obsidian-overlays-v1'
 const FORBIDDEN_PUBLIC_KEYS = new Set(['accesstoken', 'refreshtoken', 'clientsecret', 'managementtoken', 'tokenencryptionkey', 'codeverifier', 'oauthverifier', 'authorization', 'password'])
@@ -35,6 +36,9 @@ export function normalizeOverlay(overlay: Overlay): Overlay {
     // A saved overlay may name a retired theme. Resolve it to its replacement and take the new preset whole:
     // the old palette belongs to an identity that no longer exists. Elements, text and layout are untouched.
     theme: getTheme(overlay.theme?.id),
+    // A legacy overlay has no background at all; a hand-edited one may carry nonsense. Either way the scene is
+    // coerced to something usable, and a disabled backdrop stays exactly as the author left it.
+    background: normalizeBackground(overlay.background),
     staticMotion: Boolean(overlay.staticMotion),
     live: overlay.live ?? null,
     elements: overlay.elements.map(normalizeElement),

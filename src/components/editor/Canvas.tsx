@@ -3,6 +3,8 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Crosshair, Lock, ZoomIn } from 'lucide-react'
 import { ElementRenderer } from '../ElementRenderer'
 import { themeCssVars } from '../../lib/themes'
+import { BackgroundLayer } from '../BackgroundLayer'
+import { normalizeBackground } from '../../lib/backgrounds'
 import { clampElement, roundGeometry, snapPosition } from '../../lib/geometry'
 import type { Guide, Overlay, OverlayElement } from '../../types'
 
@@ -147,6 +149,8 @@ export function Canvas(props: CanvasProps) {
             onPointerCancel={endPointer}
             onPointerDown={(event) => { if (event.target === event.currentTarget) props.onSelect(null) }}
           >
+            {/* The scene is part of the stage, not a layer: it cannot be selected, dragged or listed. */}
+            <BackgroundLayer background={normalizeBackground(props.overlay.background)} className="editor-background" />
             {!displayedElements.length && !props.preview && (
               <div className="canvas-empty-hint">
                 <span><Crosshair /></span>

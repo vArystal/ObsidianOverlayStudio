@@ -474,6 +474,7 @@ export function OverlayEditor() {
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}
             onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
             onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
+            onBackground={(background) => commit((item) => ({ ...item, background }))}
             onAttachLive={() => { const live = getPublicIntegrationConfig(); if (!live) { setNotice('Connect Kick from Integrations first'); return } commit((item) => ({ ...item, live })); setNotice(`Kick channel ${live.channelName} attached`) }}
           />
         </div>
