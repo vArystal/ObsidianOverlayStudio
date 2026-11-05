@@ -34,7 +34,7 @@ function field(count: number, seed: number) {
 export const BackgroundLayer = memo(function BackgroundLayer({ background, reducedMotion = false, className = '' }: BackgroundLayerProps) {
   const animated = isAnimated(background, reducedMotion)
   const motes = useMemo(() => field(Math.round(14 + background.density * 66), 20260101), [background.density])
-  const stars = useMemo(() => field(Math.round(40 + background.density * 160), 77003), [background.density])
+  const stars = useMemo(() => field(Math.round(26 + background.density * 64), 77003), [background.density])
 
   if (!background.enabled || background.kind === 'none') return null
 
@@ -45,7 +45,7 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
 
   return (
     <div
-      className={`overlay-background bg-${background.kind} ${animated ? 'is-animated' : 'is-still'} ${className}`}
+      className={`overlay-background bg-${background.kind} ${animated ? 'is-animated' : 'is-still'} ${background.blur > 0 ? 'has-blur' : ''} ${className}`}
       style={style}
       data-background={background.kind}
       aria-hidden="true"
@@ -80,12 +80,12 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
         <div className="bg-space">
           <div className="bg-stars near">
             {stars.slice(0, Math.ceil(stars.length / 2)).map((star, index) => (
-              <span key={index} className="bg-star" style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size, height: star.size, animationDelay: `${star.delay}s` }} />
+              <span key={index} className={`bg-star ${index % 5 === 0 ? 'hero' : ''}`} style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size, height: star.size, animationDelay: `${star.delay}s` }} />
             ))}
           </div>
           <div className="bg-stars far">
             {stars.slice(Math.ceil(stars.length / 2)).map((star, index) => (
-              <span key={index} className="bg-star" style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size * 0.7, height: star.size * 0.7, animationDelay: `${star.delay}s` }} />
+              <span key={index} className={`bg-star ${index % 5 === 0 ? 'hero' : ''}`} style={{ left: `${star.x}%`, top: `${star.y}%`, width: star.size * 0.7, height: star.size * 0.7, animationDelay: `${star.delay}s` }} />
             ))}
           </div>
           <span className="bg-nebula" />

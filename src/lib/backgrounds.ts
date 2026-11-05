@@ -34,14 +34,14 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     label: 'Aurora Flow',
     blurb: 'Layered curtains of light drifting on different rhythms',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#061014', secondary: '#0b2430', accent: '#6fd3c7', opacity: 0.9, speed: 1, intensity: 0.55, blur: 34 },
+    defaults: { ...base, primary: '#061014', secondary: '#0b2430', accent: '#6fd3c7', opacity: 0.9, speed: 1, intensity: 0.55, blur: 0 },
   },
   {
     kind: 'liquid-light',
     label: 'Liquid Light',
     blurb: 'Refracted pools that fold into each other',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#0a0a0c', secondary: '#1a1c22', accent: '#a9b4c4', opacity: 0.82, speed: 0.9, intensity: 0.6, blur: 48 },
+    defaults: { ...base, primary: '#0a0a0c', secondary: '#1a1c22', accent: '#a9b4c4', opacity: 0.82, speed: 0.9, intensity: 0.6, blur: 0 },
   },
   {
     kind: 'cinematic-particles',
@@ -69,7 +69,7 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     label: 'Ambient Gradient',
     blurb: 'Three fields of colour breathing out of phase',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur'],
-    defaults: { ...base, primary: '#0c0d10', secondary: '#191a1f', accent: '#8a93a6', opacity: 0.86, speed: 0.6, intensity: 0.5, blur: 40 },
+    defaults: { ...base, primary: '#0c0d10', secondary: '#191a1f', accent: '#8a93a6', opacity: 0.86, speed: 0.6, intensity: 0.5, blur: 0 },
   },
 ]
 
@@ -111,7 +111,7 @@ export function normalizeBackground(input: unknown): OverlayBackground {
     opacity: clamp(raw.opacity, 0, 1, d.opacity),
     speed: clamp(raw.speed, 0.2, 2, d.speed),
     intensity: clamp(raw.intensity, 0, 1, d.intensity),
-    blur: clamp(raw.blur, 0, 80, d.blur),
+    blur: clamp(raw.blur, 0, 14, d.blur),
     density: clamp(raw.density, 0, 1, d.density),
     scale: clamp(raw.scale, 0.6, 1.6, d.scale),
   }
