@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createElement } from './elements'
-import { createDecoration, getTheme, hasVisibleFrame, resolveDecoration, toggleDecoration } from './themes'
+import { baseDecoration, createDecoration, getTheme, hasVisibleFrame, resolveDecoration, toggleDecoration } from './themes'
 
 describe('decorative frame toggle', () => {
-  it('gives text, image and shape layers a visible Persian frame when the toggle is turned on', () => {
+  it('gives text, image and shape layers a visible frame when the toggle is turned on', () => {
     for (const type of ['text', 'image', 'shape'] as const) {
       const element = createElement(type)
       expect(element.decoration.preset).toBe('none')
@@ -15,9 +15,9 @@ describe('decorative frame toggle', () => {
       expect(hasVisibleFrame(enabled)).toBe(true)
       expect(enabled.borderVisible).toBe(true)
       expect(enabled.borderWidth).toBeGreaterThan(0)
-      expect(enabled.cornerOrnaments).toBe(true)
-      expect(enabled.innerBorder).toBe(true)
-      expect(enabled.pattern).not.toBe('none')
+      expect(enabled.borderVisible).toBe(true)
+      expect(enabled.borderWidth).toBeGreaterThan(0)
+      expect(enabled.backgroundOpacity).toBeGreaterThan(0)
       expect(enabled.padding).toBeGreaterThan(0)
     }
   })
@@ -28,11 +28,11 @@ describe('decorative frame toggle', () => {
     expect(enabled).toEqual({ ...custom, enabled: true })
   })
 
-  it('leans on the Royal panel preset but respects the theme-inheritance choice', () => {
+  it('leans on the default panel preset but respects the theme-inheritance choice', () => {
     const base = { ...createDecoration('none'), inheritTheme: false }
     const enabled = toggleDecoration(base, true)
     expect(enabled.inheritTheme).toBe(false)
-    expect(enabled.borderColor).toBe('#e8e8e6')
+    expect(enabled.borderColor).toBe(baseDecoration.borderColor)
     expect(enabled.enabled).toBe(true)
   })
 
@@ -55,7 +55,7 @@ describe('decorative frame toggle', () => {
 
   it('still resolves inherited theme colours once the frame is on', () => {
     const enabled = toggleDecoration(createElement('text').decoration, true)
-    const theme = getTheme('royal-persian')
+    const theme = getTheme('obsidian')
     const resolved = resolveDecoration(enabled, theme)
     // Inherited colours come from the preset itself, so the test names the relationship, not a literal.
     expect(resolved.borderColor).toBe(theme.accent)

@@ -54,7 +54,7 @@ describe('runtime resilience for legacy data', () => {
   // runtime into an error page, which blanks a live OBS source instead of losing one colour.
   it('renders a snapshot whose theme carries no colours, falling back to the default accent', () => {
     const overlay = createEmptyOverlay('Legacy overlay')
-    overlay.theme = { id: 'royal-persian' } as typeof overlay.theme
+    overlay.theme = { id: 'royal-persian' } as unknown as typeof overlay.theme
     const title = createElement('text')
     title.props.text = 'Legacy title'
     const chat = createElement('chat')

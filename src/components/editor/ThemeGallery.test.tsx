@@ -7,17 +7,17 @@ afterEach(cleanup)
 
 describe('theme gallery', () => {
   it('offers every theme with a thumbnail and marks the active one', () => {
-    render(<ThemeGallery value="royal-persian" onChange={vi.fn()} />)
+    render(<ThemeGallery value="obsidian" onChange={vi.fn()} />)
     const options = screen.getAllByRole('radio')
     expect(options).toHaveLength(Object.keys(THEMES).length)
-    expect(screen.getByRole('radio', { name: 'Thorn & Rose theme' }).getAttribute('aria-checked')).toBe('false')
-    expect(screen.getByRole('radio', { name: 'Royal Persian theme' }).getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByRole('radio', { name: 'Nocturne theme' }).getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByRole('radio', { name: 'Obsidian theme' }).getAttribute('aria-checked')).toBe('true')
   })
 
   it('selects the new theme by its stable id', () => {
     const onChange = vi.fn()
-    render(<ThemeGallery value="royal-persian" onChange={onChange} />)
-    screen.getByRole('radio', { name: 'Thorn & Rose theme' }).click()
-    expect(onChange).toHaveBeenCalledWith('thorn-rose')
+    render(<ThemeGallery value="obsidian" onChange={onChange} />)
+    screen.getByRole('radio', { name: 'Nocturne theme' }).click()
+    expect(onChange).toHaveBeenCalledWith('nocturne')
   })
 })

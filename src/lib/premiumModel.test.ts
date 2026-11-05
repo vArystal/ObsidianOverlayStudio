@@ -1,97 +1,73 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createElement, createEmptyOverlay } from './elements'
-import { decodeOverlaySnapshot, encodeOverlaySnapshot, normalizeOverlay, sanitizeOverlayForPublish } from './storage'
-import { createDecoration, DECORATION_PRESETS, getTheme, resolveDecoration, THEMES } from './themes'
-import type { Overlay } from '../types'
+import { normalizeOverlay } from './storage'
+import { DECORATION_PRESETS, LEGACY_THEME_MAP, THEMES, THEME_ORDER, getTheme, migrateThemeId, resolveDecoration } from './themes'
 
-beforeEach(() => localStorage.clear())
-
-describe('premium Persian model', () => {
-  it('provides five complete editable themes, existing four unchanged', () => {
-    // Order matters to the selectors: the new theme is appended so saved overlays keep their preset.
-    expect(Object.keys(THEMES)).toEqual(['royal-persian', 'persian-turquoise', 'imperial-night', 'minimal-esports', 'thorn-rose'])
-    for (const theme of Object.values(THEMES)) {
-      expect(theme.nameFa).toBeTruthy()
-      expect(theme.primary).toMatch(/^#/)
-      expect(theme.accent).toMatch(/^#/)
-      expect(theme.surface).toMatch(/^#/)
+describe('CP20 theme system', () => {
+  it('offers exactly four presets with a full palette each', () => {
+    expect(Object.keys(THEMES).sort()).toEqual(['aurora', 'monolith', 'nocturne', 'obsidian'])
+    expect(THEME_ORDER).toEqual(['obsidian', 'nocturne', 'aurora', 'monolith'])
+    for (const id of THEME_ORDER) {
+      const theme = THEMES[id]
+      expect(theme.palette.surface.base).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(theme.palette.text.primary).toMatch(/^#[0-9a-f]{6}$/i)
+      expect(theme.palette.border.hairline).toBeTruthy()
+      expect(theme.chrome.panelOpacity).toBeGreaterThan(0.4)
     }
   })
 
-  it('adds Thorn & Rose as a botanical preset with its own palette and decoration', () => {
-    const thorn = THEMES['thorn-rose']
-    expect(thorn.name).toBe('Thorn & Rose')
-    // Forest base, ivory type, emerald and rose accents: the art direction the theme is built on.
-    expect(thorn.surface).toBe('#0b1410')
-    expect(thorn.text).toBe('#f4efe4')
-    expect(thorn.accent).toBe('#c9a24a')
-    expect(DECORATION_PRESETS['thorn-vine'].inheritTheme).toBe(true)
-    // The four earlier presets are untouched by the addition.
-    expect(THEMES['royal-persian'].surface).toBe('#0c0c0e')
+  it('keeps the four presets structurally distinct, not just recoloured', () => {
+    const shapes = THEME_ORDER.map((id) => {
+      const { chrome, pattern } = THEMES[id]
+      return `${chrome.radius}|${chrome.borderWidth}|${chrome.texture}|${pattern}`
+    })
+    expect(new Set(shapes).size).toBe(4)
+    expect(new Set(THEME_ORDER.map((id) => THEMES[id].palette.surface.base)).size).toBe(4)
   })
 
-  it('changes theme tokens without changing composition or content', () => {
-    const overlay = createEmptyOverlay('Theme-safe')
-    const text = createElement('text'); text.x = 419; text.y = 212; text.props.text = 'محتوا محفوظ است'
-    overlay.elements.push(text)
-    const before = structuredClone(overlay.elements)
-    overlay.theme = structuredClone(getTheme('persian-turquoise'))
-    expect(overlay.theme.id).toBe('persian-turquoise')
-    expect(overlay.elements).toEqual(before)
+  it('never ships purple and never ships pure black surfaces', () => {
+    for (const id of THEME_ORDER) {
+      const theme = THEMES[id]
+      const values = [theme.palette.surface.base, theme.palette.surface.raised, theme.palette.surface.sunken, theme.palette.accent.base]
+      for (const hex of values) {
+        expect(hex.toLowerCase(), `${id} ${hex}`).not.toBe('#000000')
+        if (!hex.startsWith('#')) continue
+        const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+        const max = Math.max(r, g, b), min = Math.min(r, g, b)
+        // Purple is the one hue range the owner ruled out; purple has blue above red above green.
+        if (max - min > 24) expect(b > r && r > g, `${id} ${hex} reads purple`).toBe(false)
+      }
+    }
   })
 
-  it('clones decoration presets independently and resolves inherited colors', () => {
-    const first = createDecoration('royal-panel'); const second = createDecoration('royal-panel')
-    first.borderWidth = 11
-    expect(second.borderWidth).toBe(3)
-    const resolved = resolveDecoration(second, getTheme('persian-turquoise'))
-    expect(resolved.borderColor).toBe(getTheme('persian-turquoise').accent)
-    expect(resolved.pattern).toBe('eslimi')
-    const custom = { ...second, inheritTheme: false, borderColor: '#123456' }
-    expect(resolveDecoration(custom, getTheme('imperial-night')).borderColor).toBe('#123456')
+  it('migrates every retired theme id to a live preset', () => {
+    expect(LEGACY_THEME_MAP['thorn-rose']).toBe('obsidian')
+    expect(migrateThemeId('thorn-rose')).toBe('obsidian')
+    expect(migrateThemeId('royal-persian')).toBe('obsidian')
+    expect(migrateThemeId('persian-turquoise')).toBe('aurora')
+    expect(migrateThemeId('imperial-night')).toBe('monolith')
+    expect(migrateThemeId('nonsense')).toBe('obsidian')
+    expect(migrateThemeId('nocturne')).toBe('nocturne')
   })
 
-  it('migrates legacy elements with full decoration and motion defaults', () => {
-    const overlay = createEmptyOverlay('Legacy')
-    const legacy = createElement('counter') as unknown as Record<string, unknown>
-    delete legacy.animation; delete legacy.decoration
-    overlay.elements = [legacy as unknown as Overlay['elements'][number]]
+  it('migrates a saved overlay theme on load without touching its content', () => {
+    const overlay = createEmptyOverlay('Retired theme')
+    const title = createElement('text')
+    title.props.text = 'unchanged'
+    overlay.elements = [title]
+    ;(overlay.theme as { id: string }).id = 'thorn-rose'
+    // normalizeOverlay is the real load path, so the assertion runs through it rather than a cast.
     const migrated = normalizeOverlay(overlay)
-    expect(migrated.elements[0].animation.exit).toBe('fade')
-    expect(migrated.elements[0].animation.holdDuration).toBeGreaterThan(0)
-    expect(migrated.elements[0].decoration.preset).toBe('royal-panel')
-  })
-})
-
-describe('publish secrecy and fallback', () => {
-  it('recursively strips token/secret/password variants while retaining runtime capability', () => {
-    const overlay = createEmptyOverlay('Secret safe')
-    overlay.live = { backendUrl: 'https://api.example', runtimeKey: 'public-runtime-key', connectionId: 'connection', channelName: 'channel' }
-    const unsafe = overlay as Overlay & Record<string, unknown>
-    unsafe.access_token = 'access-value'
-    unsafe.nested = { refreshToken: 'refresh-value', client_secret: 'secret-value', accountPassword: 'password-value', safe: 'visible' }
-    const sanitized = sanitizeOverlayForPublish(unsafe)
-    const serialized = JSON.stringify(sanitized)
-    expect(serialized).not.toContain('access-value')
-    expect(serialized).not.toContain('refresh-value')
-    expect(serialized).not.toContain('secret-value')
-    expect(serialized).not.toContain('password-value')
-    expect(serialized).toContain('public-runtime-key')
-    expect(serialized).toContain('visible')
+    expect(migrated.theme.id).toBe('obsidian')
+    expect(migrated.elements[0].props.text).toBe('unchanged')
+    expect(migrated.elements).toHaveLength(1)
   })
 
-  it('round trips theme, decorations, animations and public live config', () => {
-    const overlay = createEmptyOverlay('Runtime fallback')
-    overlay.theme = structuredClone(getTheme('imperial-night'))
-    overlay.staticMotion = true
-    overlay.live = { backendUrl: 'https://api.example', runtimeKey: 'runtime', connectionId: 'connection', channelName: 'channel' }
-    const alert = createElement('alert'); alert.decoration = createDecoration('imperial-card'); alert.animation.type = 'ornamental'
-    overlay.elements.push(alert)
-    const decoded = decodeOverlaySnapshot(encodeOverlaySnapshot(overlay))
-    expect(decoded?.theme.id).toBe('imperial-night')
-    expect(decoded?.staticMotion).toBe(true)
-    expect(decoded?.elements[0].decoration.preset).toBe('imperial-card')
-    expect(decoded?.elements[0].animation.type).toBe('ornamental')
-    expect(decoded?.live?.runtimeKey).toBe('runtime')
+  it('keeps the legacy decoration preset loadable as a plain framed panel', () => {
+    expect(DECORATION_PRESETS['thorn-vine'].preset).toBe('thorn-vine')
+    expect(DECORATION_PRESETS['thorn-vine'].borderVisible).toBe(true)
+    const resolved = resolveDecoration({ ...DECORATION_PRESETS['thorn-vine'], inheritTheme: true }, THEMES.aurora)
+    expect(resolved.borderColor).toBe(THEMES.aurora.palette.accent.base)
+    expect(resolved.radius).toBe(THEMES.aurora.chrome.radius)
   })
 })

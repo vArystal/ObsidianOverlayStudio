@@ -4,8 +4,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import { ElementRenderer } from '../components/ElementRenderer'
 import { LiveDataProvider } from '../components/LiveDataProvider'
 import { decodeOverlaySnapshot, getOverlayByPublicId } from '../lib/storage'
-import { getTheme, normalizeThornTuning, thornCssVars } from '../lib/themes'
-import { ThornTuningContext } from '../components/thorn/tuningContext'
+import { getTheme, themeCssVars } from '../lib/themes'
 
 export function OverlayRuntime() {
   const { publicId = '' } = useParams(); const [params] = useSearchParams()
@@ -16,8 +15,9 @@ export function OverlayRuntime() {
     const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight }); window.addEventListener('resize', update)
     return () => { document.documentElement.classList.remove('runtime-root'); document.body.classList.remove('runtime-root'); window.removeEventListener('resize', update) }
   }, [])
-  // Legacy snapshots may omit theme colours. Defaulting keeps a live source on air instead of failing.
-  const theme = { accent: '#d8ad55', primary: '#0f0a14', surface: '#170f17', ...overlay?.theme }
+  // A snapshot may carry a retired theme id or no colours at all. getTheme migrates the id and supplies the
+  // whole preset, so a live source keeps rendering instead of failing on a missing field.
+  const theme = getTheme(overlay?.theme?.id)
   if (!overlay) return <div className="runtime-error"><strong>Overlay unavailable</strong><span>This local design or snapshot could not be found.</span></div>
   const scale = Math.min(viewport.width / overlay.width, viewport.height / overlay.height)
   // Test mode is opt-in per source URL, so an operator can check the wiring in OBS without waiting for a
@@ -25,9 +25,8 @@ export function OverlayRuntime() {
   const testMode = params.get('test') === '1'
   return (
     <LiveDataProvider config={overlay.live} testMode={testMode}>
-      <main className={`overlay-runtime theme-${theme.id || 'royal-persian'} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={{ '--theme-accent': theme.accent, '--theme-primary': theme.primary, '--theme-surface': theme.surface, ...thornCssVars(normalizeThornTuning(overlay.thorn)) } as CSSProperties}>
+      <main className={`overlay-runtime theme-${theme.id} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={themeCssVars(theme) as CSSProperties}>
         {testMode && <div className="runtime-test-mode" role="status">TEST MODE · SYNTHETIC EVENTS · NOT FOR AIR</div>}
-        <ThornTuningContext.Provider value={normalizeThornTuning(overlay.thorn)}>
         <div className="runtime-stage" style={{ width: overlay.width, height: overlay.height, transform: `scale(${scale})` }}>
           {overlay.elements.filter((element) => element.visible && element.includeInOutput).map((element, index) => (
             <div className="runtime-element" key={element.id} style={{ left: element.x, top: element.y, width: element.width, height: element.height, opacity: element.opacity, transform: `rotate(${element.rotation}deg)`, zIndex: index + 1 }}>
@@ -48,7 +47,6 @@ export function OverlayRuntime() {
             </div>
           ))}
         </div>
-        </ThornTuningContext.Provider>
       </main>
     </LiveDataProvider>
   )

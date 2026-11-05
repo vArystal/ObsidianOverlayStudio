@@ -2,8 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Crosshair, Lock, ZoomIn } from 'lucide-react'
 import { ElementRenderer } from '../ElementRenderer'
-import { normalizeThornTuning, thornCssVars } from '../../lib/themes'
-import { ThornTuningContext } from '../thorn/tuningContext'
+import { themeCssVars } from '../../lib/themes'
 import { clampElement, roundGeometry, snapPosition } from '../../lib/geometry'
 import type { Guide, Overlay, OverlayElement } from '../../types'
 
@@ -124,7 +123,6 @@ export function Canvas(props: CanvasProps) {
   const displayedElements = props.overlay.elements.filter((element) => element.visible)
 
   return (
-    <ThornTuningContext.Provider value={normalizeThornTuning(props.overlay.thorn)}>
     <div
       ref={viewportRef}
       className={`canvas-viewport ${props.preview ? 'previewing' : ''}`}
@@ -142,7 +140,7 @@ export function Canvas(props: CanvasProps) {
               '--theme-accent': props.overlay.theme.accent,
               '--theme-primary': props.overlay.theme.primary,
               '--theme-surface': props.overlay.theme.surface,
-              ...thornCssVars(normalizeThornTuning(props.overlay.thorn)),
+              ...themeCssVars(props.overlay.theme),
             } as CSSProperties}
             onPointerMove={pointerMove}
             onPointerUp={endPointer}
@@ -206,6 +204,5 @@ export function Canvas(props: CanvasProps) {
       </div>
       {props.preview && <div className="preview-badge"><ZoomIn /> Preview · every layer, editor guides hidden</div>}
     </div>
-    </ThornTuningContext.Provider>
   )
 }

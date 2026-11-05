@@ -19,7 +19,7 @@ export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornam
 export type IdleAnimationType = 'none' | 'shimmer' | 'glow' | 'float' | 'sparkle'
 export type AnimationDirection = 'up' | 'down' | 'left' | 'right'
 export type TextDirection = 'ltr' | 'rtl' | 'auto'
-export type ThemeId = 'royal-persian' | 'persian-turquoise' | 'imperial-night' | 'minimal-esports' | 'thorn-rose'
+export type ThemeId = 'obsidian' | 'nocturne' | 'aurora' | 'monolith'
 export type DecorationPresetId = 'none' | 'royal-panel' | 'turquoise-panel' | 'imperial-card' | 'esports-line' | 'ornamental-frame' | 'thorn-vine'
 
 export interface OverlayAnimation {
@@ -80,27 +80,45 @@ export interface OverlayElement {
   props: Record<string, string | number | boolean | null>
 }
 
-export type ThemeTexture = 'none' | 'grid' | 'grain' | 'hatch' | 'sheen'
+export type ThemeTexture = 'none' | 'grid' | 'grain' | 'hatch' | 'sheen' | 'aurora'
 
-/** Per-theme chrome. Colour alone cannot separate monochrome presets, so geometry and texture do. */
+
+export type LegacyThemeId = 'royal-persian' | 'persian-turquoise' | 'imperial-night' | 'minimal-esports' | 'thorn-rose'
+
+
+/** Per-theme chrome. Colour alone cannot separate four dark presets, so geometry and material do the work. */
 export interface ThemeChrome {
   radius: number
   borderWidth: number
   texture: ThemeTexture
-  /** Structural switches, so two dark presets differ by construction and not only by shade. */
-  innerBorder: boolean
-  cornerOrnaments: boolean
-  /** How much of the panel is filled at all: 0.12 is an outline card, 0.86 a solid slab. */
-  panelOpacity: number
   /** Small labels set in wide uppercase: part of a theme's voice, not a global style. */
   uppercaseLabels: boolean
+  innerBorder: boolean
+  cornerOrnaments: boolean
+  /** Fill strength of a widget panel, kept high enough to stay legible over bright gameplay. */
+  panelOpacity: number
+}
+
+/**
+ * The full palette a theme owns. Layers of the app and of the overlay read the same token names, so a
+ * published overlay and its editor preview cannot drift apart.
+ */
+export interface ThemePalette {
+  surface: { base: string; raised: string; sunken: string; overlay: string }
+  accent: { base: string; soft: string; strong: string }
+  border: { hairline: string; strong: string; focus: string }
+  text: { primary: string; secondary: string; muted: string; inverse: string }
+  state: { hover: string; selected: string; disabled: string }
+  depth: { raised: string; floating: string; inset: string; glow: string }
 }
 
 export interface OverlayTheme {
   id: ThemeId
-  chrome: ThemeChrome
   name: string
   nameFa: string
+  chrome: ThemeChrome
+  palette: ThemePalette
+  /** Flat mirrors of the palette, kept so element renderers and saved data keep working unchanged. */
   primary: string
   secondary: string
   accent: string
@@ -128,16 +146,6 @@ export interface CanvasSettings {
   backgroundImage: string | null
 }
 
-export type ThornRose = 'crimson' | 'wine' | 'blush'
-export type ThornFoliage = 'light' | 'full' | 'lush'
-export type ThornMotion = 'still' | 'subtle' | 'lively'
-
-/** Botanical tuning for the Thorn & Rose theme, stored per overlay so it survives reload and publish. */
-export interface ThornTuning {
-  rose: ThornRose
-  foliage: ThornFoliage
-  motion: ThornMotion
-}
 
 export interface Overlay {
   id: string
@@ -148,7 +156,6 @@ export interface Overlay {
   elements: OverlayElement[]
   settings: CanvasSettings
   theme: OverlayTheme
-  thorn: ThornTuning
   staticMotion: boolean
   live: LiveIntegrationConfig | null
   createdAt: string

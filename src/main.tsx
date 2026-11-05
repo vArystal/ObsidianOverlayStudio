@@ -10,10 +10,10 @@ import './styles/tokens.css'
 import './styles.css'
 import './premium.css'
 import './styles/studio.css'
-// Loaded last: the botanical theme overrides panel surfaces, so it must win the cascade.
-import './styles/thorn-rose.css'
 import './styles/monochrome.css'
 import './styles/integrations-receipts.css'
+// CP20 design system, loaded last: it owns tokens, typography roles and component states.
+import './styles/cp20.css'
 
 const router = createHashRouter([
   { path: '/', element: <Navigate to="/overlays" replace /> },
