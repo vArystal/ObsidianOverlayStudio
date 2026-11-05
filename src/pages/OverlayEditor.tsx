@@ -482,7 +482,7 @@ export function OverlayEditor() {
         {publishUrl && (
           <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setPublishUrl(''); setPublishVerdict(null) } }}>
             <section className="publish-modal" role="dialog" aria-modal="true" aria-labelledby="publish-title">
-              <button className="modal-close" onClick={() => { setPublishUrl(''); setPublishVerdict(null) }}><X /></button>
+              <button type="button" className="modal-close" aria-label="Close publish dialog" onClick={() => { setPublishUrl(''); setPublishVerdict(null) }}><X aria-hidden="true" /></button>
               <div className="modal-icon"><Copy /></div>
               <h2 id="publish-title">OBS snapshot URL copied</h2>
               <p>This transparent output contains your current saved composition. Use these exact Browser Source dimensions:</p>
