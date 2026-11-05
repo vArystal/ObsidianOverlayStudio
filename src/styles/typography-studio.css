@@ -48,6 +48,12 @@
 .type-field input[type="color"] { width: 100%; height: 28px; padding: 2px; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 7px; }
 
 .type-row { display: flex; gap: 8px; }
+.type-colour { display: flex; gap: 6px; align-items: center; }
+.type-colour input[type="color"] { width: 42px; flex: 0 0 42px; }
+.type-colour input[type="text"] {
+  flex: 1 1 auto; min-width: 0; padding: 6px 7px; font-size: 11.5px; font-variant-numeric: tabular-nums;
+  color: #f6f6f4; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); border-radius: 7px;
+}
 
 .type-search { position: relative; display: flex; align-items: center; }
 .type-search svg { position: absolute; left: 8px; width: 13px; height: 13px; color: var(--text-muted, #8f8f8c); }

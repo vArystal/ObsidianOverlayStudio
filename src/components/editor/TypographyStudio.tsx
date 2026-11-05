@@ -164,6 +164,20 @@ export function TypographyStudio({ element, onProp, onProps }: Props) {
 
       <Slider label="Size" value={type.fontSize} min={8} max={220} suffix="px" onChange={(value) => onProp('fontSize', value)} />
 
+      <div className="type-field">
+        <label htmlFor="type-colour">Text colour</label>
+        <div className="type-colour">
+          <input id="type-colour" type="color" value={type.color} onChange={(event) => onProp('color', event.target.value)} />
+          <input
+            aria-label="Text colour hex value"
+            type="text"
+            spellCheck={false}
+            value={type.color}
+            onChange={(event) => { if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(event.target.value.trim())) onProp('color', event.target.value.trim()) }}
+          />
+        </div>
+      </div>
+
       <Row>
         <div className="type-field grow">
           <span className="type-label" id="align-label">Align</span>
