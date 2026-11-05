@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFileSync } from 'node:fs'
-import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
+import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, streamInfoFromChannel, mergeStreamInfo, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
 
 const ORIGIN = 'https://varystal.github.io'
 const API = 'https://obsidian-overlay-api.test.workers.dev'
@@ -540,4 +540,65 @@ test('CORS names the caller origin only when it is on the allowlist', async () =
 
   const none = await handleRequest(new Request(`${API}/api/health`), env)
   assert.equal(none.headers.get('access-control-allow-origin'), null, 'a server-to-server call needs no allowance')
+})
+
+
+/* ------------------------------------------------ CP24 stream description */
+
+test('stream info is read from the official channel payload and omits what Kick omits', () => {
+  const channel = {
+    stream_title: 'Late night ranked',
+    category: { id: 15, name: 'Valorant' },
+    stream: { is_live: true, start_time: '2026-11-05T08:00:00Z', viewer_count: 41 },
+  }
+  const info = streamInfoFromChannel(channel, '2026-11-05T09:00:00.000Z')
+  assert.deepEqual(info, {
+    title: 'Late night ranked', category: 'Valorant', isLive: true, startedAt: '2026-11-05T08:00:00Z', updatedAt: '2026-11-05T09:00:00.000Z',
+  })
+  // An offline channel reports no stream block at all: that must never become "live: false with a duration".
+  const offline = streamInfoFromChannel({ stream_title: '', stream: null })
+  assert.equal(offline, null)
+  assert.equal(streamInfoFromChannel(null), null)
+})
+
+test('a livestream event merges into stored stream info without erasing fields it did not carry', () => {
+  const previous = { title: 'Late night ranked', category: 'Valorant', isLive: true, startedAt: '2026-11-05T08:00:00Z', updatedAt: 'x' }
+  const ended = mergeStreamInfo(previous, { isLive: false, title: null, startedAt: null }, '2026-11-05T12:00:00.000Z')
+  assert.equal(ended.isLive, false, 'the status event owns the live flag')
+  assert.equal(ended.title, 'Late night ranked', 'a status event carries no title, so the stored title stays')
+  assert.equal(ended.startedAt, '2026-11-05T08:00:00Z')
+  const metadata = mergeStreamInfo(ended, { title: 'Ranked grind', category: 'Just Chatting' }, '2026-11-05T12:05:00.000Z')
+  assert.equal(metadata.title, 'Ranked grind')
+  assert.equal(metadata.category, 'Just Chatting')
+  assert.equal(metadata.isLive, false)
+})
+
+test('the runtime state route exposes the stored stream description and active subscribers', async () => {
+  const { env } = makeEnv()
+  const now = new Date().toISOString()
+  await env.DB.prepare(`INSERT INTO connections (id, channel_slug, tokens, subscriptions, connected, viewer, stream_info, active_subscribers, updated_at)
+    VALUES ('con_stream', 'arystal', '{}', '[]', 1, '{"status":"offline","count":null,"updatedAt":null}', ?, 7, ?)`)
+    .bind(JSON.stringify({ title: 'Late night ranked', category: 'Valorant', isLive: false, startedAt: '2026-11-05T08:00:00Z', updatedAt: '2026-11-05T09:00:00.000Z' }), now).run()
+  // A runtime key belongs to a publication row, not to the connection: publishing is what mints it.
+  await env.DB.prepare(`INSERT INTO publications (id, connection_id, overlay_id, runtime_key, created_at, updated_at)
+    VALUES ('pub_stream', 'con_stream', 'ovl_1', 'rt_stream', ?, ?)`).bind(now, now).run()
+  const response = await handleRequest(new Request(`${API}/api/runtime/rt_stream/state`), env)
+  const body = await response.json()
+  assert.equal(body.connected, true)
+  assert.deepEqual(body.stream, { title: 'Late night ranked', category: 'Valorant', isLive: false, startedAt: '2026-11-05T08:00:00Z', updatedAt: '2026-11-05T09:00:00.000Z' })
+  assert.equal(body.channel.activeSubscribers, 7)
+})
+
+test('an overlay with no stored description reports null rather than a blank title', async () => {
+  const { env } = makeEnv()
+  const now = new Date().toISOString()
+  await env.DB.prepare(`INSERT INTO connections (id, channel_slug, tokens, subscriptions, connected, viewer, updated_at)
+    VALUES ('con_bare', 'arystal', '{}', '[]', 1, '{"status":"offline","count":null,"updatedAt":null}', ?)`)
+    .bind(now).run()
+  await env.DB.prepare(`INSERT INTO publications (id, connection_id, overlay_id, runtime_key, created_at, updated_at)
+    VALUES ('pub_bare', 'con_bare', 'ovl_2', 'rt_bare', ?, ?)`).bind(now, now).run()
+  const response = await handleRequest(new Request(`${API}/api/runtime/rt_bare/state`), env)
+  const body = await response.json()
+  assert.equal(body.stream, null)
+  assert.equal(body.channel.activeSubscribers, null)
 })

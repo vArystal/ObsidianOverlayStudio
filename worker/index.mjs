@@ -131,6 +131,34 @@ export function viewerMetric(channel, updatedAt = new Date().toISOString()) {
   return { status: 'live', count, updatedAt }
 }
 
+/**
+ * CP24: the broadcast description. Kick reports the title, category and start time on the channel object and in
+ * livestream webhooks; anything it omits stays null so a widget can say "not reported" instead of inventing a value.
+ */
+export function streamInfoFromChannel(channel, updatedAt = new Date().toISOString()) {
+  const stream = channel?.stream
+  const category = channel?.category
+  const title = typeof channel?.stream_title === 'string' && channel.stream_title.trim() ? channel.stream_title : null
+  const categoryName = typeof category === 'string' ? category : typeof category?.name === 'string' ? category.name : null
+  const isLive = typeof stream?.is_live === 'boolean' ? stream.is_live : null
+  const startedAt = typeof stream?.start_time === 'string' ? stream.start_time : typeof stream?.started_at === 'string' ? stream.started_at : null
+  if (!title && !categoryName && isLive === null && !startedAt) return null
+  return { title, category: categoryName, isLive, startedAt, updatedAt }
+}
+
+/** Merges a livestream webhook into the stored description without dropping fields the event did not carry. */
+export function mergeStreamInfo(previous, next, updatedAt = new Date().toISOString()) {
+  const base = previous && typeof previous === 'object' ? previous : {}
+  const merged = {
+    title: typeof next?.title === 'string' && next.title ? next.title : base.title ?? null,
+    category: typeof next?.category === 'string' && next.category ? next.category : base.category ?? null,
+    isLive: typeof next?.isLive === 'boolean' ? next.isLive : base.isLive ?? null,
+    startedAt: typeof next?.startedAt === 'string' ? next.startedAt : base.startedAt ?? null,
+    updatedAt,
+  }
+  return merged
+}
+
 /* --------------------------------------------------- webhook signature check */
 
 function pemToBuffer(pem) {
@@ -389,9 +417,18 @@ export async function refreshViewerIfStale(env, connection, fetchImpl = fetch) {
     const channel = await fetchChannelState(fetchImpl, token, connection.account_user_id)
     const now = new Date().toISOString()
     const next = viewerMetric(channel, now)
-    await run(env, 'UPDATE connections SET viewer = ?, active_subscribers = COALESCE(?, active_subscribers), updated_at = ? WHERE id = ?',
-      JSON.stringify(next), channel?.active_subscribers_count ?? null, now, connection.id)
-    return { ...connection, viewer: JSON.stringify(next), updated_at: now, active_subscribers: channel?.active_subscribers_count ?? connection.active_subscribers }
+    // The same Kick response carries the broadcast description; storing it keeps stream widgets truthful even
+    // when no livestream webhook has arrived yet.
+    const described = streamInfoFromChannel(channel, now)
+    await run(env, 'UPDATE connections SET viewer = ?, active_subscribers = COALESCE(?, active_subscribers), stream_info = COALESCE(?, stream_info), updated_at = ? WHERE id = ?',
+      JSON.stringify(next), channel?.active_subscribers_count ?? null, described ? JSON.stringify(described) : null, now, connection.id)
+    return {
+      ...connection,
+      viewer: JSON.stringify(next),
+      updated_at: now,
+      active_subscribers: channel?.active_subscribers_count ?? connection.active_subscribers,
+      stream_info: described ? JSON.stringify(described) : connection.stream_info,
+    }
   } catch {
     const degraded = { ...viewer, status: viewer.updatedAt ? 'stale' : 'unavailable' }
     return { ...connection, viewer: JSON.stringify(degraded) }
@@ -507,6 +544,20 @@ async function handleWebhook(request, env) {
   }
   if (eventType === 'livestream.status.updated') {
     patch.viewer = JSON.stringify({ status: payload.is_live ? 'live' : 'offline', count: payload.is_live ? JSON.parse(connection.viewer || '{}').count ?? null : null, updatedAt: now })
+    const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
+    patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
+      title: typeof payload.title === 'string' ? payload.title : null,
+      isLive: typeof payload.is_live === 'boolean' ? payload.is_live : null,
+      startedAt: typeof payload.started_at === 'string' ? payload.started_at : null,
+    }, now))
+  }
+  if (eventType === 'livestream.metadata.updated') {
+    const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
+    const metadata = payload.metadata ?? {}
+    patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
+      title: typeof metadata.title === 'string' ? metadata.title : null,
+      category: typeof metadata.category?.name === 'string' ? metadata.category.name : null,
+    }, now))
   }
   const fields = Object.keys(patch)
   await run(env, `UPDATE connections SET ${fields.map((f) => `${f} = ?`).join(', ')}, updated_at = ? WHERE id = ?`,
@@ -777,7 +828,8 @@ export async function handleRequest(request, env, ctx = {}) {
         viewer: JSON.parse(fresh.viewer || '{"status":"unavailable","count":null,"updatedAt":null}'),
         latestFollower: fresh.last_follower ? JSON.parse(fresh.last_follower) : null,
         sessionFollowerCount: Number(fresh.session_follower_count || 0),
-        channel: { slug: fresh.channel_slug, description: fresh.channel_description },
+        channel: { slug: fresh.channel_slug, description: fresh.channel_description, activeSubscribers: fresh.active_subscribers },
+        stream: (() => { try { return JSON.parse(fresh.stream_info || 'null') } catch { return null } })(),
         lastEventAt: connection.last_event_at || null,
         followerTotal: FOLLOWER_TOTAL,
         serverTime: new Date().toISOString(),

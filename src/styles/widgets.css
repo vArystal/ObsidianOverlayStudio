@@ -1,0 +1,74 @@
+/* CP24 widget surface. One stylesheet for every shared widget, monochrome by default and recolourable by props. */
+.widget-shell {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: hidden;
+  /* Widgets never intercept the pointer in OBS output; the editor adds its own hit layer above them. */
+  pointer-events: none;
+  user-select: none;
+}
+.widget-kicker {
+  font-size: .58em;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  opacity: .72;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.widget-headline { font-size: 1em; line-height: 1.14; letter-spacing: -.01em; }
+.widget-metric { font-size: 1.32em; font-variant-numeric: tabular-nums; letter-spacing: -.01em; line-height: 1.1; }
+
+.widget-state { font-size: .74em; line-height: 1.3; opacity: .82; }
+.widget-state-loading { opacity: .6; font-style: italic; }
+.widget-state-disconnected, .widget-state-error { opacity: .92; }
+.widget-state-unavailable, .widget-state-empty { opacity: .72; }
+
+.widget-status-row { display: flex; align-items: center; gap: 10px; }
+.widget-status-dot { width: .72em; height: .72em; border-radius: 50%; flex: 0 0 auto; }
+.widget-status-dot.is-pulsing { animation: widget-pulse 2.2s ease-in-out infinite; }
+.widget-status-text { font-size: 1em; letter-spacing: .08em; }
+@keyframes widget-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+.widget-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .34em; overflow: hidden; }
+.widget-row { display: flex; align-items: center; gap: .5em; min-width: 0; font-size: .78em; line-height: 1.25; }
+.widget-row-copy { display: flex; align-items: baseline; gap: .42em; min-width: 0; flex: 1 1 auto; }
+.widget-row-copy > strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 62%; }
+.widget-row-detail { opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.widget-row-kind { font-style: normal; font-size: .82em; letter-spacing: .1em; text-transform: uppercase; opacity: .6; }
+.widget-row-label { opacity: .66; font-size: .94em; }
+.widget-row-time { margin-left: auto; opacity: .55; font-size: .84em; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
+.widget-avatar {
+  width: 1.5em; height: 1.5em; border-radius: 50%; border: 1px solid currentColor;
+  display: inline-flex; align-items: center; justify-content: center; font-size: .8em; opacity: .9; flex: 0 0 auto;
+}
+.widget-glyph { font-size: .9em; width: 1.1em; text-align: center; flex: 0 0 auto; }
+.widget-social-rows .widget-row { justify-content: space-between; gap: .8em; }
+
+@media (prefers-reduced-motion: reduce) {
+  .widget-status-dot.is-pulsing { animation: none; }
+}
+
+/* Library additions: search field and availability badges, monochrome like the rest of the studio. */
+.library-search { padding: 0 0 10px; }
+.library-search input {
+  width: 100%; padding: 8px 10px; font-size: 12.5px; color: var(--text, #f6f6f4);
+  background: rgba(255, 255, 255, .04); border: 1px solid var(--line, #2a2a2e); border-radius: 8px;
+}
+.library-search input::placeholder { color: rgba(246, 246, 244, .45); }
+.library-search input:focus-visible { outline: 2px solid rgba(246, 246, 244, .7); outline-offset: 1px; }
+.element-list button .widget-badge {
+  display: inline-block; margin-top: 3px; font-style: normal; font-size: 9.5px; letter-spacing: .1em;
+  text-transform: uppercase; padding: 1px 5px; border-radius: 999px; border: 1px solid rgba(246, 246, 244, .28);
+  color: rgba(246, 246, 244, .72);
+}
+.element-list button .widget-badge.badge-unsupported { border-style: dashed; opacity: .8; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}

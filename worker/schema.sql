@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS connections (
   -- Durable per-type receipt counters. Event rows are pruned after an hour, so without
   -- this there is no way to prove later whether a real delivery ever arrived.
   event_counts           TEXT NOT NULL DEFAULT '{}',
+  -- CP24: last broadcast description Kick reported, so stream widgets survive an offline channel.
+  stream_info            TEXT,
   updated_at             TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_connections_management ON connections(management_hash);

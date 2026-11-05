@@ -32,6 +32,7 @@ import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
 import { ThemeGallery } from './ThemeGallery'
 import { CONTAINER_PRESETS, containerStyle } from '../../lib/elements'
 import { BackgroundSection } from './BackgroundSection'
+import { WidgetSettings } from './WidgetSettings'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -186,6 +187,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             </div>
           </div>
         </Section>
+
+        <WidgetSettings
+          element={element}
+          onProp={prop}
+          onReplaceProps={(next) => props.onPatch({ props: next })}
+        />
 
         {element.type === 'text' && (
           <Section title="Content & typography">

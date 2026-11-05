@@ -5,6 +5,7 @@ import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration, themeCssVars } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
 import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
+import { renderKickWidget } from './widgets'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -235,6 +236,11 @@ function LiveAlert({ element, runtime, preview, nonce }: { element: OverlayEleme
 
 function ElementContent({ element, runtime, preview, testAlertNonce }: { element: OverlayElement; runtime: boolean; preview: boolean; testAlertNonce: number }) {
   const live = useLiveData(); const p = element.props
+  // CP24: every widget in the registry renders through one shared component tree, so the editor canvas and the
+  // published source cannot drift. `runtime`/`preview` are deliberately not forwarded: the widget's job is to show
+  // the truth of its data, and hiding a disconnected state in the editor is what makes the runtime a surprise.
+  const shared = renderKickWidget(element)
+  if (shared !== undefined) return <>{shared}</>
   switch (element.type) {
     // CP23: text is painted entirely by the shared typography builders, so the editor canvas and the OBS runtime
     // cannot disagree about family, weight, size, leading, tracking, direction, shadow, stroke or wrapping.

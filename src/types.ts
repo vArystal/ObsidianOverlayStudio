@@ -15,6 +15,20 @@ export type ElementType =
   | 'viewerCount'
   | 'sessionFollowers'
   | 'latestFollower'
+  // CP24 stream information
+  | 'streamTitle'
+  | 'liveStatus'
+  | 'streamCategory'
+  | 'streamDuration'
+  | 'subscriberCount'
+  // CP24 community
+  | 'recentFollowers'
+  | 'recentSubscribers'
+  | 'activityFeed'
+  // CP24 local widgets
+  | 'clock'
+  | 'socialLinks'
+
 
 export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornamental'
 export type IdleAnimationType = 'none' | 'shimmer' | 'glow' | 'float' | 'sparkle'
@@ -216,6 +230,37 @@ export interface LiveOverlayEvent {
   receivedAt: string
   test: boolean
   data: Record<string, unknown>
+}
+
+/**
+ * What the backend actually knows about the broadcast. Every field is nullable on purpose: Kick omits
+ * `is_live` while a channel is offline, metadata events may never arrive, and a widget must be able to say
+ * "not reported" instead of rendering a zero or a blank title as if it were data.
+ */
+export interface LiveStreamInfo {
+  title: string | null
+  category: string | null
+  isLive: boolean | null
+  startedAt: string | null
+  updatedAt: string | null
+}
+
+export interface WidgetActivity {
+  id: string
+  kind: 'chat' | 'follow' | 'subscription' | 'gift' | 'other'
+  username: string
+  detail: string
+  at: string
+  test: boolean
+}
+
+export interface CommunityPerson {
+  username: string
+  avatar: string | null
+  /** Only set for subscription events so a list can distinguish new from renewal. */
+  kind?: 'new' | 'renewal' | 'gift'
+  at: string
+  test: boolean
 }
 
 export interface ViewerMetric {

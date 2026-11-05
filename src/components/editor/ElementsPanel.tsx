@@ -30,25 +30,20 @@ import {
   UserRound,
 } from 'lucide-react'
 import type { ElementType, OverlayElement } from '../../types'
+import { WIDGETS, WIDGET_GROUPS, availabilityLabel, searchWidgets } from '../../lib/widgets'
+import type { WidgetIcon } from '../../lib/widgets'
 
-const library: Array<{ type: ElementType; icon: typeof TextCursorInput; title: string; description: string; group: string }> = [
-  { type: 'text', icon: TextCursorInput, title: 'Text', description: 'Custom RTL or LTR copy', group: 'Content' },
-  { type: 'image', icon: Image, title: 'Image / Logo', description: 'PNG, JPEG or WebP', group: 'Content' },
-  { type: 'shape', icon: Shapes, title: 'Shape / Border', description: 'Decorative visual layer', group: 'Content' },
-  { type: 'container', icon: SquareDashed, title: 'Empty container', description: 'Blank box you can style', group: 'Content' },
-  { type: 'frame', icon: Frame, title: 'Persian ornamental frame', description: 'Independent girih border layer', group: 'Content' },
-  { type: 'capture', icon: Gamepad2, title: 'Game capture plan', description: 'Layout guide — not a capture', group: 'Planning' },
-  { type: 'webcam', icon: Camera, title: 'Webcam frame', description: 'Frame or planning guide', group: 'Planning' },
-  { type: 'chat', icon: MessageSquare, title: 'Chat box', description: 'Preview-ready integration slot', group: 'Widgets' },
-  { type: 'alert', icon: BellRing, title: 'Alert box', description: 'Testable event surface', group: 'Widgets' },
-  { type: 'goal', icon: CircleDollarSign, title: 'Donation goal', description: 'Preview data only', group: 'Widgets' },
-  { type: 'counter', icon: AlignJustify, title: 'Custom counter', description: 'Manual numeric metric', group: 'Widgets' },
-  { type: 'countdown', icon: Clock3, title: 'Countdown', description: 'Local countdown timer', group: 'Widgets' },
-  { type: 'viewerCount', icon: RadioTower, title: 'Live viewer count', description: 'Official Kick livestream metric', group: 'Live Kick' },
-  { type: 'sessionFollowers', icon: UserPlus, title: 'Session follows', description: 'Real follow events received now', group: 'Live Kick' },
-  { type: 'latestFollower', icon: UserRound, title: 'Latest Kick follower', description: 'Official channel.followed event', group: 'Live Kick' },
-  { type: 'supporter', icon: UserRound, title: 'Latest supporter', description: 'Donation adapter slot', group: 'Widgets' },
-]
+/**
+ * CP24: the palette is generated from the widget registry, so a widget can never be addable here but missing an
+ * inspector section (or vice versa). Icons are the only thing kept in this file, because they are presentation.
+ */
+const ICONS: Record<WidgetIcon, typeof TextCursorInput> = {
+  text: TextCursorInput, image: Image, shape: Shapes, container: SquareDashed, frame: Frame, capture: Gamepad2,
+  webcam: Camera, chat: MessageSquare, alert: BellRing, goal: CircleDollarSign, counter: AlignJustify,
+  countdown: Clock3, viewer: RadioTower, followers: UserPlus, follower: UserRound, supporter: UserRound,
+  title: TextCursorInput, status: RadioTower, category: Gamepad2, duration: Clock3, subscribers: UserPlus,
+  activity: AlignJustify, clock: Clock3, links: UserRound,
+}
 
 interface ElementsPanelProps {
   elements: OverlayElement[]
@@ -69,6 +64,8 @@ type Tab = 'elements' | 'layers' | 'assets'
 
 export function ElementsPanel(props: ElementsPanelProps) {
   const [tab, setTab] = useState<Tab>('elements')
+  const [query, setQuery] = useState('')
+  const results = searchWidgets(query)
   const tabs = ['elements', 'layers', 'assets'] as const
   const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
@@ -92,21 +89,37 @@ export function ElementsPanel(props: ElementsPanelProps) {
 
       {tab === 'elements' && (
         <div className="panel-scroll element-library" role="tabpanel" id="panel-elements" aria-labelledby="tab-elements">
-          <div className="panel-heading"><div><h2>Add element</h2><p>Nothing is added until you choose it.</p></div></div>
-          {['Content', 'Planning', 'Live Kick', 'Widgets'].map((group) => (
-            <section key={group}>
-              <h3>{group}</h3>
-              <div className="element-list">
-                {library.filter((item) => item.group === group).map((item) => (
-                  <button key={item.type} onClick={() => props.onAdd(item.type)}>
-                    <span className="element-icon"><item.icon /></span>
-                    <span><strong>{item.title}</strong><small>{item.description}</small></span>
-                    <Plus className="add-icon" />
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
+          <div className="panel-heading"><div><h2>Add element</h2><p>{WIDGETS.length} widgets · nothing is added until you choose one.</p></div></div>
+          <div className="library-search">
+            <label htmlFor="widget-search" className="sr-only">Search widgets</label>
+            <input id="widget-search" type="search" value={query} placeholder="Search widgets, groups or types" onChange={(event) => setQuery(event.target.value)} />
+          </div>
+          {WIDGET_GROUPS.map((group) => {
+            const items = results.filter((widget) => widget.group === group)
+            if (!items.length) return null
+            return (
+              <section key={group}>
+                <h3>{group}</h3>
+                <div className="element-list">
+                  {items.map((widget) => {
+                    const Icon = ICONS[widget.icon] ?? TextCursorInput
+                    return (
+                      <button key={widget.type} onClick={() => props.onAdd(widget.type)} data-widget-type={widget.type}>
+                        <span className="element-icon"><Icon /></span>
+                        <span>
+                          <strong>{widget.label}</strong>
+                          <small>{widget.blurb}</small>
+                          {widget.availability !== 'available' && <em className={`widget-badge badge-${widget.availability}`}>{availabilityLabel(widget)}</em>}
+                        </span>
+                        <Plus className="add-icon" />
+                      </button>
+                    )
+                  })}
+                </div>
+              </section>
+            )
+          })}
+          {!results.length && <div className="panel-empty"><strong>No widget matches “{query}”</strong><span>Try “chat”, “goal” or “clock”.</span></div>}
         </div>
       )}
 

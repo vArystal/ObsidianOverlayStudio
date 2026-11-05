@@ -1,12 +1,17 @@
 import type { AnimationType, DecorationPresetId, ElementType, Overlay, OverlayAnimation, OverlayElement } from '../types'
 import { createDecoration, DEFAULT_THEME } from './themes'
 import { DEFAULT_BACKGROUND } from './backgrounds'
+import { createWidgetProps, widgetFor } from './widgets'
 
 export const ELEMENT_LABELS: Record<ElementType, string> = {
   text: 'Text', image: 'Image / Logo', webcam: 'Webcam Frame', capture: 'Screen / Game plan',
   chat: 'Kick Chat', alert: 'Kick Event Alert', goal: 'Donation Goal', shape: 'Shape / Border', container: 'Empty container',
   frame: 'Decorative Persian Frame', counter: 'Custom Counter', countdown: 'Countdown Timer',
   supporter: 'Latest Supporter', viewerCount: 'Kick Viewer Count', sessionFollowers: 'Session Follows', latestFollower: 'Latest Kick Follower',
+  // CP24 widgets. Labels here are the layer names; the library reads its own copy from the widget registry.
+  streamTitle: 'Stream Title', liveStatus: 'Live Status', streamCategory: 'Stream Category', streamDuration: 'Stream Duration',
+  subscriberCount: 'Active Subscribers', recentFollowers: 'Recent Followers', recentSubscribers: 'Recent Subscribers',
+  activityFeed: 'Recent Activity', clock: 'Clock', socialLinks: 'Social Links',
 }
 
 const uid = (prefix = 'item') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -46,6 +51,12 @@ const base = (type: ElementType, index: number): OverlayElement => ({
 
 export function createElement(type: ElementType, index = 0): OverlayElement {
   const item = base(type, index)
+  // A registry-defined widget owns its own geometry and props, so adding a widget type never needs a second
+  // switch here. Types with an empty default bag (text, image, chat…) keep their long-standing construction below.
+  const widget = widgetFor(type)
+  if (widget && Object.keys(widget.defaults).length > 0) {
+    return { ...item, name: widget.label, width: widget.width, height: widget.height, props: createWidgetProps(type) }
+  }
   switch (type) {
     case 'text':
       return { ...item, width: 600, height: 126, props: { text: 'به استریم من خوش آمدید', fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 52, fontWeight: 700, color: '#f6f6f4', textAlign: 'right', lineHeight: 1.3, direction: 'rtl' } }
@@ -81,10 +92,11 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
     case 'latestFollower':
       return { ...item, width: 430, height: 108, props: { label: 'آخرین دنبال‌کننده', emptyText: 'منتظر رویداد واقعی Kick', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214' }, animation: { ...createAnimation('slide'), idle: 'shimmer' } }
   }
+  return item
 }
 
 export function duplicateElement(element: OverlayElement, _index: number): OverlayElement {
-  return { ...structuredClone(element), id: uid(element.type), name: `${element.name} copy`, x: element.x + 32, y: element.y + 32, props: { ...element.props }, animation: { ...element.animation }, decoration: { ...element.decoration } }
+  return { ...structuredClone(element), id: uid(element.type), name: `${element.name} copy`, x: element.x + 32, y: element.y + 32, props: { ...element.props } }
 }
 
 export function cloneOverlay(source: Overlay): Overlay {

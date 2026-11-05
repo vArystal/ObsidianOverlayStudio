@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { LiveChatMessage, LiveIntegrationConfig, LiveOverlayEvent, ViewerMetric } from '../types'
+import type { CommunityPerson, LiveChatMessage, LiveIntegrationConfig, LiveOverlayEvent, LiveStreamInfo, ViewerMetric, WidgetActivity } from '../types'
+import { toActivity } from '../lib/widgetData'
 
 interface LiveDataState {
   state: 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error'
@@ -9,6 +10,15 @@ interface LiveDataState {
   latestFollower: { username: string; avatar?: string | null } | null
   sessionFollowerCount: number
   alerts: LiveOverlayEvent[]
+  // CP24: the broadcast itself, plus bounded community lists the widgets read. Everything here is nullable
+  // because Kick reports these fields only when it has something to report.
+  // Optional so a test or an embedded consumer can inject only the fields it cares about; widgets read them
+  // through widgetSnapshot(), which treats absent as "not reported" rather than as an error.
+  stream?: LiveStreamInfo | null
+  channel?: { slug: string | null; activeSubscribers: number | null } | null
+  recentFollowers?: CommunityPerson[]
+  recentSubscribers?: CommunityPerson[]
+  activities?: WidgetActivity[]
   lastEventAt: string | null
   /** False when no Kick connection is attached at all, which is not the same as a failed API call. */
   configured?: boolean
@@ -16,7 +26,11 @@ interface LiveDataState {
   testMode?: boolean
 }
 
-const initial: LiveDataState = { state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false, testMode: false }
+const initial: LiveDataState = {
+  state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null,
+  sessionFollowerCount: 0, alerts: [], stream: null, channel: null, recentFollowers: [], recentSubscribers: [],
+  activities: [], lastEventAt: null, configured: false, testMode: false,
+}
 const LiveContext = createContext<LiveDataState>(initial)
 /** Exported so tests can inject a live snapshot without opening a real SSE stream. */
 export const LiveDataContext = LiveContext
@@ -52,6 +66,9 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
             : value.state === 'disconnected' || value.state === 'connecting' ? 'connecting' : value.state,
           viewer: state.viewer ?? value.viewer,
           latestFollower: state.latestFollower ? { username: state.latestFollower.username, avatar: state.latestFollower.avatar } : null,
+          // The backend persists what Kick reported; a missing block stays null so no widget can render a blank as data.
+          stream: state.stream ?? null,
+          channel: state.channel ?? value.channel,
           // Deliberately not state.sessionFollowerCount: that is a lifetime total kept by the backend,
           // and adopting it mid-session made a widget labelled "this session" jump to an old number.
           lastEventAt: state.lastEventAt ?? value.lastEventAt,
@@ -159,6 +176,7 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
           const next = { ...value, state: 'connected' as const, lastEventAt: event.receivedAt }
           if (event.type === 'chat.message.sent') {
             const sender = event.data.sender as Record<string, unknown>
+            next.activities = [toActivity(event), ...(value.activities ?? [])].slice(0, 30)
             next.messages = [...value.messages, { id: String(event.data.messageId ?? event.id), username: String(sender?.username ?? 'Unknown'), content: String(event.data.content ?? ''), avatar: sender?.avatar ? String(sender.avatar) : null, usernameColor: sender?.usernameColor ? String(sender.usernameColor) : null, badges: Array.isArray(sender?.badges) ? sender.badges as LiveChatMessage['badges'] : [], createdAt: String(event.data.createdAt ?? event.receivedAt), test: event.test }].slice(-50)
           } else if (event.type === 'metric.viewer.updated') next.viewer = event.data as unknown as ViewerMetric
           else if (event.type === 'channel.followed') {
@@ -166,7 +184,39 @@ export function LiveDataProvider({ config, children, testMode = false }: { confi
             next.latestFollower = { username: String(follower?.username ?? ''), avatar: follower?.avatar ? String(follower.avatar) : null }
             next.sessionFollowerCount = value.sessionFollowerCount + 1
             next.alerts = [...value.alerts, event].slice(-20)
-          } else if (event.type.startsWith('channel.subscription.') || event.type === 'kicks.gifted') next.alerts = [...value.alerts, event].slice(-20)
+            next.recentFollowers = [{ username: String(follower?.username ?? 'anonymous'), avatar: follower?.avatar ? String(follower.avatar) : null, at: event.receivedAt, test: event.test }, ...(value.recentFollowers ?? [])].slice(0, 10)
+            next.activities = [toActivity(event), ...(value.activities ?? [])].slice(0, 30)
+          } else if (event.type.startsWith('channel.subscription.') || event.type === 'kicks.gifted') {
+            next.alerts = [...value.alerts, event].slice(-20)
+            const data = event.data as Record<string, unknown>
+            const who = (data.subscriber ?? data.gifter ?? data.sender) as Record<string, unknown> | undefined
+            if (who?.username) {
+              const kind: NonNullable<CommunityPerson['kind']> = event.type === 'channel.subscription.new' ? 'new' : event.type === 'channel.subscription.renewal' ? 'renewal' : 'gift'
+              next.recentSubscribers = [{ username: String(who.username), avatar: who.avatar ? String(who.avatar) : null, kind, at: event.receivedAt, test: event.test }, ...(value.recentSubscribers ?? [])].slice(0, 10)
+            }
+            next.activities = [toActivity(event), ...(value.activities ?? [])].slice(0, 30)
+          } else if (event.type === 'livestream.status.updated') {
+            const data = event.data as Record<string, unknown>
+            next.stream = {
+              title: typeof data.title === 'string' && data.title ? data.title : value.stream?.title ?? null,
+              category: value.stream?.category ?? null,
+              isLive: typeof data.isLive === 'boolean' ? data.isLive : value.stream?.isLive ?? null,
+              startedAt: typeof data.startedAt === 'string' ? data.startedAt : value.stream?.startedAt ?? null,
+              updatedAt: event.receivedAt,
+            }
+            next.activities = [toActivity(event), ...(value.activities ?? [])].slice(0, 30)
+          } else if (event.type === 'livestream.metadata.updated') {
+            const metadata = (event.data as Record<string, unknown>).metadata as Record<string, unknown> | undefined
+            const category = (metadata?.category as Record<string, unknown> | undefined)?.name
+            next.stream = {
+              title: typeof metadata?.title === 'string' && metadata.title ? metadata.title : value.stream?.title ?? null,
+              category: typeof category === 'string' ? category : value.stream?.category ?? null,
+              isLive: value.stream?.isLive ?? null,
+              startedAt: value.stream?.startedAt ?? null,
+              updatedAt: event.receivedAt,
+            }
+            next.activities = [toActivity(event), ...(value.activities ?? [])].slice(0, 30)
+          }
           return next
         })
       } catch { /* Ignore malformed runtime frames; EventSource will continue. */ }

@@ -29,9 +29,13 @@ function renderEditor(id: string) {
   )
 }
 
-function clickLibraryDescription(description: string) {
-  const button = screen.getByText(description).closest('button')
-  if (!button) throw new Error(`No library button for ${description}`)
+/**
+ * CP24: the palette is generated from the widget registry, so blurbs are copy that may change. The helper targets
+ * the stable `data-widget-type` contract instead of a sentence, so a rewording cannot silently break the journey.
+ */
+function clickLibraryWidget(type: string) {
+  const button = document.querySelector<HTMLButtonElement>(`[data-widget-type="${type}"]`)
+  if (!button) throw new Error(`No library button for ${type}`)
   fireEvent.click(button)
 }
 
@@ -42,7 +46,7 @@ describe('overlay editor workflow', () => {
     const view = renderEditor(empty.id)
 
     expect(screen.getByText('Your canvas is empty')).toBeTruthy()
-    clickLibraryDescription('Custom RTL or LTR copy')
+    clickLibraryWidget('text')
     expect(screen.queryByText('Your canvas is empty')).toBeNull()
 
     const textArea = screen.getByLabelText('Text') as HTMLTextAreaElement
@@ -62,10 +66,10 @@ describe('overlay editor workflow', () => {
     fireEvent.click(screen.getByTitle('Undo (Ctrl/⌘ Z)'))
     expect(screen.getByRole('tab', { name: /Layers 2/ })).toBeTruthy()
 
-    clickLibraryDescription('Frame or planning guide')
-    clickLibraryDescription('Layout guide — not a capture')
-    clickLibraryDescription('Preview-ready integration slot')
-    clickLibraryDescription('Testable event surface')
+    clickLibraryWidget('webcam')
+    clickLibraryWidget('capture')
+    clickLibraryWidget('chat')
+    clickLibraryWidget('alert')
     expect(screen.getByText('Kick connection required')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Test preview alert/ }))
     expect(screen.getByText(/Preview alert triggered/)).toBeTruthy()
@@ -107,7 +111,7 @@ describe('overlay editor workflow', () => {
     const empty = createEmptyOverlay('Image scene')
     saveOverlay(empty)
     renderEditor(empty.id)
-    clickLibraryDescription('PNG, JPEG or WebP')
+    clickLibraryWidget('image')
 
     const input = document.querySelector('.right-panel input[type="file"][accept^="image/png"]') as HTMLInputElement
     const file = new File(['small-png'], 'mark.png', { type: 'image/png' })
