@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import {
   AlignJustify,
   BellRing,
@@ -58,6 +59,8 @@ interface ElementsPanelProps {
   onDelete: (id: string) => void
   onUploadAsset: (file: File) => void
   onUploadBackground: (file: File) => void
+  /** Extra rail content under the tabs: the document-level background controls live here, beside the layers. */
+  footer?: ReactNode
 }
 
 type Tab = 'elements' | 'layers' | 'assets'
@@ -179,6 +182,7 @@ export function ElementsPanel(props: ElementsPanelProps) {
           <div className="limit-note"><strong>Storage note</strong>Embedded images count toward browser storage and snapshot URL size. Use a hosted asset service for production-scale media.</div>
         </div>
       )}
+      {props.footer && <div className="panel-footer">{props.footer}</div>}
     </aside>
   )
 }

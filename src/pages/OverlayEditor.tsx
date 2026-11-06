@@ -6,6 +6,7 @@ import { Canvas } from '../components/editor/Canvas'
 import { CanvasControls } from '../components/editor/CanvasControls'
 import { EditorToolbar } from '../components/editor/EditorToolbar'
 import { ElementsPanel } from '../components/editor/ElementsPanel'
+import { BackgroundSection } from '../components/editor/BackgroundSection'
 import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
 import { createElement, duplicateElement } from '../lib/elements'
@@ -486,6 +487,12 @@ export function OverlayEditor() {
             onToggleLock={(elementId) => { const item = overlay.elements.find((element) => element.id === elementId); if (item) patchElementById(elementId, { locked: !item.locked }) }}
             onRename={renameLayer} onMoveLayer={moveLayer} onDuplicate={duplicate} onDelete={deleteElement}
             onUploadAsset={uploadAsset} onUploadBackground={uploadBackground}
+            footer={(
+              <details className="panel-drawer" open>
+                <summary><span>Animated background</span>{overlay.background?.enabled ? <em>{overlay.background.kind}</em> : <em>off</em>}</summary>
+                <BackgroundSection background={overlay.background} onChange={(background) => commit((item) => ({ ...item, background }))} />
+              </details>
+            )}
           />
           <section className="canvas-column">
             <Canvas
