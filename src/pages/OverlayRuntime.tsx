@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { ElementRenderer } from '../components/ElementRenderer'
+import { MotionHost } from '../components/MotionHost'
 import { LiveDataProvider } from '../components/LiveDataProvider'
 import { decodeOverlaySnapshot, getOverlayByPublicId } from '../lib/storage'
 import { getTheme, themeCssVars } from '../lib/themes'
@@ -44,12 +45,12 @@ export function OverlayRuntime() {
                   // cost a measured 13fps at 33 layers; opacity/transform layers stay on the compositor.
                   const idle = overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle
                   return (
-                    <div className={`element-idle element-idle-${idle}`}>
+                    <MotionHost element={element} reducedMotion={overlay.staticMotion || prefersReducedMotion}><div className={`element-idle element-idle-${idle}`}>
                       {(idle === 'glow' || idle === 'sparkle') && <span className={`idle-layer idle-${idle}`} aria-hidden="true" />}
                       <AlertProvider value={{ settings: normalizeAlertSettings(overlay.alerts), live: overlay.live, testMode: false, reducedMotion: overlay.staticMotion || prefersReducedMotion, testQueue: [] }}>
                         <ElementRenderer element={element} theme={overlay.theme} runtime />
                       </AlertProvider>
-                    </div>
+                    </div></MotionHost>
                   )
                 })()}
               </div>

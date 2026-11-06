@@ -1,0 +1,149 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Pause, Play, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
+import type { OverlayElement } from '../../types'
+import {
+  MOTION_PRESETS, MOTION_PROPERTY_LABELS, MOTION_TRIGGERS, clipFromPreset, createMotion, motionSpan, normalizeMotion,
+  removeKeyframe, upsertKeyframe,
+} from '../../lib/motion'
+import type { ElementMotion, MotionClip, MotionPreset, MotionProperty } from '../../lib/motion'
+import { setMotionPreviewTime } from '../MotionHost'
+
+interface MotionStudioProps { element: OverlayElement; onChange: (motion: ElementMotion | undefined) => void }
+
+const KIND_LABELS: Record<MotionPreset['kind'], string> = { entrance: 'Entrance', exit: 'Exit', loop: 'Loop', emphasis: 'Emphasis' }
+const PROPERTIES: MotionProperty[] = ['x', 'y', 'scaleX', 'scaleY', 'rotate', 'opacity']
+
+export function MotionStudio({ element, onChange }: MotionStudioProps) {
+  const motion = useMemo(() => normalizeMotion(element.motion) ?? createMotion(), [element.motion])
+  const [selectedClip, setSelectedClip] = useState<string | null>(motion.clips[0]?.id ?? null)
+  const [kind, setKind] = useState<MotionPreset['kind']>('entrance')
+  const [time, setTime] = useState(0)
+  const [playing, setPlaying] = useState(false)
+  const [zoom, setZoom] = useState(1)
+  const span = Math.max(motionSpan(motion), 1000)
+  const clip = motion.clips.find((item) => item.id === selectedClip) ?? null
+
+  const commit = (next: ElementMotion | undefined) => { onChange(next); setMotionPreviewTime(null) }
+  const scrub = (next: number) => { setPlaying(false); setTime(next); setMotionPreviewTime(next) }
+
+  // Playback is a plain rAF loop over the sampled timeline, the same sampler the runtime uses.
+  useEffect(() => {
+    if (!playing) return
+    let frame = 0
+    const started = performance.now() - time
+    const tick = () => {
+      const elapsed = performance.now() - started
+      if (elapsed >= span) { setTime(span); setMotionPreviewTime(span); setPlaying(false); return }
+      setTime(elapsed); setMotionPreviewTime(elapsed)
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, span])
+
+  const patchClip = (patch: Partial<MotionClip>) => {
+    if (!clip) return
+    commit({ ...motion, clips: motion.clips.map((item) => item.id === clip.id ? { ...item, ...patch } : item) })
+  }
+
+  const addClip = (presetId: string) => {
+    const preset = MOTION_PRESETS.find((item) => item.id === presetId && item.kind === kind)
+    if (!preset) return
+    const start = preset.kind === 'loop' ? 0 : Math.round(motionSpan(motion))
+    const next = clipFromPreset(preset.id, { duration: preset.defaultDuration, intensity: 0.65 }, { delay: start })
+    if (!next) return
+    commit({ ...motion, clips: [...motion.clips, next] })
+    setSelectedClip(next.id)
+  }
+
+  return (
+    <div className="motion-studio" data-testid="motion-studio">
+      <div className="motion-preset-bar">
+        {(Object.keys(KIND_LABELS) as MotionPreset['kind'][]).map((item) => (
+          <button key={item} type="button" data-motion-kind={item} className={kind === item ? 'active' : ''} onClick={() => setKind(item)}>{KIND_LABELS[item]}</button>
+        ))}
+      </div>
+      <div className="motion-preset-grid">
+        {MOTION_PRESETS.filter((preset) => preset.kind === kind).map((preset) => (
+          <button key={preset.id} type="button" data-motion-preset={preset.id} onClick={() => addClip(preset.id)} title={`${preset.label} · ${preset.defaultDuration}ms`}>{preset.label}</button>
+        ))}
+      </div>
+
+      <div className="motion-clips">
+        {!motion.clips.length && <p className="motion-empty">No motion yet. Pick a preset above; it lands at the end of the timeline.</p>}
+        {motion.clips.map((item) => (
+          <div key={item.id} className={`motion-clip ${item.id === selectedClip ? 'active' : ''}`}>
+            <button type="button" className="motion-clip-name" onClick={() => setSelectedClip(item.id)}>
+              <strong>{MOTION_PRESETS.find((preset) => preset.id === item.preset)?.label ?? item.preset}</strong>
+              <small>{item.trigger} · {Math.round(item.delay)}–{Math.round(item.delay + item.duration)}ms</small>
+            </button>
+            <button type="button" className="icon-button" aria-label="Remove motion" onClick={() => commit({ ...motion, clips: motion.clips.filter((entry) => entry.id !== item.id) })}><Trash2 size={14} /></button>
+          </div>
+        ))}
+      </div>
+
+      {clip && (
+        <fieldset className="motion-group">
+          <legend>Selected motion</legend>
+          <div className="two-columns">
+            <label>Start<input type="number" min={0} max={30000} step={50} value={Math.round(clip.delay)} onChange={(event) => patchClip({ delay: Number(event.target.value) })} /></label>
+            <label>Duration<input type="number" min={80} max={30000} step={50} value={Math.round(clip.duration)} onChange={(event) => patchClip({ duration: Number(event.target.value) })} /></label>
+          </div>
+          <div className="two-columns">
+            <label>Trigger<select value={clip.trigger} onChange={(event) => patchClip({ trigger: event.target.value as MotionClip['trigger'] })}>{(MOTION_TRIGGERS ?? []).map((trigger) => <option key={trigger.id} value={trigger.id}>{trigger.label}</option>)}</select></label>
+            <label>Repeats<input type="number" min={0} max={50} value={clip.repeat} onChange={(event) => patchClip({ repeat: Number(event.target.value) })} /></label>
+          </div>
+          <label className="alert-toggle"><input type="checkbox" checked={clip.alternate} onChange={(event) => patchClip({ alternate: event.target.checked })} /><span>Alternate direction on repeat</span></label>
+
+          <div className="motion-keyframes">
+            <div className="motion-keyframes-head"><span>Keyframes</span><small>playhead {Math.round(time)}ms</small></div>
+            {PROPERTIES.map((property) => {
+              const keyframes = clip.tracks.find((track) => track.property === property)?.keyframes ?? []
+              return (
+                <div key={property} className="motion-track-row">
+                  <span>{MOTION_PROPERTY_LABELS[property]}</span>
+                  <div className="motion-track">
+                    {keyframes.map((keyframe) => (
+                      <b key={`${property}-${keyframe.t}`} style={{ left: `${Math.min(100, (keyframe.t / Math.max(clip.duration, 1)) * 100)}%` }} title={`${Math.round(keyframe.t)}ms · ${keyframe.value}`} />
+                    ))}
+                  </div>
+                  <button type="button" className="icon-button" aria-label={`Add ${property} keyframe`}
+                    onClick={() => patchClip({ tracks: upsertKeyframe(clip.tracks, property, Math.min(time, clip.duration), property === 'opacity' || property === 'scaleX' || property === 'scaleY' ? 1 : 0) })}>
+                    <Plus size={12} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+          <div className="motion-keyframe-chips">
+            {clip.tracks.flatMap((track) => track.keyframes.map((keyframe) => (
+              <span key={`${track.property}-${keyframe.t}`} className="motion-chip">
+                {MOTION_PROPERTY_LABELS[track.property]} {Math.round(keyframe.t)}ms
+                <button type="button" aria-label="Remove keyframe" onClick={() => patchClip({ tracks: removeKeyframe(clip.tracks, track.property, keyframe.t) })}>×</button>
+              </span>
+            )))}
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="motion-group">
+        <legend>Timeline</legend>
+        <div className="motion-transport">
+          <button type="button" className="icon-button" aria-label={playing ? 'Pause animation' : 'Play animation'} onClick={() => setPlaying(!playing)}>{playing ? <Pause size={14} /> : <Play size={14} />}</button>
+          <button type="button" className="icon-button" aria-label="Restart animation" onClick={() => { setTime(0); setMotionPreviewTime(0) }}><RotateCcw size={14} /></button>
+          <button type="button" className="icon-button" aria-label="Zoom out timeline" onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}><ZoomOut size={14} /></button>
+          <button type="button" className="icon-button" aria-label="Zoom in timeline" onClick={() => setZoom((value) => Math.min(3, value + 0.25))}><ZoomIn size={14} /></button>
+          <small>{Math.round(time)} / {Math.round(span)}ms</small>
+        </div>
+        <div className="motion-ruler" style={{ width: `${Math.round(zoom * 100)}%` }}>
+          {Array.from({ length: Math.max(2, Math.ceil(span / 500)) }, (_, index) => (
+            <i key={index} style={{ left: `${(index / Math.max(1, Math.ceil(span / 500) - 1)) * 100}%` }}><span>{index * 500}</span></i>
+          ))}
+          <b className="motion-playhead" style={{ left: `${Math.min(100, (time / span) * 100)}%` }} />
+        </div>
+        <input className="motion-scrub" type="range" aria-label="Timeline playhead" min={0} max={Math.round(span)} step={10} value={Math.round(time)} onChange={(event) => scrub(Number(event.target.value))} />
+      </fieldset>
+    </div>
+  )
+}

@@ -34,6 +34,7 @@ import { CONTAINER_PRESETS, containerStyle } from '../../lib/elements'
 import { BackgroundSection } from './BackgroundSection'
 import { WidgetSettings } from './WidgetSettings'
 import { AlertStudio } from './AlertStudio'
+import { MotionStudio } from './MotionStudio'
 import { normalizeAlertSettings } from '../../lib/alerts'
 import type { AlertSettings } from '../../lib/alerts'
 import type { LiveOverlayEvent } from '../../types'
@@ -55,6 +56,7 @@ interface PropertiesPanelProps {
   onTheme: (themeId: string) => void
   onStaticMotion: (value: boolean) => void
   onBackground: (background: OverlayBackground) => void
+  onMotion?: (motion: import('../../lib/motion').ElementMotion | undefined) => void
   /** CP25: the alert document lives on the overlay, so the studio hands back the whole settings object. */
   onAlerts: (settings: AlertSettings) => void
   onAlertAudio: (file: File) => Promise<string | null>
@@ -273,6 +275,11 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           </Section>
         )}
 
+        {props.onMotion && (
+          <Section title="Animation & effects">
+            <MotionStudio element={element} onChange={props.onMotion} />
+          </Section>
+        )}
         {element.type === 'alert' && (
           <Section title="Live alert system">
             <div className={`integration-card ${props.overlay.live ? '' : 'warning'}`}><Info /><div><strong>{props.overlay.live ? 'Attached to the published runtime' : 'Kick connection required'}</strong><p>{props.overlay.live ? 'Verified follow, subscription, renewal, gift and KICKs deliveries queue here. Milestones count real deliveries only.' : 'Alerts play from verified Kick deliveries. Test mode stays in this browser.'}</p></div></div>

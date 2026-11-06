@@ -91,6 +91,8 @@ export interface OverlayElement {
   includeInOutput: boolean
   maintainAspectRatio: boolean
   animation: OverlayAnimation
+  /** CP27: keyframed clips and composable effects. Absent on legacy overlays, which keep the class-based path. */
+  motion?: import('./lib/motion').ElementMotion
   decoration: ElementDecoration
   props: Record<string, string | number | boolean | null>
 }

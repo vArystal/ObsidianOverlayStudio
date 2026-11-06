@@ -510,6 +510,7 @@ export function OverlayEditor() {
             onAlign={alignSelected} onLayerEdge={(edge) => selectedId && moveLayerEdge(selectedId, edge)}
             onDuplicate={() => selectedId && duplicate(selectedId)} onDelete={() => selectedId && deleteElement(selectedId)}
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}
+            onMotion={(motion) => selected && commit((item) => ({ ...item, elements: item.elements.map((entry) => entry.id === selected.id ? { ...entry, motion } : entry) }))}
             onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
             onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
             onBackground={(background) => commit((item) => ({ ...item, background }))}

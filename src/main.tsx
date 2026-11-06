@@ -14,6 +14,7 @@ import './styles/monochrome.css'
 import './styles/typography-studio.css'
 import './styles/widgets.css'
 import './styles/alerts.css'
+import './styles/motion.css'
 import './styles/integrations-receipts.css'
 import './styles/backgrounds.css'
 // CP20 design system, loaded last: it owns tokens, typography roles and component states.

@@ -4,6 +4,7 @@ import { createAnimation, normalizeContainerProps } from './elements'
 import { createDecoration, getTheme, migrateThemeId } from './themes'
 import { normalizeBackground } from './backgrounds'
 import { normalizeAlertSettings } from './alerts'
+import { normalizeMotion } from './motion'
 import { normalizeTypography } from './typography'
 
 const STORAGE_KEY = 'obsidian-overlays-v1'
@@ -51,7 +52,13 @@ export function normalizeOverlay(overlay: Overlay): Overlay {
     // CP25: a legacy overlay has no alert block; a hand-edited one may carry nonsense. Either resolves to the
     // default document, so the alert element keeps working exactly as before the queue existed.
     alerts: normalizeAlertSettings(overlay.alerts),
-    elements: overlay.elements.map(normalizeElement),
+    // CP27: only elements that actually carry motion get the block back, so legacy overlays stay byte-identical.
+    // CP27: normalise the element, then re-attach motion only when the element really carries it, so a legacy
+    // overlay round-trips unchanged and no empty motion block creeps into the snapshot URL.
+    elements: (overlay.elements ?? []).map(normalizeElement).map((element) => {
+      const motion = normalizeMotion(element.motion)
+      return motion ? { ...element, motion } : element
+    }),
   }
 }
 

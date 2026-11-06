@@ -131,3 +131,11 @@
 .alert-hint { margin: 0; font-size: 10px; line-height: 1.5; color: #8a8a88; }
 .alert-status { margin: 0; font-size: 10px; color: #b6b6b3; }
 .alert-status.error { color: #f0b4b4; }
+
+/* CP27: the motion host owns transform/opacity/filter, so it must not introduce layout of its own. */
+.motion-host {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
