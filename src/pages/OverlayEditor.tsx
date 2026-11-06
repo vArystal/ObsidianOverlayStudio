@@ -12,9 +12,10 @@ import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
 import { LAYER_MAX_EDGE, LAYER_TARGET_BYTES, optimizeImage, snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
+import { normalizeAlertSettings, testAlertEvent } from '../lib/alerts'
 import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
-import type { ElementType, Overlay, OverlayElement } from '../types'
+import type { LiveOverlayEvent, ElementType, Overlay, OverlayElement } from '../types'
 
 const MAX_HISTORY = 60
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
@@ -45,6 +46,8 @@ export function OverlayEditor() {
   const [zoom, setZoom] = useState<number | null>(null)
   const [actualScale, setActualScale] = useState(0.5)
   const [testAlertNonce, setTestAlertNonce] = useState(0)
+  // CP25: studio test plays are held here and handed to the canvas queue. They never leave this browser.
+  const [alertTests, setAlertTests] = useState<LiveOverlayEvent[]>([])
   const [publishUrl, setPublishUrl] = useState('')
   const [publishVerdict, setPublishVerdict] = useState<{ level: 'ok' | 'warn' | 'blocked'; message: string } | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null)
@@ -319,6 +322,20 @@ export function OverlayEditor() {
     } catch { setNotice('Could not read that background.') }
   }
 
+  /** Alert assets are read to a data URL here, so the studio never touches File objects. */
+  async function readAlertAudio(file: File): Promise<string | null> {
+    const valid = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'].includes(file.type)
+    if (!valid) { setNotice('Use MP3, WAV, OGG or WebM audio.'); return null }
+    if (file.size > 600 * 1024) { setNotice('Alert audio must be under 600 KB so the published source can carry it.'); return null }
+    return readFile(file)
+  }
+  async function readAlertImage(file: File): Promise<string | null> {
+    const valid = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'].includes(file.type)
+    if (!valid) { setNotice('Use PNG, JPEG, WebP or GIF artwork.'); return null }
+    if (file.size > 2048 * 1024) { setNotice('Alert artwork must be under 2 MB.'); return null }
+    return readFile(file)
+  }
+
   function testWidget() {
     if (!selected) return
     setTestAlertNonce((value) => value + 1)
@@ -326,6 +343,10 @@ export function OverlayEditor() {
       const audio = new Audio(String(selected.props.soundSrc))
       audio.volume = 0.65
       void audio.play().catch(() => setNotice('The browser blocked audio playback.'))
+    }
+    if (selected.type === 'alert') {
+      // CP25: the studio's test plays go through the real queue engine, so what you see here is what air shows.
+      setAlertTests((queue) => [...queue, testAlertEvent('follow', { username: 'TEST VIEWER' }, `test_preview_${Date.now()}`)].slice(-30))
     }
     setNotice(selected.type === 'alert' ? 'Preview alert triggered — no real event was sent' : 'Widget preview refreshed')
     window.setTimeout(() => setNotice(''), 2600)
@@ -380,6 +401,11 @@ export function OverlayEditor() {
       try {
         const registration = await integrationRequest<{ publicationId: string; runtimeKey: string }>('/api/overlays/publish', { method: 'POST', body: JSON.stringify({ overlayId: published.publicId }) })
         published = { ...published, live: { ...published.live, runtimeKey: registration.runtimeKey } }
+        // CP25: milestone targets live on the server so a crossed target is derived during ingestion, not guessed
+        // in the browser. Failing this must not block publishing: the overlay still plays every event alert.
+        await integrationRequest(`/api/runtime/${encodeURIComponent(registration.runtimeKey)}/alert-settings`, {
+          method: 'POST', body: JSON.stringify({ milestones: normalizeAlertSettings(published.alerts).milestones }),
+        }).catch(() => null)
         liveRegistration = ` · live ID ${registration.publicationId.slice(0, 8)}`
       } catch {
         setNotice('Static snapshot published; live registration needs an active Integrations session')
@@ -463,7 +489,7 @@ export function OverlayEditor() {
           />
           <section className="canvas-column">
             <Canvas
-              overlay={overlay} selectedId={selectedId} preview={preview} zoom={zoom} testAlertNonce={testAlertNonce}
+              overlay={overlay} selectedId={selectedId} preview={preview} zoom={zoom} testAlertNonce={testAlertNonce} alertTests={alertTests}
               onSelect={setSelectedId} onLiveElement={liveElement} onInteractionStart={beginInteraction} onInteractionEnd={endInteraction}
               onScaleChange={handleScaleChange}
             />
@@ -487,6 +513,10 @@ export function OverlayEditor() {
             onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
             onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
             onBackground={(background) => commit((item) => ({ ...item, background }))}
+            onAlerts={(alerts) => commit((item) => ({ ...item, alerts }))}
+            onAlertAudio={readAlertAudio}
+            onAlertImage={readAlertImage}
+            onAlertTest={(events) => setAlertTests((queue) => [...queue, ...events].slice(-30))}
             onAttachLive={() => { const live = getPublicIntegrationConfig(); if (!live) { setNotice('Connect Kick from Integrations first'); return } commit((item) => ({ ...item, live })); setNotice(`Kick channel ${live.channelName} attached`) }}
           />
         </div>

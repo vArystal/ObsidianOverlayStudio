@@ -195,6 +195,11 @@ export interface Overlay {
   theme: OverlayTheme
   staticMotion: boolean
   live: LiveIntegrationConfig | null
+  /**
+   * CP25: the alert document. Like `background` it is state, not an element, so it never appears in the layer
+   * list, and every alert surface reads it through normalizeAlertSettings. Optional for saved overlays.
+   */
+  alerts?: import('./lib/alerts').AlertSettings
   createdAt: string
   updatedAt: string
   publishedAt: string | null

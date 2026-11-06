@@ -72,3 +72,26 @@ CREATE TABLE IF NOT EXISTS processed (
   message_id TEXT PRIMARY KEY,
   at         TEXT NOT NULL
 );
+
+-- CP25: alert queue state (see migrations/0003_alert_queue.sql).
+CREATE TABLE IF NOT EXISTS alert_acks (
+  runtime_key TEXT NOT NULL,
+  message_id  TEXT NOT NULL,
+  acked_at    TEXT NOT NULL,
+  PRIMARY KEY (runtime_key, message_id)
+);
+CREATE INDEX IF NOT EXISTS idx_alert_acks_time ON alert_acks(acked_at);
+
+CREATE TABLE IF NOT EXISTS alert_settings (
+  runtime_key TEXT PRIMARY KEY,
+  settings    TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS alert_test_frames (
+  id          TEXT PRIMARY KEY,
+  runtime_key TEXT NOT NULL,
+  payload     TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_alert_test_frames ON alert_test_frames(runtime_key, created_at);

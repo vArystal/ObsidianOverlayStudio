@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createElement } from '../lib/elements'
 import { ElementRenderer } from './ElementRenderer'
@@ -209,42 +209,35 @@ describe('production output carries no test data', () => {
     expect(testMode.getByText('TEST')).toBeTruthy()
   })
 
-  it('hides the synthetic-alert banner on a live source', () => {
+  it('never renders a synthetic alert on a live source', () => {
     const alert = createElement('alert')
     const synthetic = { id: 'a1', type: 'channel.followed', receivedAt: new Date().toISOString(), test: true, data: { follower: { username: 'TEST EVENT' } } }
+    // CP25: the alert element is a queue stage now. A test frame is not data and the provider drops it outside
+    // test mode, so the live surface stays empty rather than showing a name nobody followed with.
     const live = withLive(<ElementRenderer element={alert} runtime />, { alerts: [synthetic] })
-    expect(live.queryByText(/NOT A REAL KICK EVENT/)).toBeNull()
-    live.unmount()
-    const testMode = withLive(<ElementRenderer element={alert} runtime />, { alerts: [synthetic], testMode: true })
-    // Test mode is the only place a synthetic event may be labelled on a live surface.
-    expect(testMode.getByText(/NOT A KICK DELIVERY/)).toBeTruthy()
+    expect(live.container.querySelector('.alert-stage')).toBeNull()
+    expect(live.container.textContent).not.toMatch(/TEST EVENT/)
   })
 
-  // The shared alert history keeps the last 20 events. An index cursor pointed past that window and the
-  // widget went blank for the rest of the stream, which is the failure this pins.
-  it('keeps playing alerts after the shared history has been trimmed twenty times over', () => {
-    vi.useFakeTimers()
+  // The queue replaced the old 20-item history cursor. A burst must still play, one at a time, and the same
+  // delivery must never be shown twice however often it is re-read from the stream.
+  it('keeps a queued alert on screen while a burst arrives, without repeating a delivery', async () => {
     const alert = createElement('alert')
-    alert.animation.holdDuration = 10
-    alert.animation.exitDuration = 10
     const make = (index: number) => ({ id: `a${index}`, type: 'channel.followed', receivedAt: new Date().toISOString(), test: false, data: { follower: { username: `follower${index}` } } })
-    const list: ReturnType<typeof make>[] = []
-    // Mirror the provider: it keeps only the last 20 alerts, and each new one arrives while the previous
-    // is still playing. Delivery is staggered like a real stream, not dumped all at once.
-    const view = (extra?: typeof list) => (
-      <LiveDataContext.Provider value={liveState({ alerts: extra ?? list.slice(-20) }) as never}><ElementRenderer element={alert} runtime /></LiveDataContext.Provider>
+    const first = make(0)
+    const view = (alerts: ReturnType<typeof make>[]) => (
+      <LiveDataContext.Provider value={liveState({ alerts }) as never}><ElementRenderer element={alert} runtime /></LiveDataContext.Provider>
     )
-    const rendered = render(view())
-    const seen = new Set<string>()
-    for (let index = 0; index < 26; index += 1) {
-      list.push(make(index))
-      act(() => { rendered.rerender(view()) })
-      const match = (document.body.textContent || '').match(/follower(\d+)/)
-      if (match) seen.add(match[1])
-      act(() => { vi.advanceTimersByTime(12) })
+    const rendered = render(view([first]))
+    // The engine starts on its own timer, so the first frame is awaited rather than assumed.
+    await waitFor(() => expect(rendered.container.querySelector('.alert-stage')).toBeTruthy())
+    const shown = rendered.container.querySelector('.alert-stage')?.getAttribute('data-alert-id')
+    // Twenty-six more deliveries, each re-delivered twice, the way a reconnecting stream repeats its tail.
+    for (let index = 1; index < 26; index += 1) {
+      rendered.rerender(view([first, make(index), make(index)]))
     }
-    vi.useRealTimers()
-    expect(seen.size).toBeGreaterThan(20)
+    expect(rendered.container.querySelectorAll('.alert-stage').length).toBe(1)
+    expect(rendered.container.querySelector('.alert-stage')?.getAttribute('data-alert-id')).toBe(shown)
   })
 
   it('does not publish a placeholder box for an image with no source', () => {
@@ -281,11 +274,13 @@ describe('preview mode shows design, never fake data or TEST labels', () => {
     expect(preview.container.textContent).toContain(String(element.props.emptyText))
   })
 
-  it('renders an alert’s own title and message in preview instead of hiding the element', () => {
+  it('previews the alert template and says that no event has arrived', () => {
     const alert = createElement('alert')
     const { container } = render(<ElementRenderer element={alert} preview />)
-    expect(container.textContent).not.toMatch(/TEST/)
-    expect(container.textContent?.trim().length).toBeGreaterThan(0)
+    // The template's own copy is shown, and the caption is explicit that this is design state, not an event.
+    expect(container.textContent).toContain('PREVIEW · NO EVENT HAS ARRIVED')
+    expect(container.querySelector('.alert-stage')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/TEST EVENT/)
   })
 
   it('shows the chat frame in preview without inventing messages', () => {

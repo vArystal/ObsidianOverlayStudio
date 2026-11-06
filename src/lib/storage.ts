@@ -3,6 +3,7 @@ import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, Stor
 import { createAnimation, normalizeContainerProps } from './elements'
 import { createDecoration, getTheme, migrateThemeId } from './themes'
 import { normalizeBackground } from './backgrounds'
+import { normalizeAlertSettings } from './alerts'
 import { normalizeTypography } from './typography'
 
 const STORAGE_KEY = 'obsidian-overlays-v1'
@@ -47,6 +48,9 @@ export function normalizeOverlay(overlay: Overlay): Overlay {
     background: normalizeBackground(overlay.background),
     staticMotion: Boolean(overlay.staticMotion),
     live: overlay.live ?? null,
+    // CP25: a legacy overlay has no alert block; a hand-edited one may carry nonsense. Either resolves to the
+    // default document, so the alert element keeps working exactly as before the queue existed.
+    alerts: normalizeAlertSettings(overlay.alerts),
     elements: overlay.elements.map(normalizeElement),
   }
 }

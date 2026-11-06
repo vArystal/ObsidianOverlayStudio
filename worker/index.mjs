@@ -381,6 +381,65 @@ async function runtimeKeysFor(env, connectionId) {
   return (await all(env, 'SELECT runtime_key FROM publications WHERE connection_id = ?', connectionId)).map((row) => row.runtime_key)
 }
 
+
+/* --------------------------------------------------------------- alert queue */
+
+/** Event types that become alerts. Everything else is data, not an interruption. */
+export const ALERT_EVENT_TYPES = ['channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted', 'alert.milestone']
+
+/**
+ * Milestones are derived from durable per-type counters, not from a guessed total: `followers` counts verified
+ * channel.followed deliveries and `subscribers` counts channel.subscription.new deliveries since the connection
+ * was created. If Kick never delivered one, the count is not invented.
+ */
+export function crossedMilestones(settings, counts, seen = new Set(), perKey = {}) {
+  const metricType = { followers: 'channel.followed', subscribers: 'channel.subscription.new' }
+  const out = []
+  for (const target of Array.isArray(settings?.milestones) ? settings.milestones : []) {
+    if (!target?.enabled) continue
+    const type = metricType[target.metric]
+    const limit = Number(target.target)
+    if (!type || !Number.isFinite(limit) || limit <= 0) continue
+    const count = Number(counts?.[type] || 0)
+    if (count < limit) continue
+    const id = `milestone:${target.metric}:${limit}`
+    if (seen.has(id)) continue
+    out.push({ id, metric: target.metric, target: limit, count: perKey[type] ?? count })
+  }
+  return out
+}
+
+/**
+ * Emits a derived alert for every configured milestone the counters have crossed. Idempotent: the deterministic
+ * message id means a retried webhook cannot celebrate the same milestone twice.
+ */
+async function emitMilestones(env, connection, keys, counts, now) {
+  if (!keys.length) return 0
+  let emitted = 0
+  for (const key of keys) {
+    const row = await one(env, 'SELECT settings FROM alert_settings WHERE runtime_key = ?', key)
+    if (!row) continue
+    let settings
+    try { settings = JSON.parse(row.settings) } catch { continue }
+    const existing = new Set((await all(env, 'SELECT message_id FROM events WHERE runtime_key = ? AND type = ? AND message_id LIKE ?', key, 'alert.milestone', 'milestone:%')).map((item) => item.message_id))
+    for (const milestone of crossedMilestones(settings, counts, existing)) {
+      const event = normalizeEvent({ id: milestone.id, type: 'alert.milestone', payload: { broadcaster: { user_id: connection.account_user_id }, metric: milestone.metric, count: milestone.count, target: milestone.target }, receivedAt: now })
+      await run(env, 'INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)',
+        connection.id, key, milestone.id, 'alert.milestone', JSON.stringify(event), now)
+      emitted += 1
+    }
+  }
+  return emitted
+}
+
+/** Acks and expired test frames are small rows but they are per-event; sweeping keeps free-tier reads cheap. */
+export async function pruneAlertState(env, now = Date.now()) {
+  const ackCutoff = new Date(now - 7 * 24 * 60 * 60_000).toISOString()
+  const testCutoff = new Date(now - 10 * 60_000).toISOString()
+  await run(env, 'DELETE FROM alert_acks WHERE acked_at < ?', ackCutoff).catch(() => null)
+  await run(env, 'DELETE FROM alert_test_frames WHERE created_at < ?', testCutoff).catch(() => null)
+}
+
 /* ------------------------------------------------------- token refresh path */
 
 export async function validAccessToken(env, connection, fetchImpl = fetch, now = Date.now()) {
@@ -562,6 +621,9 @@ async function handleWebhook(request, env) {
   const fields = Object.keys(patch)
   await run(env, `UPDATE connections SET ${fields.map((f) => `${f} = ?`).join(', ')}, updated_at = ? WHERE id = ?`,
     ...fields.map((f) => patch[f]), now, connection.id)
+
+  // A crossed milestone becomes a real queued alert derived from the durable counters, never from a guess.
+  await emitMilestones(env, connection, keys, counts, now).catch(() => null)
 
   return noContent(request, env)
 }
@@ -797,22 +859,73 @@ export async function handleRequest(request, env, ctx = {}) {
     const connection = await managedConnection(request, env)
     if (!connection) return json(request, env, 401, { error: 'unauthorized' })
     const body = await request.json().catch(() => ({}))
-    const type = ['chat.message.sent', 'channel.followed', 'channel.subscription.new', 'kicks.gifted'].includes(body.type) ? body.type : 'channel.followed'
-    const sample = { user_id: 0, username: 'TEST EVENT', profile_picture: null, channel_slug: 'test', is_verified: false, identity: { username_color: '#d8ad55', badges: [{ type: 'test', text: 'TEST' }] } }
-    const payload = type === 'chat.message.sent'
-      ? { message_id: randomToken(8), content: body.message || 'پیام آزمایشی — رویداد واقعی Kick نیست', created_at: new Date().toISOString(), sender: sample, broadcaster: { user_id: connection.account_user_id } }
-      : type === 'channel.followed'
-        ? { follower: sample, broadcaster: { user_id: connection.account_user_id } }
-        : type === 'channel.subscription.new'
-          ? { subscriber: sample, broadcaster: { user_id: connection.account_user_id }, duration: 1, created_at: new Date().toISOString() }
-          : { sender: sample, broadcaster: { user_id: connection.account_user_id }, gift: { amount: 1, name: 'TEST KICK', type: 'TEST', tier: 'TEST' }, created_at: new Date().toISOString() }
+    const type = ['channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted'].includes(body.type) ? body.type : 'channel.followed'
+    const username = typeof body.username === 'string' && body.username.trim() ? body.username.trim().slice(0, 40) : 'TEST VIEWER'
+    const sample = { user_id: 0, username, profile_picture: null, channel_slug: 'test', is_verified: false, identity: { username_color: '#e8e8e6', badges: [{ type: 'test', text: 'TEST' }] } }
+    const payload = type === 'channel.subscription.renewal'
+      ? { subscriber: sample, broadcaster: { user_id: connection.account_user_id }, duration: 1, created_at: new Date().toISOString() }
+      : type === 'channel.subscription.new'
+        ? { subscriber: sample, broadcaster: { user_id: connection.account_user_id }, duration: 1, created_at: new Date().toISOString() }
+        : type === 'kicks.gifted'
+          ? { sender: sample, broadcaster: { user_id: connection.account_user_id }, gift: { amount: 1, name: 'TEST KICK', type: 'TEST', tier: 'TEST' }, created_at: new Date().toISOString() }
+          : type === 'channel.subscription.gifts'
+            ? { gifter: sample, giftees: [{ ...sample, username: 'TEST GIFTEES' }], broadcaster: { user_id: connection.account_user_id }, created_at: new Date().toISOString() }
+            : { follower: sample, broadcaster: { user_id: connection.account_user_id } }
     const now = new Date().toISOString()
+    // CP25 isolation: a test never writes to `events`, never touches event_counts, and expires in minutes. The
+    // production feed cannot select it; only an explicit ?test=1 source receives it.
     const event = normalizeEvent({ id: `test_${randomToken(8)}`, type, payload, receivedAt: now, test: true })
-    for (const key of await runtimeKeysFor(env, connection.id)) {
-      await run(env, 'INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)',
-        connection.id, key, event.id, type, JSON.stringify(event), now)
+    const keys = await runtimeKeysFor(env, connection.id)
+    for (const key of keys) {
+      await run(env, 'INSERT INTO alert_test_frames (id, runtime_key, payload, created_at) VALUES (?, ?, ?, ?)', `${event.id}:${key}`, key, JSON.stringify(event), now)
     }
-    return json(request, env, 200, { delivered: true, test: true, event })
+    await pruneAlertState(env)
+    return json(request, env, 200, { delivered: keys.length > 0, test: true, event, targets: keys.length, stored: 'alert_test_frames' })
+  }
+
+  // CP25: the overlay acknowledges what it has actually played, so a reload resumes instead of replaying.
+  if (request.method === 'POST' && path.startsWith('/api/runtime/') && path.endsWith('/alerts/ack')) {
+    const key = path.split('/')[3]
+    const connection = await runtimeConnection(env, key)
+    if (!connection) return json(request, env, 404, { error: 'runtime_not_found' })
+    let body
+    try { body = await request.json() } catch { return json(request, env, 400, { error: 'malformed_json' }) }
+    const ids = Array.isArray(body?.ids) ? body.ids.filter((id) => typeof id === 'string' && id.length > 0 && id.length <= 128).slice(0, 50) : []
+    if (!ids.length) return json(request, env, 400, { error: 'no_ids' })
+    const now = new Date().toISOString()
+    // A runtime URL is public, so an acknowledgement may only name an event this runtime actually received.
+    // Without this a stranger could fill alert_acks with arbitrary rows and grow the table without limit.
+    const known = await all(env, `SELECT message_id FROM events WHERE runtime_key = ? AND message_id IN (${ids.map(() => '?').join(',')})`, key, ...ids)
+    const allowed = new Set(known.map((row) => row.message_id))
+    let acked = 0
+    for (const id of ids) {
+      if (!allowed.has(id)) continue
+      // Insert-or-ignore: a retried ack is not an error and cannot double count.
+      const result = await run(env, 'INSERT OR IGNORE INTO alert_acks (runtime_key, message_id, acked_at) VALUES (?, ?, ?)', key, id, now)
+      acked += Number(result?.meta?.changes ?? 0)
+    }
+    await pruneAlertState(env)
+    return json(request, env, 200, { acked })
+  }
+
+  // CP25: milestone targets are stored per runtime so ingestion can derive a real milestone alert.
+  if (request.method === 'POST' && path.startsWith('/api/runtime/') && path.endsWith('/alert-settings')) {
+    const key = path.split('/')[3]
+    const connection = await managedConnection(request, env)
+    if (!connection) return json(request, env, 401, { error: 'unauthorized' })
+    const owned = await one(env, 'SELECT runtime_key FROM publications WHERE runtime_key = ? AND connection_id = ?', key, connection.id)
+    if (!owned) return json(request, env, 403, { error: 'runtime_not_owned' })
+    let body
+    try { body = await request.json() } catch { return json(request, env, 400, { error: 'malformed_json' }) }
+    const milestones = Array.isArray(body?.milestones) ? body.milestones.slice(0, 6).map((item) => ({
+      metric: item?.metric === 'subscribers' ? 'subscribers' : item?.metric === 'followers' ? 'followers' : null,
+      target: Math.min(1_000_000, Math.max(1, Number(item?.target) || 0)),
+      enabled: Boolean(item?.enabled),
+    })).filter((item) => item.metric && item.target > 0) : []
+    const now = new Date().toISOString()
+    await run(env, 'INSERT INTO alert_settings (runtime_key, settings, updated_at) VALUES (?, ?, ?) ON CONFLICT(runtime_key) DO UPDATE SET settings = excluded.settings, updated_at = excluded.updated_at',
+      key, JSON.stringify({ milestones }), now)
+    return json(request, env, 200, { saved: true, milestones: milestones.length })
   }
 
   if (request.method === 'GET' && path.startsWith('/api/runtime/')) {
@@ -832,6 +945,37 @@ export async function handleRequest(request, env, ctx = {}) {
         stream: (() => { try { return JSON.parse(fresh.stream_info || 'null') } catch { return null } })(),
         lastEventAt: connection.last_event_at || null,
         followerTotal: FOLLOWER_TOTAL,
+        serverTime: new Date().toISOString(),
+      })
+    }
+    if (tail === 'alerts') {
+      const after = Math.max(0, Number(url.searchParams.get('after') || 0) || 0)
+      const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20) || 20))
+      const wantsTest = url.searchParams.get('test') === '1'
+      // Only alert-capable, unacknowledged, non-test rows. Chat and metric frames are data, not interruptions.
+      const rows = await all(env, `SELECT seq, payload FROM events
+        WHERE runtime_key = ? AND seq > ? AND received_at > ?
+          AND type IN (${ALERT_EVENT_TYPES.map(() => '?').join(',')})
+          AND message_id NOT IN (SELECT message_id FROM alert_acks WHERE runtime_key = ?)
+        ORDER BY seq ASC LIMIT ?`,
+        runtimeKey, after, new Date(Date.now() - 6 * 60 * 60_000).toISOString(), ...ALERT_EVENT_TYPES, runtimeKey, limit)
+      const alerts = []
+      for (const row of rows) {
+        let event
+        try { event = JSON.parse(row.payload) } catch { continue }
+        // A stored frame marked test never reaches a production feed, whatever wrote it.
+        if (event?.test) continue
+        alerts.push({ seq: Number(row.seq), event })
+      }
+      let testAlerts = []
+      if (wantsTest) {
+        const frames = await all(env, 'SELECT id, payload FROM alert_test_frames WHERE runtime_key = ? AND created_at > ? ORDER BY created_at ASC LIMIT 5', runtimeKey, new Date(Date.now() - 5 * 60_000).toISOString())
+        testAlerts = frames.map((row) => { try { return { seq: 0, event: JSON.parse(row.payload) } } catch { return null } }).filter(Boolean)
+      }
+      return json(request, env, 200, {
+        alerts: [...alerts, ...testAlerts],
+        cursor: alerts.length ? Math.max(...alerts.map((item) => item.seq)) : after,
+        truncated: rows.length === limit,
         serverTime: new Date().toISOString(),
       })
     }

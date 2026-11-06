@@ -33,6 +33,10 @@ import { ThemeGallery } from './ThemeGallery'
 import { CONTAINER_PRESETS, containerStyle } from '../../lib/elements'
 import { BackgroundSection } from './BackgroundSection'
 import { WidgetSettings } from './WidgetSettings'
+import { AlertStudio } from './AlertStudio'
+import { normalizeAlertSettings } from '../../lib/alerts'
+import type { AlertSettings } from '../../lib/alerts'
+import type { LiveOverlayEvent } from '../../types'
 
 interface PropertiesPanelProps {
   overlay: Overlay
@@ -51,6 +55,11 @@ interface PropertiesPanelProps {
   onTheme: (themeId: string) => void
   onStaticMotion: (value: boolean) => void
   onBackground: (background: OverlayBackground) => void
+  /** CP25: the alert document lives on the overlay, so the studio hands back the whole settings object. */
+  onAlerts: (settings: AlertSettings) => void
+  onAlertAudio: (file: File) => Promise<string | null>
+  onAlertImage: (file: File) => Promise<string | null>
+  onAlertTest: (events: LiveOverlayEvent[]) => void
 }
 
 function Section({ title, children, open = true }: { title: string; children: ReactNode; open?: boolean }) {
@@ -265,15 +274,16 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         )}
 
         {element.type === 'alert' && (
-          <Section title="Alert content">
-            <div className={`integration-card ${props.overlay.live ? '' : 'warning'}`}><Info /><div><strong>{props.overlay.live ? 'Verified Kick event queue attached' : 'Kick connection required'}</strong><p>Follow, subscription, gifted subscription, and KICKs events are queued. Tests remain explicitly labeled.</p></div></div>
-            <Field label="Headline"><input value={asString(element, 'title')} onChange={(event) => prop('title', event.target.value)} /></Field>
-            <Field label="Message"><textarea rows={3} value={asString(element, 'message')} onChange={(event) => prop('message', event.target.value)} /></Field>
-            <Field label="Accent color"><ColorInput value={asString(element, 'accentColor', '#a78bfa')} onChange={(value) => prop('accentColor', value)} /></Field>
-            <label className="upload-control compact-upload"><input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event) => event.target.files?.[0] && props.onUpload(event.target.files[0], 'alert-image')} /><Upload /><span><strong>Alert image</strong><small>{asString(element, 'imageSrc') ? 'Image loaded' : 'Optional'}</small></span></label>
-            <label className="upload-control compact-upload"><input type="file" accept="audio/mpeg,audio/wav,audio/ogg" onChange={(event) => event.target.files?.[0] && props.onUpload(event.target.files[0], 'alert-sound')} /><Upload /><span><strong>Alert sound</strong><small>{asString(element, 'soundName', 'No sound selected')}</small></span></label>
-            <Toggle checked={asBoolean(element, 'soundEnabled')} onChange={(value) => prop('soundEnabled', value)} label="Play sound for real and test alerts" />
-            <button className="secondary-button full" onClick={props.onTest}><Zap /> Test preview alert</button>
+          <Section title="Live alert system">
+            <div className={`integration-card ${props.overlay.live ? '' : 'warning'}`}><Info /><div><strong>{props.overlay.live ? 'Attached to the published runtime' : 'Kick connection required'}</strong><p>{props.overlay.live ? 'Verified follow, subscription, renewal, gift and KICKs deliveries queue here. Milestones count real deliveries only.' : 'Alerts play from verified Kick deliveries. Test mode stays in this browser.'}</p></div></div>
+            <button type="button" className="secondary-button full" onClick={props.onTest}><Zap /> Test preview alert</button>
+            <AlertStudio
+              settings={normalizeAlertSettings(props.overlay.alerts)}
+              onChange={props.onAlerts}
+              onAudioFile={props.onAlertAudio}
+              onImageFile={props.onAlertImage}
+              onTestEvents={props.onAlertTest}
+            />
           </Section>
         )}
 

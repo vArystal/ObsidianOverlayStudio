@@ -6,6 +6,7 @@ import { resolveDecoration, themeCssVars } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
 import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
 import { renderKickWidget } from './widgets'
+import { AlertRuntime, useAlertSurface } from './alerts/AlertRuntime'
 import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
@@ -184,53 +185,26 @@ function messageTime(createdAt: string | undefined) {
   return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
-function alertCopy(event: LiveOverlayEvent | null, element: OverlayElement) {
-  if (!event) return { title: text(element, 'title', 'رویداد جدید'), message: text(element, 'message', '') }
-  const data = event.data as Record<string, any>
-  if (event.type === 'channel.followed') return { title: 'دنبال‌کننده جدید', message: `${data.follower?.username || 'Someone'} به جمع ما پیوست` }
-  if (event.type === 'channel.subscription.new') return { title: 'اشتراک جدید', message: `${data.subscriber?.username || 'Someone'} مشترک شد` }
-  if (event.type === 'channel.subscription.renewal') return { title: 'تمدید اشتراک', message: `${data.subscriber?.username || 'Someone'} اشتراک خود را تمدید کرد` }
-  if (event.type === 'channel.subscription.gifts') return { title: 'هدیه اشتراک', message: `${data.gifter?.username || 'Anonymous'} اشتراک هدیه داد` }
-  if (event.type === 'kicks.gifted') return { title: 'KICKs هدیه', message: `${data.sender?.username || 'Someone'} · ${data.gift?.amount ?? ''} ${data.gift?.name ?? ''}` }
-  return { title: text(element, 'title'), message: text(element, 'message') }
-}
-
-function LiveAlert({ element, runtime, preview, nonce }: { element: OverlayElement; runtime: boolean; preview: boolean; nonce: number }) {
-  const live = useLiveData(); const [phase, setPhase] = useState<'enter' | 'exit'>('enter'); const played = useRef('')
-  // The shared history keeps only the last 20 alerts, so an index cursor could point past the end and the
-  // widget would never render again. This local queue holds what has not been played yet and is drained
-  // by identity, which survives history trimming and reconnects.
-  const [queue, setQueue] = useState<LiveOverlayEvent[]>([])
-  const known = useRef(new Set<string>())
-  useEffect(() => {
-    if (!runtime) return
-    setQueue((pending) => {
-      const additions = live.alerts.filter((alert) => !known.current.has(alert.id))
-      if (!additions.length) return pending
-      additions.forEach((alert) => known.current.add(alert.id))
-      // Bursts should not build an unbounded backlog behind a 3s alert; the newest few are enough.
-      return [...pending, ...additions].slice(-6)
-    })
-  }, [live.alerts, runtime])
-  const event = runtime ? queue[0] ?? null : null
-  useEffect(() => {
-    if (!runtime || !event) return
-    setPhase('enter')
-    const exitTimer = window.setTimeout(() => setPhase('exit'), element.animation.holdDuration)
-    const nextTimer = window.setTimeout(() => setQueue((pending) => pending.slice(1)), element.animation.holdDuration + element.animation.exitDuration)
-    if (bool(element, 'soundEnabled') && element.props.soundSrc && played.current !== event.id) { played.current = event.id; void new Audio(String(element.props.soundSrc)).play().catch(() => undefined) }
-    return () => { clearTimeout(exitTimer); clearTimeout(nextTimer) }
-  }, [event?.id, runtime, element.animation.holdDuration, element.animation.exitDuration, element.props.soundSrc])
-  if (runtime && !event) return null
-  const copy = alertCopy(event, element)
+/**
+ * CP25: the alert element delegates to the shared queue runtime. The surface (settings + live wiring) comes from
+ * context so the canvas and the published source cannot be given different documents, and a studio preview never
+ * opens a connection or acknowledges anything.
+ */
+function LiveAlert({ element, runtime, preview }: { element: OverlayElement; runtime: boolean; preview: boolean }) {
+  const live = useLiveData()
+  const surface = useAlertSurface()
+  const settings = surface.settings
+  // Studio test plays live in the surface so the toolbar buttons and the inspector share one queue.
   return (
-    <div key={runtime ? event?.id : nonce} className={`alert-widget alert-phase-${phase} ${phase === 'exit' ? `element-exit-${element.animation.exit}` : ''}`} style={{ color: text(element, 'textColor', '#fff8e7'), animationDuration: `${phase === 'exit' ? element.animation.exitDuration : element.animation.duration}ms` }}>
-      <div className="alert-art" style={{ color: text(element, 'accentColor', '#d8ad55') }}>{text(element, 'imageSrc') ? <img src={text(element, 'imageSrc')} alt="" /> : <Sparkles />}</div>
-      <strong>{copy.title}</strong><span>{copy.message}</span>
-      {/* The alert's configured title/message is a design state, not a claim that an event happened. */}
-      {!runtime && !preview && <small className="data-note">SHOWS YOUR ALERT TEXT · FILLS IN WHEN A REAL EVENT ARRIVES</small>}
-      {runtime && event?.test && live.testMode && <small className="test-event-mark">TEST EVENT · NOT A KICK DELIVERY</small>}
-    </div>
+    <AlertRuntime
+      settings={settings}
+      live={runtime ? surface.live : null}
+      testMode={surface.testMode && !runtime}
+      reducedMotion={surface.reducedMotion || element.animation.reducedMotion === 'static'}
+      preview={!runtime}
+      incoming={runtime ? (live.alerts.length ? live.alerts : []) : []}
+      testQueue={surface.testMode ? surface.testQueue : []}
+    />
   )
 }
 
@@ -266,7 +240,7 @@ function ElementContent({ element, runtime, preview, testAlertNonce }: { element
       return <div className="placeholder-element capture-placeholder" style={{ borderRadius: shape, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && !preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Layout guide only · add your game source in OBS</small></>}{preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Transparent guide · capture your game window in OBS, not here</small></>}</div>
     }
     case 'chat': return <ChatWidget element={element} runtime={runtime} preview={preview} />
-    case 'alert': return <LiveAlert element={element} runtime={runtime} preview={preview} nonce={testAlertNonce} />
+    case 'alert': return <LiveAlert element={element} runtime={runtime} preview={preview} />
     case 'goal': {
       if (runtime && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
       const target = Math.max(1, num(element, 'target', 1000)); const current = Math.max(0, num(element, 'current', 0)); const progress = Math.min(100, current / target * 100)
@@ -304,7 +278,6 @@ export function ElementRenderer({ element, theme, runtime = false, preview = fal
   const live = useLiveData()
   // These gates describe what a published source may put on air. Applying them to the editor preview
   // is what made configured elements vanish from Preview.
-  if (runtime && element.type === 'alert' && !live.alerts.length) return null
   if (runtime && element.type === 'chat' && !live.messages.length) return null
   if (runtime && element.type === 'supporter' && text(element, 'dataSource', 'none') === 'none') return null
   if (runtime && element.type === 'goal' && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null

@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Crosshair, Lock, ZoomIn } from 'lucide-react'
 import { ElementRenderer } from '../ElementRenderer'
+import { AlertProvider } from '../alerts/AlertRuntime'
+import { normalizeAlertSettings } from '../../lib/alerts'
+import type { LiveOverlayEvent } from '../../types'
 import { themeCssVars } from '../../lib/themes'
 import { BackgroundLayer } from '../BackgroundLayer'
 import { normalizeBackground } from '../../lib/backgrounds'
@@ -16,6 +19,8 @@ interface CanvasProps {
   preview: boolean
   zoom: number | null
   testAlertNonce: number
+  /** CP25: studio test plays, queued through the same engine the published source uses. */
+  alertTests?: LiveOverlayEvent[]
   onSelect: (id: string | null) => void
   onLiveElement: (element: OverlayElement) => void
   onInteractionStart: () => void
@@ -180,7 +185,9 @@ export function Canvas(props: CanvasProps) {
                   className={`element-content element-anim-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.type}`}
                   style={{ animationDuration: `${element.animation.duration}ms`, animationDelay: `${element.animation.delay}ms`, animationTimingFunction: element.animation.easing, '--anim-intensity': element.animation.intensity, '--slide-x': element.animation.direction === 'left' ? '-42px' : element.animation.direction === 'right' ? '42px' : '0px', '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px' } as CSSProperties}
                 >
-                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} testAlertNonce={props.testAlertNonce} /></div>
+                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><AlertProvider value={{ settings: normalizeAlertSettings(props.overlay.alerts), live: props.overlay.live, testMode: true, reducedMotion: props.overlay.staticMotion, testQueue: props.alertTests ?? [] }}>
+                    <ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} testAlertNonce={props.testAlertNonce} />
+                  </AlertProvider></div>
                 </div>
                 {props.selectedId === element.id && !props.preview && (
                   <>

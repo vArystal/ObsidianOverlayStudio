@@ -7,6 +7,8 @@ import { decodeOverlaySnapshot, getOverlayByPublicId } from '../lib/storage'
 import { getTheme, themeCssVars } from '../lib/themes'
 import { BackgroundLayer, usePrefersReducedMotion } from '../components/BackgroundLayer'
 import { normalizeBackground } from '../lib/backgrounds'
+import { AlertProvider } from '../components/alerts/AlertRuntime'
+import { normalizeAlertSettings } from '../lib/alerts'
 
 export function OverlayRuntime() {
   const { publicId = '' } = useParams(); const [params] = useSearchParams()
@@ -44,7 +46,9 @@ export function OverlayRuntime() {
                   return (
                     <div className={`element-idle element-idle-${idle}`}>
                       {(idle === 'glow' || idle === 'sparkle') && <span className={`idle-layer idle-${idle}`} aria-hidden="true" />}
-                      <ElementRenderer element={element} theme={overlay.theme} runtime />
+                      <AlertProvider value={{ settings: normalizeAlertSettings(overlay.alerts), live: overlay.live, testMode: false, reducedMotion: overlay.staticMotion || prefersReducedMotion, testQueue: [] }}>
+                        <ElementRenderer element={element} theme={overlay.theme} runtime />
+                      </AlertProvider>
                     </div>
                   )
                 })()}

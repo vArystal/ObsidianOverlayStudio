@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFileSync } from 'node:fs'
-import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, streamInfoFromChannel, mergeStreamInfo, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
+import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, streamInfoFromChannel, mergeStreamInfo, crossedMilestones, pruneAlertState, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
 
 const ORIGIN = 'https://varystal.github.io'
 const API = 'https://obsidian-overlay-api.test.workers.dev'
@@ -276,16 +276,22 @@ test('publish returns a stable runtime key per overlay and runtime state stays s
   assert.equal((await handleRequest(req('/api/runtime/does-not-exist/state'), env)).status, 404)
 })
 
-test('test-event delivers a clearly marked synthetic alert to the runtime queue', async () => {
+test('test-event delivers a clearly marked synthetic alert without touching production rows', async () => {
   const keys = await keypair()
   const { env } = makeEnv()
   const { managementToken } = await connect(env, keys)
   const auth = { authorization: `Bearer ${managementToken}` }
   const publication = await (await handleRequest(req('/api/overlays/publish', { method: 'POST', body: JSON.stringify({ overlayId: 'overlay_test1234' }), headers: auth }), env)).json()
 
-  const delivered = await (await handleRequest(req('/api/integrations/test-event', { method: 'POST', body: JSON.stringify({ type: 'chat.message.sent', message: 'سلام' }), headers: auth }), env)).json()
+  const delivered = await (await handleRequest(req('/api/integrations/test-event', { method: 'POST', body: JSON.stringify({ type: 'channel.followed', username: 'TEST VIEWER' }), headers: auth }), env)).json()
   assert.equal(delivered.test, true)
   assert.equal(delivered.event.test, true)
+  // CP25: a test goes to its own ephemeral table, so the production event table stays clean.
+  assert.equal(delivered.stored, 'alert_test_frames')
+  assert.equal(env.DB.prepare('SELECT COUNT(*) AS n FROM events').bind().first().n, 0)
+  // One frame per runtime key the connection can be watched through, and none of them a production row.
+  const frames = env.DB.prepare('SELECT COUNT(*) AS n FROM alert_test_frames').bind().first().n
+  assert.ok(frames >= 1)
 
   const response = await handleRequest(req(`/api/runtime/${publication.runtimeKey}/events`), env)
   assert.equal(response.status, 200)
@@ -601,4 +607,146 @@ test('an overlay with no stored description reports null rather than a blank tit
   const body = await response.json()
   assert.equal(body.stream, null)
   assert.equal(body.channel.activeSubscribers, null)
+})
+
+/* --------------------------------------------------------------- CP25 alerts */
+
+const sha256hex = async (value) => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map((b) => b.toString(16).padStart(2, '0')).join('')
+
+/** A connection plus the publication that mints its runtime key, and the management token that owns it. */
+async function alertFixture({ connected = 1 } = {}) {
+  const { env, sqlite } = makeEnv()
+  const now = new Date().toISOString()
+  const token = 'mgmt-token-alerts'
+  await env.DB.prepare(`INSERT INTO connections (id, account_user_id, channel_slug, tokens, subscriptions, connected, viewer, event_counts, updated_at)
+    VALUES ('con_alert', 90124079, 'arystal', '{}', '[]', ?, '{"status":"offline","count":null,"updatedAt":null}', '{}', ?)`)
+    .bind(connected, now).run()
+  await env.DB.prepare(`UPDATE connections SET management_hash = ? WHERE id = 'con_alert'`).bind(await sha256hex(token)).run()
+  await env.DB.prepare(`INSERT INTO publications (id, connection_id, overlay_id, runtime_key, created_at, updated_at)
+    VALUES ('pub_alert', 'con_alert', 'ovl_alert', 'rt_alert', ?, ?)`).bind(now, now).run()
+  const insertEvent = (id, type, payload, receivedAt = now) => env.DB.prepare('INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .bind('con_alert', 'rt_alert', id, type, JSON.stringify({ id, type, receivedAt, test: false, data: payload }), receivedAt).run()
+  return { env, sqlite, token, now, insertEvent }
+}
+
+test('the alert feed returns only alert-capable events and skips chat and metrics', async () => {
+  const { env, insertEvent } = await alertFixture()
+  await insertEvent('msg_follow', 'channel.followed', { follower: { username: 'Aria' } })
+  await insertEvent('msg_chat', 'chat.message.sent', { content: 'hello' })
+  await insertEvent('msg_viewer', 'metric.viewer.updated', { status: 'offline', count: null })
+  const body = await (await handleRequest(req('/api/runtime/rt_alert/alerts'), env)).json()
+  assert.deepEqual(body.alerts.map((item) => item.event.id), ['msg_follow'])
+  assert.equal(body.alerts[0].event.data.follower.username, 'Aria')
+  assert.equal(body.cursor, body.alerts[0].seq)
+})
+
+test('an acknowledged alert is never offered again, so a reload cannot replay it', async () => {
+  const { env, insertEvent, now } = await alertFixture()
+  await insertEvent('msg_a', 'channel.followed', { follower: { username: 'Aria' } })
+  const first = await (await handleRequest(req('/api/runtime/rt_alert/alerts'), env)).json()
+  assert.equal(first.alerts.length, 1)
+  const ack = await (await handleRequest(req('/api/runtime/rt_alert/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['msg_a'] }), headers: { 'content-type': 'application/json' } }), env)).json()
+  assert.equal(ack.acked, 1)
+  // Same cursor as a fresh OBS source would use: the ack, not the cursor, is what stops the replay.
+  const again = await (await handleRequest(req('/api/runtime/rt_alert/alerts?after=0'), env)).json()
+  assert.deepEqual(again.alerts, [])
+  // A second ack is idempotent rather than an error or a double count.
+  const repeat = await (await handleRequest(req('/api/runtime/rt_alert/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['msg_a'] }), headers: { 'content-type': 'application/json' } }), env)).json()
+  assert.equal(repeat.acked, 0)
+  void now
+})
+
+test('the ack route rejects an empty or malformed body', async () => {
+  const { env } = await alertFixture()
+  const empty = await handleRequest(req('/api/runtime/rt_alert/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: [] }), headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(empty.status, 400)
+  const junk = await handleRequest(req('/api/runtime/rt_alert/alerts/ack', { method: 'POST', body: 'not json', headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(junk.status, 400)
+  const unknown = await handleRequest(req('/api/runtime/rt_does_not_exist/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['x'] }), headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(unknown.status, 404)
+})
+
+test('test frames are isolated from the production feed and only appear when test mode asks', async () => {
+  const { env } = await alertFixture()
+  const sent = await (await handleRequest(req('/api/integrations/test-event', {
+    method: 'POST', body: JSON.stringify({ type: 'channel.followed', username: 'TEST VIEWER' }),
+    headers: { 'content-type': 'application/json', authorization: 'Bearer mgmt-token-alerts' },
+  }), env)).json()
+  assert.equal(sent.test, true)
+  assert.equal(sent.stored, 'alert_test_frames')
+  // No production row, and no counter moved.
+  const rows = env.DB.prepare('SELECT COUNT(*) AS n FROM events').bind().first()
+  assert.equal(rows.n, 0)
+  const connection = env.DB.prepare("SELECT event_counts FROM connections WHERE id = 'con_alert'").bind().first()
+  assert.equal(connection.event_counts, '{}')
+  const production = await (await handleRequest(req('/api/runtime/rt_alert/alerts'), env)).json()
+  assert.deepEqual(production.alerts, [])
+  const testing = await (await handleRequest(req('/api/runtime/rt_alert/alerts?test=1'), env)).json()
+  assert.equal(testing.alerts.length, 1)
+  assert.equal(testing.alerts[0].event.test, true)
+})
+
+test('the test-event route requires the owner management token', async () => {
+  const { env } = await alertFixture()
+  const response = await handleRequest(req('/api/integrations/test-event', { method: 'POST', body: JSON.stringify({ type: 'channel.followed' }), headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(response.status, 401)
+  const row = env.DB.prepare('SELECT COUNT(*) AS n FROM alert_test_frames').bind().first()
+  assert.equal(row.n, 0)
+})
+
+test('milestone targets are stored only for a runtime the caller owns', async () => {
+  const { env, sqlite } = await alertFixture()
+  const auth = { 'content-type': 'application/json', authorization: 'Bearer mgmt-token-alerts' }
+  const saved = await handleRequest(req('/api/runtime/rt_alert/alert-settings', { method: 'POST', body: JSON.stringify({ milestones: [{ metric: 'followers', target: 100, enabled: true }, { metric: 'bogus', target: 5, enabled: true }] }), headers: auth }), env)
+  assert.equal(saved.status, 200)
+  const body = await saved.json()
+  assert.equal(body.milestones, 1)
+  const row = sqlite.prepare("SELECT settings FROM alert_settings WHERE runtime_key = 'rt_alert'").get()
+  assert.deepEqual(JSON.parse(row.settings).milestones, [{ metric: 'followers', target: 100, enabled: true }])
+  const anonymous = await handleRequest(req('/api/runtime/rt_alert/alert-settings', { method: 'POST', body: JSON.stringify({ milestones: [] }), headers: { 'content-type': 'application/json' } }), env)
+  assert.equal(anonymous.status, 401)
+  // A different runtime key belonging to someone else is refused even with a valid token.
+  const foreign = await handleRequest(req('/api/runtime/rt_someone_else/alert-settings', { method: 'POST', body: JSON.stringify({ milestones: [] }), headers: auth }), env)
+  assert.equal(foreign.status, 403)
+})
+
+test('milestones are derived from durable counters, never from a guess', async () => {
+  const settings = { milestones: [{ metric: 'followers', target: 100, enabled: true }, { metric: 'subscribers', target: 25, enabled: false }] }
+  assert.deepEqual(crossedMilestones(settings, { 'channel.followed': 40 }), [])
+  const crossed = crossedMilestones(settings, { 'channel.followed': 140, 'channel.subscription.new': 400 })
+  assert.deepEqual(crossed.map((item) => item.id), ['milestone:followers:100'])
+  assert.deepEqual(crossedMilestones(settings, { 'channel.followed': 140 }, new Set(['milestone:followers:100'])), [])
+  assert.deepEqual(crossedMilestones({ milestones: [{ metric: 'followers', target: 0, enabled: true }] }, { 'channel.followed': 10 }), [])
+  assert.deepEqual(crossedMilestones(null, { 'channel.followed': 10 }), [])
+})
+
+test('pruning removes expired test frames and leaves acknowledged alert state alone', async () => {
+  const { env, sqlite } = await alertFixture()
+  const old = new Date(Date.now() - 20 * 60_000).toISOString()
+  await env.DB.prepare('INSERT INTO alert_test_frames (id, runtime_key, payload, created_at) VALUES (?, ?, ?, ?)').bind('t_old', 'rt_alert', '{}', old).run()
+  await env.DB.prepare('INSERT INTO alert_acks (runtime_key, message_id, acked_at) VALUES (?, ?, ?)').bind('rt_alert', 'msg_recent', new Date().toISOString()).run()
+  await pruneAlertState(env)
+  assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM alert_test_frames').get().n, 0)
+  assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM alert_acks').get().n, 1)
+})
+
+test('an acknowledgement may only name an event the runtime actually received', async () => {
+  const { env } = makeEnv()
+  const now = new Date().toISOString()
+  await env.DB.prepare(`INSERT INTO connections (id, channel_slug, tokens, subscriptions, connected, viewer, updated_at)
+    VALUES ('con_ack', 'arystal', '{}', '[]', 1, '{}', ?)`).bind(now).run()
+  await env.DB.prepare(`INSERT INTO publications (id, connection_id, overlay_id, runtime_key, created_at, updated_at)
+    VALUES ('pub_ack', 'con_ack', 'ovl_ack', 'rt_ack', ?, ?)`).bind(now, now).run()
+  const event = normalizeEvent({ id: 'evt_real', type: 'channel.followed', payload: { follower: { username: 'real' } }, receivedAt: now })
+  await env.DB.prepare(`INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at)
+    VALUES ('con_ack', 'rt_ack', 'evt_real', 'channel.followed', ?, ?)`).bind(JSON.stringify(event), now).run()
+
+  const junk = await (await handleRequest(req('/api/runtime/rt_ack/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['made_up'] }) }), env)).json()
+  assert.equal(junk.acked, 0)
+  assert.equal(env.DB.prepare('SELECT COUNT(*) AS n FROM alert_acks').bind().first().n, 0)
+
+  const real = await (await handleRequest(req('/api/runtime/rt_ack/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['evt_real'] }) }), env)).json()
+  assert.equal(real.acked, 1)
+  const again = await (await handleRequest(req('/api/runtime/rt_ack/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['evt_real'] }) }), env)).json()
+  assert.equal(again.acked, 0)
 })
