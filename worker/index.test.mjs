@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { DatabaseSync } from 'node:sqlite'
 import { readFileSync } from 'node:fs'
-import worker, { handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, streamInfoFromChannel, mergeStreamInfo, crossedMilestones, pruneAlertState, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
+import worker, { pruneEvents, handleRequest, normalizeEvent, verifyKickSignature, viewerMetric, refreshViewerIfStale, configProblems, resetPublicKeyCache, streamInfoFromChannel, mergeStreamInfo, crossedMilestones, pruneAlertState, REQUIRED_SCOPES, SUBSCRIBED_EVENTS } from './index.mjs'
 
 const ORIGIN = 'https://varystal.github.io'
 const API = 'https://obsidian-overlay-api.test.workers.dev'
@@ -749,4 +749,23 @@ test('an acknowledgement may only name an event the runtime actually received', 
   assert.equal(real.acked, 1)
   const again = await (await handleRequest(req('/api/runtime/rt_ack/alerts/ack', { method: 'POST', body: JSON.stringify({ ids: ['evt_real'] }) }), env)).json()
   assert.equal(again.acked, 0)
+})
+
+test('retention keeps an unwatched alert and still drops chat and metrics', async () => {
+  const { env } = makeEnv()
+  const now = Date.parse('2026-11-06T12:00:00.000Z')
+  const iso = (ms) => new Date(ms).toISOString()
+  const seed = async (id, type, receivedAt) => env.DB.prepare(
+    'INSERT INTO events (connection_id, message_id, type, received_at, payload, runtime_key) VALUES (?, ?, ?, ?, ?, ?)',
+  ).bind('con_a', id, type, receivedAt, JSON.stringify({ id, type, test: false, data: {} }), 'rt_a').run()
+  await seed('follow_unwatched', 'channel.followed', iso(now - 2 * 60 * 60_000))
+  await seed('follow_acked', 'channel.followed', iso(now - 2 * 60 * 60_000))
+  await seed('follow_stale', 'channel.followed', iso(now - 30 * 60 * 60_000))
+  await seed('chat_old', 'chat.message.sent', iso(now - 2 * 60 * 60_000))
+  await env.DB.prepare('INSERT INTO alert_acks (runtime_key, message_id, acked_at) VALUES (?, ?, ?)')
+    .bind('rt_a', 'follow_acked', iso(now - 60 * 60_000)).run()
+
+  await pruneEvents(env, now)
+  const left = env.DB.prepare('SELECT message_id FROM events ORDER BY message_id').all().results.map((row) => row.message_id)
+  assert.deepEqual(left, ['follow_unwatched'])
 })

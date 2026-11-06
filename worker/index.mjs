@@ -440,6 +440,29 @@ export async function pruneAlertState(env, now = Date.now()) {
   await run(env, 'DELETE FROM alert_test_frames WHERE created_at < ?', testCutoff).catch(() => null)
 }
 
+
+/**
+ * CP26: retention has to respect the queue. Chat and metrics are only useful for a short tail, so they expire in
+ * an hour, but an alert-capable event is the queue's payload: deleting it before the overlay acknowledged it is a
+ * lost alert. Alert rows therefore live 24 hours, or until acknowledged, whichever comes first.
+ */
+export const ALERT_EVENT_TYPES_FOR_RETENTION = ['channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted', 'alert.milestone']
+
+export async function pruneEvents(env, now = Date.now()) {
+  const short = new Date(now - 60 * 60_000).toISOString()
+  const long = new Date(now - 24 * 60 * 60_000).toISOString()
+  const marks = ALERT_EVENT_TYPES_FOR_RETENTION.map(() => '?').join(',')
+  // One statement: everything old that is not an unacknowledged alert.
+  await run(env, `DELETE FROM events WHERE received_at < ?
+      AND (type NOT IN (${marks})
+        OR message_id IN (SELECT message_id FROM alert_acks WHERE alert_acks.runtime_key = events.runtime_key))`,
+    short, ...ALERT_EVENT_TYPES_FOR_RETENTION)
+  // And a hard ceiling so an abandoned stream cannot grow the table forever.
+  await run(env, `DELETE FROM events WHERE received_at < ? AND type IN (${marks})`, long, ...ALERT_EVENT_TYPES_FOR_RETENTION)
+  await pruneAlertState(env, now).catch(() => null)
+  return { short, long }
+}
+
 /* ------------------------------------------------------- token refresh path */
 
 export async function validAccessToken(env, connection, fetchImpl = fetch, now = Date.now()) {
@@ -1004,9 +1027,9 @@ export default {
   },
   /** Cron: refresh live status + viewer count from the official channels endpoint. */
   async scheduled(event, env) {
-    // Keep D1 small: the runtime only replays a 90s tail, so older rows are dead weight.
-    const stale = new Date(Date.now() - 60 * 60_000).toISOString()
-    await run(env, 'DELETE FROM events WHERE received_at < ?', stale).catch(() => null)
+    // CP26: an hour is plenty for chat and metrics, but an alert nobody has watched yet must survive a closed
+    // browser. Alert rows are now kept for a day unless the overlay acknowledged them.
+    await pruneEvents(env).catch(() => null)
     const rows = await all(env, 'SELECT * FROM connections WHERE connected = 1 LIMIT 20')
     for (const connection of rows) {
       try {
