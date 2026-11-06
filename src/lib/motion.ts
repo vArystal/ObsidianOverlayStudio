@@ -59,6 +59,7 @@ export interface MotionClip {
   delay: number
   duration: number
   tracks: MotionTrack[]
+  /** Extra passes after the first. -1 means loop forever, because JSON cannot carry Infinity. */
   repeat: number
   repeatDelay: number
   alternate: boolean
@@ -67,12 +68,12 @@ export interface MotionClip {
 }
 
 export interface ElementEffects {
-  shadow: { enabled: boolean; blur: number; y: number; opacity: number }
-  glow: { enabled: boolean; size: number; intensity: number; color: string }
+  shadow: { enabled: boolean; color: string; opacity: number; blur: number; x: number; y: number }
+  glow: { enabled: boolean; color: string; intensity: number; blur: number; spread: number }
   neon: { enabled: boolean; intensity: number; color: string }
   blur: { enabled: boolean; amount: number }
   gradient: { enabled: boolean; angle: number; from: number; to: number; opacity: number }
-  mask: { mode: 'none' | 'fade-bottom' | 'fade-top' | 'radial' | 'ellipse'; softness: number }
+  mask: { mode: 'none' | 'fade-bottom' | 'fade-top' | 'radial' | 'ellipse'; softness: number; scale: number }
   clip: { shape: 'none' | 'inset' | 'circle' | 'hex' }
 }
 
@@ -173,7 +174,7 @@ export function clipLocalTime(clip: MotionClip, timeMs: number) {
   const end = start + clip.duration
   if (timeMs < start) return null
   if (timeMs < end) return timeMs - start
-  if (clip.repeat === Infinity) {
+  if (clip.repeat < 0) {
     const cycle = clip.duration + clip.repeatDelay
     const elapsed = timeMs - start
     const index = Math.floor(elapsed / cycle)
@@ -228,7 +229,7 @@ export function motionSpan(motion: ElementMotion | undefined) {
   if (!motion) return 0
   let span = motion.timelineDuration || 0
   for (const clip of motion.clips) {
-    const cycles = clip.repeat === Infinity ? 1 : Math.max(1, clip.repeat + 1)
+    const cycles = clip.repeat < 0 ? 1 : Math.max(1, clip.repeat + 1)
     const length = clip.delay + cycles * (clip.duration + clip.repeatDelay)
     if (length > span) span = length
   }
@@ -363,7 +364,7 @@ export const MOTION_PRESETS: MotionPreset[] = [
     ],
   },
   {
-    id: 'pulse', label: 'Pulse', kind: 'loop', repeat: Infinity, defaultDuration: 1800,
+    id: 'pulse', label: 'Pulse', kind: 'loop', repeat: -1, defaultDuration: 1800,
     build: ({ duration }) => [
       track('scaleX', [[0, 1, EASE_IN_OUT], [duration / 2, 1.035, EASE_IN_OUT], [duration, 1]]),
       track('scaleY', [[0, 1, EASE_IN_OUT], [duration / 2, 1.035, EASE_IN_OUT], [duration, 1]]),
@@ -427,7 +428,7 @@ export const MOTION_PRESETS: MotionPreset[] = [
     },
   },
   {
-    id: 'neon-glow', label: 'Neon glow', kind: 'loop', repeat: Infinity, defaultDuration: 2400,
+    id: 'neon-glow', label: 'Neon glow', kind: 'loop', repeat: -1, defaultDuration: 2400,
     build: ({ duration }) => [
       track('blur', [[0, 0, EASE_IN_OUT], [duration / 2, 1.2, EASE_IN_OUT], [duration, 0]]),
       track('scaleX', [[0, 1, EASE_IN_OUT], [duration / 2, 1.012, EASE_IN_OUT], [duration, 1]]),
@@ -435,18 +436,18 @@ export const MOTION_PRESETS: MotionPreset[] = [
     ],
   },
   {
-    id: 'shimmer', label: 'Shimmer', kind: 'loop', repeat: Infinity, defaultDuration: 3200,
+    id: 'shimmer', label: 'Shimmer', kind: 'loop', repeat: -1, defaultDuration: 3200,
     build: ({ duration }) => [track('opacity', [[0, 1, EASE_IN_OUT], [duration / 2, 0.86, EASE_IN_OUT], [duration, 1]])],
   },
   {
-    id: 'floating', label: 'Floating', kind: 'loop', repeat: Infinity, defaultDuration: 4200,
+    id: 'floating', label: 'Floating', kind: 'loop', repeat: -1, defaultDuration: 4200,
     build: ({ duration, intensity }) => {
       const lift = Math.round(8 * (intensity || 1))
       return [track('y', [[0, 0, EASE_IN_OUT], [duration / 2, -lift, EASE_IN_OUT], [duration, 0]])]
     },
   },
   {
-    id: 'breathing', label: 'Breathing', kind: 'loop', repeat: Infinity, defaultDuration: 5200,
+    id: 'breathing', label: 'Breathing', kind: 'loop', repeat: -1, defaultDuration: 5200,
     build: ({ duration, intensity }) => {
       const growth = 1 + 0.02 * (intensity || 1)
       return [
@@ -456,7 +457,7 @@ export const MOTION_PRESETS: MotionPreset[] = [
     },
   },
   {
-    id: 'gradient-motion', label: 'Gradient motion', kind: 'loop', repeat: Infinity, defaultDuration: 6000,
+    id: 'gradient-motion', label: 'Gradient motion', kind: 'loop', repeat: -1, defaultDuration: 6000,
     build: ({ duration }) => [track('rotate', [[0, -1.2, EASE_IN_OUT], [duration / 2, 1.2, EASE_IN_OUT], [duration, -1.2]])],
   },
   {
@@ -500,12 +501,12 @@ const MONO = '#f6f6f4'
 
 export function createEffects(): ElementEffects {
   return {
-    shadow: { enabled: false, blur: 28, y: 14, opacity: 0.5 },
-    glow: { enabled: false, size: 26, intensity: 0.55, color: MONO },
+    shadow: { enabled: false, color: '#000000', opacity: 0.5, blur: 28, x: 0, y: 14 },
+    glow: { enabled: false, color: MONO, intensity: 0.55, blur: 26, spread: 0 },
     neon: { enabled: false, intensity: 0.7, color: MONO },
     blur: { enabled: false, amount: 2 },
     gradient: { enabled: false, angle: 135, from: 0.06, to: 0, opacity: 1 },
-    mask: { mode: 'none', softness: 22 },
+    mask: { mode: 'none', softness: 22, scale: 100 },
     clip: { shape: 'none' },
   }
 }
@@ -561,7 +562,9 @@ function normalizeClip(raw: unknown): MotionClip | null {
     trigger: MOTION_TRIGGERS.some((item) => item.id === source.trigger) ? (source.trigger as MotionTrigger) : 'load',
     delay: clamp(num(source.delay, 0), 0, 20_000),
     duration: clamp(num(source.duration, 600), 60, 20_000),
-    repeat: source.repeat === Infinity || num(source.repeat, 0) >= 999 ? Infinity : Math.round(clamp(num(source.repeat, 0), 0, 50)),
+    // Infinity, 999 and -1 all mean forever; anything else is a pass count. Null (the JSON form of a missing
+    // value) is treated as a single pass rather than as an error.
+    repeat: source.repeat === Infinity || num(source.repeat, 0) >= 999 || num(source.repeat, 0) < 0 ? -1 : Math.round(clamp(num(source.repeat, 0), 0, 50)),
     repeatDelay: clamp(num(source.repeatDelay, 0), 0, 10_000),
     alternate: bool(source.alternate, false),
     event: typeof source.event === 'string' ? source.event.slice(0, 40) : undefined,
@@ -573,11 +576,27 @@ function normalizeClip(raw: unknown): MotionClip | null {
  * Effects are pure style, evaluated once per render rather than per frame, so they never compete with the sampler
  * loop. Motion blur is added on top by the host when a clip animates it.
  */
+/** Hex to rgba. Accepts #rgb/#rrggbb and falls back to transparent so a bad colour cannot blank an element. */
+export function rgba(color: string, alpha: number) {
+  const value = String(color ?? '').trim()
+  const short = /^#([0-9a-f])([0-9a-f])([0-9a-f])$/i.exec(value)
+  const long = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(value)
+  const parts = short ? [short[1] + short[1], short[2] + short[2], short[3] + short[3]] : long ? [long[1], long[2], long[3]] : null
+  if (!parts) return `rgba(0, 0, 0, ${clamp(alpha, 0, 1)})`
+  const [r, g, b] = parts.map((part) => parseInt(part, 16))
+  return `rgba(${r}, ${g}, ${b}, ${clamp(alpha, 0, 1)})`
+}
+
 export function effectsStyle(effects: ElementEffects, extraBlur = 0) {
   const style: Record<string, string | number> = {}
   const shadows: string[] = []
-  if (effects.shadow.enabled) shadows.push(`0 ${effects.shadow.y}px ${effects.shadow.blur}px rgba(0, 0, 0, ${clamp(effects.shadow.opacity, 0, 1)})`)
-  if (effects.glow.enabled) shadows.push(`0 0 ${effects.glow.size}px ${effects.glow.color}`)
+  if (effects.shadow.enabled) {
+    shadows.push(`${Math.round(effects.shadow.x)}px ${Math.round(effects.shadow.y)}px ${Math.round(effects.shadow.blur)}px ${rgba(effects.shadow.color, effects.shadow.opacity)}`)
+  }
+  if (effects.glow.enabled) {
+    // Blur and spread are separate CSS lengths, so the studio can make a tight rim or a wide halo.
+    shadows.push(`0 0 ${Math.round(effects.glow.blur)}px ${Math.round(effects.glow.spread)}px ${rgba(effects.glow.color, effects.glow.intensity)}`)
+  }
   if (effects.neon.enabled) {
     shadows.push(`0 0 ${Math.round(10 + effects.neon.intensity * 18)}px ${effects.neon.color}`, `0 0 ${Math.round(28 + effects.neon.intensity * 30)}px ${effects.neon.color}`)
   }
@@ -590,8 +609,9 @@ export function effectsStyle(effects: ElementEffects, extraBlur = 0) {
   }
   if (effects.mask.mode !== 'none') {
     const soft = clamp(effects.mask.softness, 0, 100)
+    const reach = clamp(effects.mask.scale, 20, 100)
     style.maskImage = effects.mask.mode === 'radial' || effects.mask.mode === 'ellipse'
-      ? `radial-gradient(${effects.mask.mode === 'ellipse' ? 'ellipse' : 'circle'} at 50% 50%, #000 ${100 - soft}%, transparent 100%)`
+      ? `radial-gradient(${effects.mask.mode === 'ellipse' ? 'ellipse' : 'circle'} at 50% 50%, #000 ${reach - soft * 0.5}%, transparent ${reach}%)`
       : `linear-gradient(${effects.mask.mode === 'fade-top' ? 'to top' : 'to bottom'}, #000 ${100 - soft}%, transparent 100%)`
     style.WebkitMaskImage = style.maskImage
   }

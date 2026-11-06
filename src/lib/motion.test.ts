@@ -154,3 +154,16 @@ describe('document', () => {
     expect(motion?.effects.shadow.enabled).toBe(false)
   })
 })
+
+describe('durability', () => {
+  it('keeps a loop looping after a JSON round trip', () => {
+    // JSON turns Infinity into null. Normalisation has to read a saved loop as forever, not as one pass,
+    // otherwise an overlay that looped in the studio stops after a single cycle on air.
+    const loop = MOTION_PRESETS.find((preset) => preset.kind === 'loop')!
+    const motion = createMotion([clipFromPreset(loop.id, { duration: 2000, intensity: 0.5 }, {})!])
+    const saved = normalizeMotion(JSON.parse(JSON.stringify(motion)))!
+    expect(saved.clips[0].repeat).toBe(-1)
+    expect(motionSpan(saved)).toBeLessThan(20_000)
+    expect(clipLocalTime({ ...saved.clips[0], delay: 0 }, 60_000)).not.toBeNull()
+  })
+})

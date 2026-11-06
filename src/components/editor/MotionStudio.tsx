@@ -42,6 +42,7 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, span])
 
+  const patchEffect = (patch: Partial<ElementMotion['effects']>) => commit({ ...motion, effects: { ...motion.effects, ...patch } })
   const patchClip = (patch: Partial<MotionClip>) => {
     if (!clip) return
     commit({ ...motion, clips: motion.clips.map((item) => item.id === clip.id ? { ...item, ...patch } : item) })
@@ -127,6 +128,51 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
         </fieldset>
       )}
 
+
+      <fieldset className="motion-group">
+        <legend>Effects</legend>
+        <label className="motion-toggle"><input type="checkbox" checked={motion.effects.shadow.enabled} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, enabled: event.target.checked } })} /><span>Drop shadow</span></label>
+        {motion.effects.shadow.enabled && (
+          <div className="motion-effect-grid">
+            <label>Colour<input type="color" value={motion.effects.shadow.color} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, color: event.target.value } })} /></label>
+            <label>Opacity<input type="range" min={0} max={100} value={Math.round(motion.effects.shadow.opacity * 100)} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, opacity: Number(event.target.value) / 100 } })} /></label>
+            <label>Blur<input type="number" min={0} max={120} value={motion.effects.shadow.blur} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, blur: Number(event.target.value) } })} /></label>
+            <label>Offset X<input type="number" min={-80} max={80} value={motion.effects.shadow.x} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, x: Number(event.target.value) } })} /></label>
+            <label>Offset Y<input type="number" min={-80} max={80} value={motion.effects.shadow.y} onChange={(event) => patchEffect({ shadow: { ...motion.effects.shadow, y: Number(event.target.value) } })} /></label>
+          </div>
+        )}
+
+        <label className="motion-toggle"><input type="checkbox" checked={motion.effects.glow.enabled} onChange={(event) => patchEffect({ glow: { ...motion.effects.glow, enabled: event.target.checked } })} /><span>Glow</span></label>
+        {motion.effects.glow.enabled && (
+          <div className="motion-effect-grid">
+            <label>Colour<input type="color" value={motion.effects.glow.color} onChange={(event) => patchEffect({ glow: { ...motion.effects.glow, color: event.target.value } })} /></label>
+            <label>Intensity<input type="range" min={0} max={100} value={Math.round(motion.effects.glow.intensity * 100)} onChange={(event) => patchEffect({ glow: { ...motion.effects.glow, intensity: Number(event.target.value) / 100 } })} /></label>
+            <label>Blur<input type="number" min={0} max={120} value={motion.effects.glow.blur} onChange={(event) => patchEffect({ glow: { ...motion.effects.glow, blur: Number(event.target.value) } })} /></label>
+            <label>Spread<input type="number" min={0} max={60} value={motion.effects.glow.spread} onChange={(event) => patchEffect({ glow: { ...motion.effects.glow, spread: Number(event.target.value) } })} /></label>
+          </div>
+        )}
+
+        <label className="motion-field">Mask
+          <select value={motion.effects.mask.mode} onChange={(event) => patchEffect({ mask: { ...motion.effects.mask, mode: event.target.value as typeof motion.effects.mask.mode } })}>
+            <option value="none">No mask</option><option value="fade-bottom">Fade to bottom</option><option value="fade-top">Fade to top</option>
+            <option value="radial">Radial</option><option value="ellipse">Ellipse</option>
+          </select>
+        </label>
+        {motion.effects.mask.mode !== 'none' && (
+          <div className="motion-effect-grid">
+            <label>Softness<input type="range" min={0} max={90} value={motion.effects.mask.softness} onChange={(event) => patchEffect({ mask: { ...motion.effects.mask, softness: Number(event.target.value) } })} /></label>
+            <label>Reach<input type="range" min={20} max={100} value={motion.effects.mask.scale} onChange={(event) => patchEffect({ mask: { ...motion.effects.mask, scale: Number(event.target.value) } })} /></label>
+          </div>
+        )}
+
+        <label className="motion-toggle"><input type="checkbox" checked={motion.effects.gradient.enabled} onChange={(event) => patchEffect({ gradient: { ...motion.effects.gradient, enabled: event.target.checked } })} /><span>Gradient sheen</span></label>
+        {motion.effects.gradient.enabled && (
+          <div className="motion-effect-grid">
+            <label>Angle<input type="number" min={0} max={360} value={motion.effects.gradient.angle} onChange={(event) => patchEffect({ gradient: { ...motion.effects.gradient, angle: Number(event.target.value) } })} /></label>
+            <label>Strength<input type="range" min={0} max={60} value={Math.round(motion.effects.gradient.from * 100)} onChange={(event) => patchEffect({ gradient: { ...motion.effects.gradient, from: Number(event.target.value) / 100 } })} /></label>
+          </div>
+        )}
+      </fieldset>
       <fieldset className="motion-group">
         <legend>Timeline</legend>
         <div className="motion-transport">
