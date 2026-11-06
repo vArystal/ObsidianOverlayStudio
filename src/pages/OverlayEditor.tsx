@@ -488,9 +488,11 @@ export function OverlayEditor() {
             onRename={renameLayer} onMoveLayer={moveLayer} onDuplicate={duplicate} onDelete={deleteElement}
             onUploadAsset={uploadAsset} onUploadBackground={uploadBackground}
             footer={(
-              <details className="panel-drawer" open>
+              <details className="panel-drawer">
                 <summary><span>Animated background</span>{overlay.background?.enabled ? <em>{overlay.background.kind}</em> : <em>off</em>}</summary>
-                <BackgroundSection background={overlay.background} onChange={(background) => commit((item) => ({ ...item, background }))} />
+                <div className="panel-drawer-body">
+                  <BackgroundSection background={overlay.background} onChange={(background) => commit((item) => ({ ...item, background }))} />
+                </div>
               </details>
             )}
           />
