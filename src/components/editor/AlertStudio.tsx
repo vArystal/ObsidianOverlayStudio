@@ -94,7 +94,7 @@ export function AlertStudio({ settings, onChange, onAudioFile, onImageFile, onTe
 
       <div className="alert-kinds" role="tablist" aria-label="Alert type">
         {ALERT_KINDS.map((info) => (
-          <button key={info.id} type="button" role="tab" aria-selected={kind === info.id} className={kind === info.id ? 'active' : ''} onClick={() => setKind(info.id)}>
+          <button key={info.id} type="button" role="tab" data-alert-kind={info.id} aria-selected={kind === info.id} className={kind === info.id ? 'active' : ''} onClick={() => setKind(info.id)}>
             {info.label}
             {!settings.templates[info.id].enabled && <small>off</small>}
           </button>
@@ -242,8 +242,8 @@ export function AlertStudio({ settings, onChange, onAudioFile, onImageFile, onTe
           }} />
         </Row>
         <div className="alert-row">
-          <button type="button" className="primary-button" onClick={() => fireTest(1)}><Zap size={14} /> Test this alert</button>
-          <button type="button" className="secondary-button" onClick={() => fireTest(3)}>Test three in a row</button>
+          <button type="button" className="primary-button" data-alert-test={kind} onClick={() => fireTest(1)}><Zap size={14} /> Test this alert</button>
+          <button type="button" className="secondary-button" data-alert-test-burst={kind} onClick={() => fireTest(3)}>Test three in a row</button>
         </div>
         <button type="button" className="secondary-button" onClick={() => onChange(createAlertSettings())}>Reset alert settings</button>
         <button type="button" className="secondary-button" onClick={() => onChange(normalizeAlertSettings(settings))}>Repair invalid fields</button>
