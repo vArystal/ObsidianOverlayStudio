@@ -93,3 +93,27 @@ describe('runtime resilience for legacy data', () => {
     expect(container.querySelectorAll('.idle-layer.idle-sparkle')).toHaveLength(1)
   })
 })
+
+describe('runtime scaling mode', () => {
+  it('scales with zoom where the engine supports it, so OBS rasterises text at the final size', () => {
+    // jsdom has no CSS.supports, so provide the Chromium answer OBS will give.
+    const original = (globalThis as { CSS?: unknown }).CSS
+    Object.defineProperty(globalThis, 'CSS', { value: { supports: () => true }, configurable: true })
+    const overlay = createEmptyOverlay('OBS output')
+    const snapshot = encodeOverlaySnapshot(overlay)
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}`]}>
+        <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
+      </MemoryRouter>,
+    )
+    const stage = container.querySelector('.runtime-stage') as HTMLElement
+    const expected = Math.min(window.innerWidth / overlay.width, window.innerHeight / overlay.height)
+    expect(stage.dataset.scaleMode === 'zoom' || stage.dataset.scaleMode === 'transform').toBe(true)
+    // The design box is never rewritten; only the scale channel changes.
+    expect(stage.style.width).toBe(`${overlay.width}px`)
+    expect(stage.style.height).toBe(`${overlay.height}px`)
+    if (stage.dataset.scaleMode === 'zoom') expect(Number.parseFloat(stage.style.zoom || '1')).toBeCloseTo(expected, 5)
+    else expect(stage.style.transform).toContain('scale(')
+    Object.defineProperty(globalThis, 'CSS', { value: original, configurable: true })
+  })
+})
