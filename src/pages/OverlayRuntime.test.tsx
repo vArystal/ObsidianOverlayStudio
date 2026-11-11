@@ -117,3 +117,48 @@ describe('runtime scaling mode', () => {
     Object.defineProperty(globalThis, 'CSS', { value: original, configurable: true })
   })
 })
+
+describe('source sizing policy', () => {
+  const renderAt = (width: number, height: number, query = '') => {
+    const overlay = createEmptyOverlay('Sizing')
+    const snapshot = encodeOverlaySnapshot(overlay)
+    const original = [window.innerWidth, window.innerHeight]
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true })
+    Object.defineProperty(window, 'innerHeight', { value: height, configurable: true })
+    const utils = render(
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}${query}`]}>
+        <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
+      </MemoryRouter>,
+    )
+    return { overlay, ...utils, restore: () => {
+      Object.defineProperty(window, 'innerWidth', { value: original[0], configurable: true })
+      Object.defineProperty(window, 'innerHeight', { value: original[1], configurable: true })
+    } }
+  }
+
+  it('never upscales a 1920x1080 design to fill a larger source', () => {
+    // Blowing the design up invents pixels and stops the stage landing on whole device pixels.
+    const { container, restore } = renderAt(2560, 1440)
+    const stage = container.querySelector('.runtime-stage') as HTMLElement
+    expect(stage.style.width).toBe('1920px')
+    expect(stage.style.zoom === '' || stage.style.zoom === '1').toBe(true)
+    expect(stage.getAttribute('data-fit')).toBe('contain')
+    restore()
+  })
+
+  it('lets an operator opt into covering the source', () => {
+    const { container, restore } = renderAt(2560, 1440, '&fit=fill')
+    const stage = container.querySelector('.runtime-stage') as HTMLElement
+    expect(Number.parseFloat(stage.style.zoom || '1')).toBeGreaterThan(1.3)
+    restore()
+  })
+
+  it('reports pixel perfection in the diagnostics HUD', () => {
+    const { container, restore } = renderAt(1920, 1080, '&diag=1')
+    const hud = container.querySelector('.runtime-diagnostics') as HTMLElement | null
+    expect(hud).toBeTruthy()
+    expect(hud!.dataset.pixelPerfect).toBe('true')
+    expect(hud!.textContent).toContain('PIXEL PERFECT')
+    restore()
+  })
+})

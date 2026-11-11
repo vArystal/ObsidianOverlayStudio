@@ -540,7 +540,13 @@ export function OverlayEditor() {
               <h2 id="publish-title">OBS snapshot URL copied</h2>
               <p>This transparent output contains your current saved composition. Use these exact Browser Source dimensions:</p>
               <div className="resolution-recommendation"><span>Width <strong>{overlay.width}</strong></span><span>Height <strong>{overlay.height}</strong></span></div>
-              <p className="publish-sharpness"><Info /> Set the source to exactly these numbers. If you shrink the source inside a scene instead, OBS scales a finished bitmap and the text goes soft: either size the source to the composition and scale the scene item, or set that item's Scale Filtering to Lanczos.</p>
+              <ol className="publish-steps">
+                <li>Add a <strong>Browser</strong> source and leave the URL blank until it is created.</li>
+                <li>Set <strong>Width {overlay.width}</strong> and <strong>Height {overlay.height}</strong>, then paste the URL.</li>
+                <li>Leave the scene item at 100% (Transform ▸ Reset). Do not scale the source itself.</li>
+                <li>If the scene canvas is a different size, scale the <em>scene item</em>, not the source, and set its Scale Filtering to <strong>Lanczos</strong>.</li>
+                <li>Add <code>?diag=1</code> to the URL to confirm the source reports {overlay.width}×{overlay.height} and <strong>PIXEL PERFECT</strong>, then remove it.</li>
+              </ol>
               {publishVerdict && <p className={`publish-size ${publishVerdict.level}`}>{publishVerdict.level === 'warn' ? <AlertTriangle /> : publishVerdict.level === 'ok' ? <Check /> : <Info />}{publishVerdict.message}</p>}
               <label className="url-field"><span>Browser Source URL</span><textarea readOnly value={publishUrl} onFocus={(event) => event.target.select()} /></label>
               <button className="primary-button full" onClick={async () => { await copyText(publishUrl); setNotice('URL copied') }}><Copy /> Copy URL again</button>

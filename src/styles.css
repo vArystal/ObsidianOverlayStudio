@@ -529,3 +529,14 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 .thumbnail-background { position: absolute; inset: 0; z-index: 0; }
 .thumbnail-grid { z-index: 1; }
 .thumbnail-stage > span { z-index: 2; }
+
+/* Diagnostics are opt-in (?diag=1) and never appear in a normal source. */
+.runtime-diagnostics { position: fixed; left: 16px; top: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; border: 1px solid rgba(220,220,220,.35); border-radius: 6px; background: rgba(14,14,15,.94); color: #dcdcdc; font: 11px/1.45 ui-monospace, monospace; }
+.runtime-diagnostics strong { font-size: 11px; letter-spacing: .06em; color: #f6f6f4; }
+.runtime-diagnostics[data-pixel-perfect='true'] strong { color: #d8f5d0; }
+.runtime-diagnostics span { color: #a1a1a1; }
+
+/* The OBS recipe is a numbered list because the order matters: sizing the source before pasting the URL. */
+.publish-steps { display: flex; flex-direction: column; gap: 5px; margin: 0; padding-left: 16px; color: #a1a1a1; font-size: 10px; line-height: 1.5; }
+.publish-steps strong { color: #dcdcdc; font-weight: 700; }
+.publish-steps code { font-family: ui-monospace, monospace; color: #dcdcdc; background: #1e1e1e; border-radius: 3px; padding: 0 3px; }
