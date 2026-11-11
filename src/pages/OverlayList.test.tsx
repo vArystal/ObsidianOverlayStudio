@@ -18,3 +18,17 @@ describe('overlay library accessibility', () => {
     expect(screen.getByRole('button', { name: 'Edit Royal starting soon' })).toBeTruthy()
   })
 })
+
+describe('card thumbnails', () => {
+  it('paints the saved animated scene behind the element marks, frozen', () => {
+    const overlay = createEmptyOverlay('Scene card')
+    overlay.background = { ...overlay.background, enabled: true, kind: 'neon-grid' }
+    saveOverlay(overlay)
+    const { container } = render(<MemoryRouter><OverlayList /></MemoryRouter>)
+    const layer = container.querySelector('.thumbnail-stage .overlay-background') as HTMLElement | null
+    expect(layer).toBeTruthy()
+    expect(layer!.className).toContain('bg-neon-grid')
+    // Frozen: the dashboard must not run dozens of scenes at once.
+    expect(layer!.className).toContain('is-still')
+  })
+})

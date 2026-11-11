@@ -11,6 +11,8 @@ import {
   Search,
   Trash2,
 } from 'lucide-react'
+import { BackgroundLayer } from '../components/BackgroundLayer'
+import { normalizeBackground } from '../lib/backgrounds'
 import { AppShell } from '../components/AppShell'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
@@ -103,6 +105,9 @@ export function OverlayList() {
                     so without a name a screen reader announces an unlabelled button. */}
                 <button className="overlay-thumbnail" aria-label={`Edit ${overlay.name}`} onClick={() => navigate(`/overlays/editor/${overlay.id}`)}>
                   <div className="thumbnail-stage" style={{ aspectRatio: `${overlay.width}/${overlay.height}` }}>
+                    {/* The card shows the same scene component the editor and OBS use, frozen: a grid of live
+                        loops would animate dozens of scenes at once on the dashboard. */}
+                    <BackgroundLayer background={normalizeBackground(overlay.background)} reducedMotion className="thumbnail-background" />
                     <div className="thumbnail-grid" />
                     {overlay.elements.slice(-6).map((element) => (
                       <span

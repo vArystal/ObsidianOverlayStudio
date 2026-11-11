@@ -524,3 +524,8 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 /* The source-size hint sits under the recommended dimensions, where an operator is already reading them. */
 .publish-sharpness { display: flex; gap: 7px; align-items: flex-start; margin: 0; color: #a1a1a1; font-size: 10px; line-height: 1.5; }
 .publish-sharpness svg { width: 13px; height: 13px; flex: 0 0 13px; margin-top: 1px; color: #dcdcdc; }
+
+/* Card thumbnails paint the real scene behind the element marks, frozen so the dashboard is not 26 loops. */
+.thumbnail-background { position: absolute; inset: 0; z-index: 0; }
+.thumbnail-grid { z-index: 1; }
+.thumbnail-stage > span { z-index: 2; }
