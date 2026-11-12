@@ -1,14 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from 'react'
 import { Crosshair, Lock, ZoomIn } from 'lucide-react'
-import { ElementRenderer } from '../ElementRenderer'
-import { AlertProvider } from '../alerts/AlertRuntime'
+import { OverlayStage } from '../OverlayStage'
 import { MotionHost } from '../MotionHost'
-import { normalizeAlertSettings } from '../../lib/alerts'
 import type { LiveOverlayEvent } from '../../types'
 import { themeCssVars } from '../../lib/themes'
-import { BackgroundLayer } from '../BackgroundLayer'
-import { normalizeBackground } from '../../lib/backgrounds'
 import { clampElement, roundGeometry, snapPosition } from '../../lib/geometry'
 import type { Guide, Overlay, OverlayElement } from '../../types'
 
@@ -141,26 +137,47 @@ export function Canvas(props: CanvasProps) {
       onPointerDown={(event) => { if (event.target === event.currentTarget) props.onSelect(null) }}
     >
       <div className="canvas-scroll-area">
-        <div className="canvas-size-wrap" style={{ width: props.overlay.width * scale, height: props.overlay.height * scale }}>
-          <div
-            className={`canvas-stage theme-${props.overlay.theme.id} ${props.overlay.staticMotion ? 'static-motion' : ''} ${props.overlay.settings.transparent ? 'checkerboard' : 'dark-stage'} ${props.overlay.settings.showGrid ? 'show-grid' : ''}`}
+        {/* Drag and resize listen on the wrapper: the stage is pure layout, so the interaction plumbing stays here. */}
+        <div
+          className="canvas-size-wrap"
+          style={{ width: props.overlay.width * scale, height: props.overlay.height * scale }}
+          onPointerMove={pointerMove}
+          onPointerUp={endPointer}
+          onPointerCancel={endPointer}
+        >
+          <OverlayStage
+            overlay={props.overlay}
+            theme={props.overlay.theme}
+            mode="editor"
+            scale={scale}
+            scaleMode="transform"
+            preview={props.preview}
+            staticElements={props.overlay.staticMotion}
+            reducedMotion={props.overlay.staticMotion}
+            selectedId={props.selectedId}
+            testAlertNonce={props.testAlertNonce}
+            alertTests={props.alertTests}
+            motionHost={false}
+            backgroundClassName="editor-background"
+            className={`${props.overlay.settings.transparent ? 'checkerboard' : 'dark-stage'} ${props.overlay.settings.showGrid ? 'show-grid' : ''}`}
             style={{
-              width: props.overlay.width,
-              height: props.overlay.height,
-              transform: `scale(${scale})`,
               backgroundImage: props.overlay.settings.backgroundImage ? `url(${props.overlay.settings.backgroundImage})` : undefined,
-              '--theme-accent': props.overlay.theme.accent,
-              '--theme-primary': props.overlay.theme.primary,
-              '--theme-surface': props.overlay.theme.surface,
               ...themeCssVars(props.overlay.theme),
             } as CSSProperties}
-            onPointerMove={pointerMove}
-            onPointerUp={endPointer}
-            onPointerCancel={endPointer}
-            onPointerDown={(event) => { if (event.target === event.currentTarget) props.onSelect(null) }}
+            onElementPointerDown={(event, element) => beginDrag(event as ReactPointerEvent, element)}
+            renderElementChrome={(element) => (props.selectedId === element.id && !props.preview ? (
+              <>
+                {element.locked ? <div className="locked-pill"><Lock /> Locked</div> : handles.map((direction) => (
+                  <span
+                    key={direction}
+                    className={`resize-handle handle-${direction}`}
+                    onPointerDown={(event) => beginResize(event, element, direction)}
+                  />
+                ))}
+                <div className="size-readout">{Math.round(element.width)} × {Math.round(element.height)}</div>
+              </>
+            ) : null)}
           >
-            {/* The scene is part of the stage, not a layer: it cannot be selected, dragged or listed. */}
-            <BackgroundLayer background={normalizeBackground(props.overlay.background)} className="editor-background" />
             {!displayedElements.length && !props.preview && (
               <div className="canvas-empty-hint">
                 <span><Crosshair /></span>
@@ -169,45 +186,6 @@ export function Canvas(props: CanvasProps) {
               </div>
             )}
             {props.overlay.settings.showSafeArea && !props.preview && <div className="safe-area"><span>SAFE AREA · 5%</span></div>}
-            {displayedElements.map((element, index) => (
-              <div
-                key={element.id}
-                className={`canvas-element ${props.selectedId === element.id && !props.preview ? 'selected' : ''} ${element.locked ? 'locked' : ''}`}
-                style={{
-                  left: element.x,
-                  top: element.y,
-                  width: element.width,
-                  height: element.height,
-                  opacity: element.opacity,
-                  transform: `rotate(${element.rotation}deg)`,
-                  zIndex: index + 2,
-                  animationDuration: `${element.animation.duration}ms`,
-                }}
-                onPointerDown={(event) => beginDrag(event, element)}
-              >
-                <div
-                  key={`${element.id}:${props.selectedId === element.id ? props.testAlertNonce : 0}`}
-                  className={`element-content element-anim-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.type}`}
-                  style={{ animationDuration: `${element.animation.duration}ms`, animationDelay: `${element.animation.delay}ms`, animationTimingFunction: element.animation.easing, '--anim-intensity': element.animation.intensity, '--slide-x': element.animation.direction === 'left' ? '-42px' : element.animation.direction === 'right' ? '42px' : '0px', '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px' } as CSSProperties}
-                >
-                  <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><AlertProvider value={{ settings: normalizeAlertSettings(props.overlay.alerts), live: props.overlay.live, testMode: true, reducedMotion: props.overlay.staticMotion, testQueue: props.alertTests ?? [] }}>
-                    <ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} />
-                  </AlertProvider></div>
-                </div>
-                {props.selectedId === element.id && !props.preview && (
-                  <>
-                    {element.locked ? <div className="locked-pill"><Lock /> Locked</div> : handles.map((direction) => (
-                      <span
-                        key={direction}
-                        className={`resize-handle handle-${direction}`}
-                        onPointerDown={(event) => beginResize(event, element, direction)}
-                      />
-                    ))}
-                    <div className="size-readout">{Math.round(element.width)} × {Math.round(element.height)}</div>
-                  </>
-                )}
-              </div>
-            ))}
             {guides.map((guide, index) => (
               <span
                 key={`${guide.axis}-${index}`}
@@ -215,7 +193,7 @@ export function Canvas(props: CanvasProps) {
                 style={guide.axis === 'x' ? { left: guide.value } : { top: guide.value }}
               />
             ))}
-          </div>
+          </OverlayStage>
         </div>
       </div>
       {props.preview && <div className="preview-badge"><ZoomIn /> Preview · every layer, editor guides hidden</div>}
