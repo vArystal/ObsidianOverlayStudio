@@ -2,6 +2,7 @@ import type { AnimationType, DecorationPresetId, ElementType, Overlay, OverlayAn
 import { createDecoration, DEFAULT_THEME } from './themes'
 import { DEFAULT_BACKGROUND } from './backgrounds'
 import { createWidgetProps, widgetFor } from './widgets'
+import { normalizeWidgetProps } from './propSchema'
 
 export const ELEMENT_LABELS: Record<ElementType, string> = {
   text: 'Text', image: 'Image / Logo', webcam: 'Webcam Frame', capture: 'Screen / Game plan',
@@ -59,7 +60,7 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
   }
   switch (type) {
     case 'text':
-      return { ...item, width: 600, height: 126, props: { text: 'به استریم من خوش آمدید', fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 52, fontWeight: 700, color: '#f6f6f4', textAlign: 'right', lineHeight: 1.3, direction: 'rtl' } }
+      return { ...item, width: 600, height: 126, props: { text: 'به استریم من خوش آمدید', fontFamily: 'vazirmatn', fontSize: 52, fontWeight: 700, color: '#f6f6f4', textAlign: 'right', lineHeight: 1.3, direction: 'rtl' } }
     case 'image':
       return { ...item, width: 360, height: 220, maintainAspectRatio: true, props: { src: '', alt: 'Uploaded overlay asset', fit: 'contain' } }
     case 'webcam':
@@ -69,7 +70,8 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
     case 'chat':
       return { ...item, width: 460, height: 560, props: { fontFamily: 'Vazirmatn, Tahoma, sans-serif', fontSize: 20, textColor: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', borderRadius: 18, direction: 'auto' }, animation: { ...createAnimation('ornamental'), idle: 'none' } }
     case 'alert':
-      return { ...item, x: 700, y: 100, width: 560, height: 280, props: { title: 'رویداد جدید', message: 'از همراهی شما سپاسگزاریم', textColor: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', imageSrc: '', soundName: 'No sound selected', soundEnabled: false, provider: 'kick', eventTypes: 'channel.followed,channel.subscription.new,channel.subscription.gifts,kicks.gifted' }, animation: { ...createAnimation('pop'), exit: 'scale', idle: 'sparkle', holdDuration: 5500 } }
+      return { ...item, x: 700, y: 100, width: 560, height: 280, // CP39: title, message, image, audio and routing belong to overlay.alerts.templates; the element carries layout only.
+      props: { textColor: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214' }, animation: { ...createAnimation('pop'), exit: 'scale', idle: 'sparkle', holdDuration: 5500 } }
     case 'goal':
       return { ...item, width: 580, height: 132, props: { title: 'هدف حمایت', target: 1000, current: 0, currency: '€', trackColor: '#232326', fillColor: '#e8e8e6', textColor: '#f6f6f4', dataSource: 'preview', borderRadius: 12, includePreviewOutput: false } }
     case 'shape':
@@ -96,7 +98,10 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
 }
 
 export function duplicateElement(element: OverlayElement, _index: number): OverlayElement {
-  return { ...structuredClone(element), id: uid(element.type), name: `${element.name} copy`, x: element.x + 32, y: element.y + 32, props: { ...element.props } }
+  // CP39: a paste is a load path, so it runs the same prop policy instead of copying invalid values forward.
+  const widget = widgetFor(element.type)
+  const props = widget && Object.keys(widget.defaults).length ? normalizeWidgetProps(widget, element.props) : { ...element.props }
+  return { ...structuredClone(element), id: uid(element.type), name: `${element.name} copy`, x: element.x + 32, y: element.y + 32, props: props as OverlayElement['props'] }
 }
 
 export function cloneOverlay(source: Overlay): Overlay {

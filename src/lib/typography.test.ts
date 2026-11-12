@@ -212,7 +212,10 @@ describe('CP23 persistence and parity', () => {
       }],
     } as Overlay)
     const props = legacy.elements[0].props
-    expect(props.fontFamily).toBe('Vazirmatn, Tahoma, sans-serif')
+    // CP39 superseded the "keep the stack verbatim" policy: the value is migrated to the registry id, and the
+    // invariant that matters is that the family painted on air does not change.
+    expect(props.fontFamily).toBe('vazirmatn')
+    expect(fontStack(props.fontFamily)).toBe(fontStack('Vazirmatn, Tahoma, sans-serif'))
     expect(props.fontSize).toBe(44)
     expect(props.color).toBe('#fff8e7')
     // New keys arrive at defaults so the studio has something to show.

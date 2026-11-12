@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { TypographyStudio } from './TypographyStudio'
+import { FontSelect } from '../FontSelect'
+import { DEFAULT_FONT_ID, resolveFontId } from '../../lib/typography'
 import {
   AlignHorizontalJustifyCenter,
   AlignHorizontalJustifyEnd,
@@ -251,7 +253,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
             <div className={`integration-card ${props.overlay.live ? '' : 'warning'}`}><Info /><div><strong>{props.overlay.live ? 'Official Kick webhook chat attached' : 'Kick connection required'}</strong><p>Editor messages are always marked samples. Runtime messages arrive only from verified chat.message.sent webhooks after connection.</p></div></div>
             <div className="two-columns"><Field label="Font size"><NumberInput value={asNumber(element, 'fontSize', 20)} min={10} max={72} onChange={(value) => prop('fontSize', value)} suffix="px" /></Field><Field label="Messages"><NumberInput value={asNumber(element, 'maxMessages', 7)} min={1} max={20} onChange={(value) => prop('maxMessages', value)} /></Field></div>
             <Field label="Message duration"><NumberInput value={asNumber(element, 'messageDuration', 28)} min={3} max={300} onChange={(value) => prop('messageDuration', value)} suffix="sec" /></Field>
-            <Field label="Font"><select value={asString(element, 'fontFamily', 'Inter')} onChange={(event) => prop('fontFamily', event.target.value)}><option>Inter</option><option>Arial</option><option>Tahoma</option><option>Vazirmatn</option><option>monospace</option></select></Field>
+            <Field label="Font"><FontSelect value={resolveFontId(asString(element, 'fontFamily', DEFAULT_FONT_ID))} onChange={(fontId) => prop('fontFamily', fontId)} /></Field>
             <Field label="Text color"><ColorInput value={asString(element, 'textColor', '#f8fafc')} onChange={(value) => prop('textColor', value)} /></Field>
             <Field label="Background"><ColorInput value={asString(element, 'backgroundColor', '#0d0d13')} onChange={(value) => prop('backgroundColor', value)} /></Field>
             <div className="two-columns"><Field label="Background opacity"><NumberInput value={asNumber(element, 'backgroundOpacity', .76) * 100} min={0} max={100} onChange={(value) => prop('backgroundOpacity', value / 100)} suffix="%" /></Field><Field label="Spacing"><NumberInput value={asNumber(element, 'messageSpacing', 14)} min={0} max={60} onChange={(value) => prop('messageSpacing', value)} suffix="px" /></Field></div>
@@ -433,7 +435,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           <Toggle checked={element.decoration.shadow} onChange={(shadow) => decorate({ shadow })} label="Sophisticated shadow" />
           <Toggle checked={element.decoration.glow} onChange={(glow) => decorate({ glow })} label="Subtle border glow" />
           <Toggle checked={element.decoration.highlight} onChange={(highlight) => decorate({ highlight })} label="Ivory surface highlight" />
-          <Field label="Content font"><select value={asString(element, 'fontFamily')} onChange={(event) => prop('fontFamily', event.target.value)}><option value="">Widget default</option><option value="Vazirmatn, Tahoma, sans-serif">Vazirmatn / Tahoma</option><option value="Inter, Arial, sans-serif">Inter / Arial</option><option value="monospace">Monospace</option></select></Field>
+          <Field label="Content font"><FontSelect value={asString(element, 'fontFamily')} emptyLabel="Widget default" onChange={(fontId) => prop('fontFamily', fontId)} /></Field>
           <div className="two-columns"><Field label="Content alignment"><select value={asString(element, 'contentAlign')} onChange={(event) => prop('contentAlign', event.target.value)}><option value="">Widget default</option><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></Field><Field label="Direction"><select value={asString(element, 'direction', 'auto')} onChange={(event) => prop('direction', event.target.value)}><option value="auto">Auto</option><option value="rtl">RTL</option><option value="ltr">LTR</option></select></Field></div>
         </Section>
 

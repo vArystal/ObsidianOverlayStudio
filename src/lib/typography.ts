@@ -8,6 +8,8 @@
  */
 import type { CSSProperties } from 'react'
 
+import { NUMERIC_RANGES } from './propRanges'
+
 export type FontScript = 'latin' | 'arabic'
 export type FontKind = 'sans' | 'geometric' | 'condensed' | 'display' | 'editorial' | 'headline' | 'mono' | 'persian' | 'multilingual' | 'system'
 
@@ -277,6 +279,13 @@ export function normalizeTypography<T extends Props>(props: T): T {
   if (next.glowEnabled === undefined) next.glowEnabled = d.glowEnabled
   if (next.glowColor === undefined) next.glowColor = d.glowColor
   if (next.glowBlur === undefined) next.glowBlur = d.glowBlur
+  // CP39: the studio already clamps on read, so an impossible stored value rendered fine and stayed in the file.
+  // Clamping here means what is saved is what the inspector can show again, with the same bands.
+  for (const key of ['fontSize', 'fontWeight', 'lineHeight', 'letterSpacing'] as const) {
+    const band = NUMERIC_RANGES[key]
+    const value = next[key]
+    if (band && typeof value === 'number') next[key] = Math.min(band[1], Math.max(band[0], Number.isFinite(value) ? value : band[0]))
+  }
   return next as T
 }
 

@@ -4,7 +4,7 @@ import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, UserPlus, UserRound }
 import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
-import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
+import { fontStack, isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
 import { shellElement, renderKickWidget, Shell } from './widgets'
 import { AlertRuntime, useAlertSurface } from './alerts/AlertRuntime'
 import type { OverlayElement, OverlayTheme } from '../types'
@@ -57,7 +57,7 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
     <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} texture-${texture}`} style={style}>
       {decoration.cornerOrnaments && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}
       {decoration.separator && <span className="ornamental-separator"><b /><i /> <b /></span>}
-      <div className="decorated-content" dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily') || undefined, fontSize: element.props.fontSize ? num(element, 'fontSize') : undefined, textAlign: (text(element, 'contentAlign') || undefined) as CSSProperties['textAlign'] }}>{children}</div>
+      <div className="decorated-content" dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily') ? fontStack(text(element, 'fontFamily')) : undefined, fontSize: element.props.fontSize ? num(element, 'fontSize') : undefined, textAlign: (text(element, 'contentAlign') || undefined) as CSSProperties['textAlign'] }}>{children}</div>
     </div>
   )
 }
@@ -76,7 +76,7 @@ function ChatWidget({ element, runtime, preview }: { element: OverlayElement; ru
       : sampleMessages.slice(0, max)
   if (runtime && !messages.length) return null
   return (
-    <div className={`chat-widget premium-chat ${bool(element, 'scrolling', true) ? 'chat-scroll' : 'chat-stack'}`} dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: text(element, 'fontFamily', 'Vazirmatn, Tahoma, sans-serif'), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
+    <div className={`chat-widget premium-chat ${bool(element, 'scrolling', true) ? 'chat-scroll' : 'chat-stack'}`} dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: fontStack(text(element, 'fontFamily', 'vazirmatn')), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
       {!runtime && !preview && <div className="preview-chip">نمونه نمایشی · SAMPLE ONLY</div>}
       {preview && !messages.length && <div className="chat-empty"><span>{text(element, 'emptyText', 'Chat messages appear here')}</span><small>Your frame, type and colours render now · real messages arrive when the channel is live</small></div>}
       {messages.map((message, index) => (

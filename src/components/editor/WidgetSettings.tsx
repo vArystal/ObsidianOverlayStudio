@@ -7,7 +7,8 @@ import type { ReactNode } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { OverlayElement } from '../../types'
 import type { AlertSettings } from '../../lib/alerts'
-import { FONT_FAMILIES, fontStack } from '../../lib/typography'
+import { DEFAULT_FONT_ID, fontStack, resolveFontId } from '../../lib/typography'
+import { FontSelect } from '../FontSelect'
 import { resetWidgetProps, widgetFor } from '../../lib/widgets'
 
 const str = (element: OverlayElement, key: string, fallback = '') => String(element.props[key] ?? fallback)
@@ -109,9 +110,7 @@ export function WidgetSettings({ element, onProp, onReplaceProps, alerts, onAler
           {has('typography') && (
             <div className="widget-control-group" data-group="typography">
               <Row label="Typeface">
-                <select value={str(element, 'fontFamily', 'inter')} onChange={(event) => onProp('fontFamily', event.target.value)}>
-                  {FONT_FAMILIES.map((font) => <option key={font.id} value={font.id}>{font.label}</option>)}
-                </select>
+                <FontSelect value={resolveFontId(str(element, 'fontFamily', DEFAULT_FONT_ID))} onChange={(fontId) => onProp('fontFamily', fontId)} />
               </Row>
               <div className="two-columns">
                 <Row label="Size"><input type="number" min={8} max={220} value={num(element, 'fontSize', 22)} onChange={(event) => onProp('fontSize', Number(event.target.value))} /></Row>

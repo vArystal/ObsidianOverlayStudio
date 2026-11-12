@@ -10,7 +10,8 @@ import { useMemo, useRef, useState } from 'react'
 import { Play, Trash2, Upload, Zap } from 'lucide-react'
 import { ALERT_AUDIO_MAX_BYTES, ALERT_AUDIO_TYPES, ALERT_KINDS, ALERT_PRESETS, createAlertSettings, normalizeAlertSettings, testAlertEvent } from '../../lib/alerts'
 import type { AlertKind, AlertSettings, AlertTemplate } from '../../lib/alerts'
-import { FONT_FAMILIES } from '../../lib/typography'
+import { FontSelect } from '../FontSelect'
+import { resolveFontId } from '../../lib/typography'
 import type { LiveOverlayEvent } from '../../types'
 import { AlertStage, previewAlert } from '../alerts/AlertStage'
 import type { AlertAudioStatus } from '../alerts/AlertRuntime'
@@ -128,9 +129,7 @@ export function AlertStudio({ settings, onChange, onAudioFile, onImageFile, onTe
       <fieldset className="alert-group">
         <legend>Typography</legend>
         <Row label="Family">
-          <select value={template.fontId} onChange={(event) => patchTemplate({ fontId: event.target.value })}>
-            {FONT_FAMILIES.map((font) => <option key={font.id} value={font.id}>{font.label}</option>)}
-          </select>
+          <FontSelect value={resolveFontId(template.fontId)} onChange={(fontId) => patchTemplate({ fontId })} />
         </Row>
         <Row label="Headline size"><Slider value={template.headlineSize} min={12} max={64} onChange={(value) => patchTemplate({ headlineSize: value })} suffix="px" /></Row>
         <Row label="Message size"><Slider value={template.messageSize} min={12} max={48} onChange={(value) => patchTemplate({ messageSize: value })} suffix="px" /></Row>
