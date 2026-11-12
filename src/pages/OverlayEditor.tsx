@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, Check, ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
@@ -9,18 +9,20 @@ import { ElementsPanel } from '../components/editor/ElementsPanel'
 import { BackgroundSection } from '../components/editor/BackgroundSection'
 import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
+import { EMPTY_HISTORY, pushHistory, redoHistory, undoHistory, type HistoryState } from '../lib/history'
+import { sameOverlay } from '../lib/overlayDiff'
 import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
 import { LAYER_MAX_EDGE, LAYER_TARGET_BYTES, optimizeImage, snapshotBudget } from '../lib/images'
 import { deletePublication, getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
 import { getAlertHealth, subscribeAlertHealth } from '../lib/alertHealth'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { InputDialog } from '../components/editor/InputDialog'
 import { normalizeAlertSettings, testAlertEvent, validateAlertAudio } from '../lib/alerts'
 import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
 import type { LiveOverlayEvent, ElementType, Overlay, OverlayElement } from '../types'
 
-const MAX_HISTORY = 60
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 function readFile(file: File): Promise<string> {
@@ -38,8 +40,10 @@ export function OverlayEditor() {
   const [overlay, setOverlay] = useState<Overlay | null>(initial ?? null)
   const overlayRef = useRef(overlay)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [past, setPast] = useState<Overlay[]>([])
-  const [future, setFuture] = useState<Overlay[]>([])
+  // CP41: history lives in a ref plus a render nonce. Nothing is pushed from inside a setState updater, so a
+  // StrictMode double-invoke cannot duplicate a snapshot the way nested updaters did.
+  const historyRef = useRef<HistoryState>({ ...EMPTY_HISTORY })
+  const [historyNonce, bumpHistory] = useReducer((count: number) => count + 1, 0)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -73,44 +77,30 @@ export function OverlayEditor() {
   }, [dirty])
 
   const commit = useCallback((transform: (value: Overlay) => Overlay) => {
-    setOverlay((current) => {
-      if (!current) return current
-      const next = transform(current)
-      if (next === current || JSON.stringify(next) === JSON.stringify(current)) return current
-      setPast((items) => [...items.slice(-(MAX_HISTORY - 1)), structuredClone(current)])
-      setFuture([])
-      setDirty(true)
-      setSaveError('')
-      overlayRef.current = next
-      return next
-    })
+    const current = overlayRef.current
+    if (!current) return
+    const next = transform(current)
+    // CP41: a structural compare against the same fields, not a JSON round-trip of every base64 image.
+    if (next === current || sameOverlay(next, current)) return
+    historyRef.current = pushHistory(historyRef.current, current)
+    bumpHistory()
+    overlayRef.current = next
+    setOverlay(next)
+    setDirty(true)
+    setSaveError('')
   }, [])
 
-  const undo = useCallback(() => {
-    setPast((items) => {
-      const previous = items[items.length - 1]
-      if (!previous) return items
-      setOverlay((current) => {
-        if (current) setFuture((values) => [structuredClone(current), ...values].slice(0, MAX_HISTORY))
-        return structuredClone(previous)
-      })
-      setDirty(true)
-      return items.slice(0, -1)
-    })
+  const applyHistory = useCallback((result: { state: HistoryState; overlay: Overlay } | null) => {
+    if (!result) return
+    historyRef.current = result.state
+    bumpHistory()
+    overlayRef.current = result.overlay
+    setOverlay(result.overlay)
+    setDirty(true)
   }, [])
 
-  const redo = useCallback(() => {
-    setFuture((items) => {
-      const next = items[0]
-      if (!next) return items
-      setOverlay((current) => {
-        if (current) setPast((values) => [...values.slice(-(MAX_HISTORY - 1)), structuredClone(current)])
-        return structuredClone(next)
-      })
-      setDirty(true)
-      return items.slice(1)
-    })
-  }, [])
+  const undo = useCallback(() => applyHistory(undoHistory(historyRef.current, overlayRef.current)), [applyHistory])
+  const redo = useCallback(() => applyHistory(redoHistory(historyRef.current, overlayRef.current)), [applyHistory])
 
   const save = useCallback((options: { quiet?: boolean } = {}) => {
     const current = overlayRef.current
@@ -210,12 +200,22 @@ export function OverlayEditor() {
     })
   }, [commit])
 
+  const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null)
+  const [resolutionOpen, setResolutionOpen] = useState(false)
+
+  const submitRename = useCallback((values: Record<string, string>) => {
+    const target = renameTarget
+    setRenameTarget(null)
+    const name = (values.name ?? '').trim()
+    if (!target || !name || name.length > 80) return
+    commit((current) => ({ ...current, elements: current.elements.map((element) => element.id === target.id ? { ...element, name } : element) }))
+  }, [commit, renameTarget])
+
   const renameLayer = useCallback((elementId: string) => {
     const element = overlayRef.current?.elements.find((item) => item.id === elementId)
     if (!element) return
-    const name = window.prompt('Layer name', element.name)?.trim()
-    if (name) patchElementById(elementId, { name })
-  }, [patchElementById])
+    setRenameTarget({ id: element.id, name: element.name })
+  }, [])
 
   // Batched prop patch: presets set twenty keys in one click, and separate writes per key would each spread the
   // props snapshot captured at render time, so nineteen of them would be discarded.
@@ -264,8 +264,8 @@ export function OverlayEditor() {
     const original = interactionStart.current
     interactionStart.current = null
     if (JSON.stringify(original) !== JSON.stringify(overlayRef.current)) {
-      setPast((items) => [...items.slice(-(MAX_HISTORY - 1)), original])
-      setFuture([])
+      historyRef.current = pushHistory(historyRef.current, original)
+      bumpHistory()
       setDirty(true)
     }
   }
@@ -363,19 +363,31 @@ export function OverlayEditor() {
     window.setTimeout(() => setNotice(''), 2600)
   }
 
-  function changeResolution(value: string) {
-    if (value === 'custom') {
-      const current = overlayRef.current
-      if (!current) return
-      const width = Number(window.prompt('Canvas width (320–7680)', String(current.width)))
-      const height = Number(window.prompt('Canvas height (240–4320)', String(current.height)))
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 320 || height < 240 || width > 7680 || height > 4320) return setNotice('Enter a valid canvas size between 320 × 240 and 7680 × 4320.')
-      commit((item) => ({ ...item, width: Math.round(width), height: Math.round(height) }))
-    } else {
-      const [width, height] = value.split('x').map(Number)
-      commit((item) => ({ ...item, width, height }))
-    }
+  /** CP41: a smaller canvas used to leave layers outside it. Every element is clamped into the new bounds. */
+  const applyCanvasSize = useCallback((width: number, height: number) => {
+    commit((item) => ({
+      ...item,
+      width,
+      height,
+      elements: item.elements.map((element) => clampElement(element, width, height)),
+    }))
     setZoom(null)
+  }, [commit])
+
+  function changeResolution(value: string) {
+    if (value === 'custom') return setResolutionOpen(true)
+    const [width, height] = value.split('x').map(Number)
+    if (Number.isFinite(width) && Number.isFinite(height)) applyCanvasSize(width, height)
+  }
+
+  function submitResolution(values: Record<string, string>) {
+    const width = Math.round(Number(values.width))
+    const height = Math.round(Number(values.height))
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 320 || height < 240 || width > 7680 || height > 4320) {
+      return setNotice('Enter a valid canvas size between 320 × 240 and 7680 × 4320.')
+    }
+    setResolutionOpen(false)
+    applyCanvasSize(width, height)
   }
 
   function setCanvasSize(width: number, height: number) {
@@ -505,7 +517,7 @@ export function OverlayEditor() {
       <main className={`editor-page ${preview ? 'is-previewing' : ''} ${mobilePanel ? `show-${mobilePanel}` : ''}`}>
         <EditorToolbar
           name={overlay.name} dirty={dirty} saving={saving} saveError={saveError}
-          canUndo={past.length > 0} canRedo={future.length > 0} preview={preview}
+          canUndo={historyNonce >= 0 && historyRef.current.past.length > 0} canRedo={historyNonce >= 0 && historyRef.current.future.length > 0} preview={preview}
           resolution={resolution} themeId={overlay.theme.id} zoomPercent={Math.round(actualScale * 100)}
           selectedIsTestable={Boolean(selected)}
           onNameChange={(name) => commit((item) => ({ ...item, name }))}
@@ -587,6 +599,27 @@ export function OverlayEditor() {
           destructive
           onConfirm={unpublish}
           onCancel={() => setUnpublishOpen(false)}
+        />
+        <InputDialog
+          open={Boolean(renameTarget)}
+          title="Rename layer"
+          description="A clear name is what you will read in the layer list during a live show."
+          confirmLabel="Rename"
+          fields={[{ name: 'name', label: 'Layer name', value: renameTarget?.name ?? '' }]}
+          onSubmit={submitRename}
+          onCancel={() => setRenameTarget(null)}
+        />
+        <InputDialog
+          open={resolutionOpen}
+          title="Canvas size"
+          description="Layers are clamped into the new bounds, so nothing ends up off canvas."
+          confirmLabel="Resize canvas"
+          fields={[
+            { name: 'width', label: 'Width', value: String(overlay.width), min: 320, max: 7680, suffix: 'px' },
+            { name: 'height', label: 'Height', value: String(overlay.height), min: 240, max: 4320, suffix: 'px' },
+          ]}
+          onSubmit={submitResolution}
+          onCancel={() => setResolutionOpen(false)}
         />
         {notice && <div className="toast">{notice}</div>}
         {publishUrl && (

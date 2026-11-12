@@ -266,3 +266,16 @@ body.runtime-root .app-shell::before { display: none; }
 
 /* --- Integrations notes ------------------------------------------------- */
 .integration-note { margin: 8px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted-foreground); }
+
+/* CP41: inline input dialog replaces window.prompt. Targets are 44px so a thumb can hit them on a phone. */
+.input-dialog { display: grid; gap: 14px; }
+.input-dialog-field { display: grid; gap: 6px; }
+.input-dialog-field > span { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: #a9adb3; }
+.input-dialog-field > input {
+  min-height: 44px; padding: 0 12px; border-radius: 10px; font-size: 15px;
+  background: #101012; color: #f6f6f4; border: 1px solid #2a2a2e;
+}
+.input-dialog-field > input:focus-visible { outline: 2px solid #f6f6f4; outline-offset: 1px; }
+.input-dialog-field > small { color: #a9adb3; font-size: 12px; }
+.input-dialog-error { color: #f6f6f4; font-size: 13px; margin: 0; }
+.input-dialog .dialog-actions > button { min-height: 44px; min-width: 44px; }

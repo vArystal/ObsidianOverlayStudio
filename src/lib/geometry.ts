@@ -18,6 +18,35 @@ export function clampElement(
   }
 }
 
+/**
+ * CP41: the resize path applied the aspect ratio to the raw pointer delta and clamped the result, so near an edge the
+ * clamp shortened one side and the ratio silently broke. Here the box is clamped first, then the free dimension is
+ * re-derived from the clamped one, and the result is clamped once more so a ratio that cannot fit still stays inside
+ * the canvas while keeping the ratio it can afford.
+ */
+export function resizeWithAspect(
+  element: OverlayElement,
+  direction: string,
+  raw: { x: number; y: number; width: number; height: number },
+  canvasWidth: number,
+  canvasHeight: number,
+): OverlayElement {
+  const box = clampElement({ ...element, ...raw }, canvasWidth, canvasHeight)
+  if (!element.maintainAspectRatio) return box
+  const ratio = element.height > 0 ? element.width / element.height : 1
+  let { x, y, width, height } = box
+  if (direction === 'n' || direction === 's') width = height * ratio
+  else height = width / ratio
+  // Keep the edge that is not being dragged pinned, which is what the pointer is anchored to.
+  if (direction.includes('w')) x = element.x + element.width - width
+  if (direction.includes('n')) y = element.y + element.height - height
+  const fitted = clampElement({ ...element, x, y, width, height }, canvasWidth, canvasHeight)
+  // One more pass so the anchor correction cannot leave the layer outside the canvas.
+  if (fitted.x < 0) fitted.x = 0
+  if (fitted.y < 0) fitted.y = 0
+  return fitted
+}
+
 export function snapPosition(
   element: OverlayElement,
   canvasWidth: number,

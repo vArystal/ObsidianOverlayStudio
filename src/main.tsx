@@ -6,6 +6,7 @@ import { OverlayEditor } from './pages/OverlayEditor'
 import { OverlayRuntime } from './pages/OverlayRuntime'
 import { Integrations } from './pages/Integrations'
 import './styles/fonts.css'
+// CP41: sheets are ordered tokens -> components -> families. A later sheet may extend a token, never redefine it.
 import './styles/tokens.css'
 import './styles.css'
 import './premium.css'

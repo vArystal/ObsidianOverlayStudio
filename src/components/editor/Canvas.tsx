@@ -5,7 +5,7 @@ import { OverlayStage } from '../OverlayStage'
 import { MotionHost } from '../MotionHost'
 import type { LiveOverlayEvent } from '../../types'
 import { themeCssVars } from '../../lib/themes'
-import { clampElement, roundGeometry, snapPosition } from '../../lib/geometry'
+import { clampElement, resizeWithAspect, roundGeometry, snapPosition } from '../../lib/geometry'
 import type { Guide, Overlay, OverlayElement } from '../../types'
 
 type ResizeDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw'
@@ -109,14 +109,14 @@ export function Canvas(props: CanvasProps) {
     if (direction.includes('w')) { width -= dx; x += dx }
     if (direction.includes('n')) { height -= dy; y += dy }
 
-    if (session.element.maintainAspectRatio) {
-      const ratio = session.element.width / session.element.height
-      if (direction === 'n' || direction === 's') width = height * ratio
-      else height = width / ratio
-      if (direction.includes('w')) x = session.element.x + session.element.width - width
-      if (direction.includes('n')) y = session.element.y + session.element.height - height
-    }
-    props.onLiveElement(clampElement({ ...session.element, x: roundGeometry(x), y: roundGeometry(y), width: roundGeometry(width), height: roundGeometry(height) }, props.overlay.width, props.overlay.height))
+    // CP41: clamp-then-ratio lives in geometry so the pointer path and the tests share one rule.
+    props.onLiveElement(resizeWithAspect(
+      session.element,
+      direction,
+      { x: roundGeometry(x), y: roundGeometry(y), width: roundGeometry(width), height: roundGeometry(height) },
+      props.overlay.width,
+      props.overlay.height,
+    ))
   }
 
   function endPointer(event: ReactPointerEvent) {

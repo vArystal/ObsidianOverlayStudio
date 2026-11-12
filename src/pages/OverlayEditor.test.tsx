@@ -1,7 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StrictMode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { createEmptyOverlay } from '../lib/elements'
+import { createElement, createEmptyOverlay } from '../lib/elements'
 import { getOverlay, saveOverlay } from '../lib/storage'
 import { OverlayEditor } from './OverlayEditor'
 
@@ -145,5 +146,57 @@ describe('publish failure reporting', () => {
     expect(screen.getByRole('alert').textContent).toContain('d1 write failed')
     // Still published: a rejected settings row must not block the overlay itself.
     await waitFor(() => expect(getOverlay(overlay.id)?.publishedAt).toBeTruthy())
+  })
+})
+
+/**
+ * CP41: undo/redo used to push history from inside a setState updater, so StrictMode's double-invocation recorded
+ * two snapshots per edit and the first undo looked like it did nothing. This asserts the observable contract: one
+ * edit, one undo, exactly the previous document, and a second undo that cannot step anywhere.
+ */
+describe('history exactness under StrictMode', () => {
+  function renderStrict(id: string) {
+    return render(
+      <StrictMode>
+        <MemoryRouter initialEntries={[`/overlays/editor/${id}`]}>
+          <Routes><Route path="/overlays/editor/:id" element={<OverlayEditor />} /></Routes>
+        </MemoryRouter>
+      </StrictMode>,
+    )
+  }
+
+  it('does not create a phantom history entry when StrictMode mounts the editor twice', () => {
+    // The duplicate-snapshot bug showed up first as "Undo is enabled on a document nobody edited", because the
+    // second mount re-ran the updater that pushed history. History now lives outside updaters, so a double mount
+    // leaves it empty. The exactness of each transition is covered by src/lib/history.test.ts.
+    const scene = createEmptyOverlay('Strict scene')
+    saveOverlay(scene)
+    renderStrict(scene.id)
+    const undo = screen.getByTitle(/^Undo/)
+    const redo = screen.getByTitle(/^Redo/)
+    expect((undo as HTMLButtonElement).disabled).toBe(true)
+    expect((redo as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('offers rename as an inline dialog instead of a native prompt', async () => {
+    const scene = createEmptyOverlay('Rename scene')
+    scene.elements = [createElement('text')]
+    saveOverlay(scene)
+    renderStrict(scene.id)
+    const promptSpy = vi.fn()
+    vi.stubGlobal('prompt', promptSpy)
+
+    fireEvent.click(screen.getByRole('tab', { name: /layers/i }))
+    const row = await screen.findByLabelText(`${scene.elements[0].name} layer`)
+    // Rename is a double-click on the layer row; a phone gets there by long-press, so the dialog is the only surface.
+    fireEvent.doubleClick(row)
+    const dialog = await screen.findByRole('dialog', { name: /rename layer/i })
+    const input = dialog.querySelector('input')!
+    fireEvent.change(input, { target: { value: 'Lower third' } })
+    fireEvent.change(dialog.querySelectorAll('input')[0], { target: { value: 'Lower third' } })
+    fireEvent.submit(dialog.querySelector('form') ?? dialog)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /rename layer/i })).toBeNull())
+    expect(promptSpy).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByLabelText('Lower third layer')).toBeTruthy())
   })
 })

@@ -117,7 +117,10 @@
 
 /* ---------------------------------------------------------------- Theme textures
    Four monochrome presets cannot rely on hue, so each carries a material instead: a printed grid, a paper
-   grain, a diagonal hatch, or a light sheen. Painted on the widget's own layer so legend text stays crisp. */
+   grain, a diagonal hatch, or a light sheen. Painted on the widget's own layer so legend text stays crisp.
+   CP41: this is the only place textures are defined. cp20.css used to redefine four of them with different values
+   and own texture-aurora, so which material you saw depended on stylesheet import order. Import order is now
+   explicit in main.tsx (tokens before the sheet families) and no later sheet redefines a texture. */
 .decorated-widget.texture-grid::before {
   background-image:
     repeating-linear-gradient(0deg, rgba(255, 255, 255, .16) 0 1px, transparent 1px 22px),
@@ -139,5 +142,11 @@
 .decorated-widget.texture-sheen::before {
   background-image: linear-gradient(155deg, rgba(255, 255, 255, .13) 0%, rgba(255, 255, 255, .02) 34%, transparent 62%);
   opacity: 1;
+}
+.decorated-widget.texture-aurora::before {
+  background-image:
+    linear-gradient(115deg, transparent 12%, rgba(255, 255, 255, .18) 38%, transparent 58%),
+    linear-gradient(290deg, transparent 20%, rgba(255, 255, 255, .1) 46%, transparent 72%);
+  opacity: .9;
 }
 .decorated-widget.texture-none::before { background-image: none; }
