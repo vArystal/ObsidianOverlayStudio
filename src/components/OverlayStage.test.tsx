@@ -27,7 +27,6 @@ const stage = (overlay: ReturnType<typeof createEmptyOverlay>, mode: 'editor' | 
     scale={1}
     staticElements={false}
     reducedMotion={false}
-    motionHost={false}
     {...extra}
   />
 )
