@@ -1,4 +1,8 @@
 import { verifyKickWebhook } from './security.mjs'
+import { ALERT_EVENT_TYPES } from './store.mjs'
+
+/** Metric a milestone target counts. Both are derived from real deliveries, never from a guessed total. */
+const MILESTONE_SOURCE = { followers: 'channel.followed', subscribers: 'channel.subscription.new' }
 
 function person(value) {
   if (!value) return null
@@ -26,6 +30,31 @@ export function normalizeKickEvent({ id, type, payload, receivedAt = new Date().
     default:
       return { ...base, data: { broadcaster: person(payload.broadcaster), unsupported: true } }
   }
+}
+
+/**
+ * Emits a derived alert for every configured milestone the counters have crossed. The deterministic message id
+ * means a retried webhook cannot celebrate the same milestone twice.
+ */
+export async function emitMilestones({ store, bus, connection, runtimeKey, counts }) {
+  const settings = await store.getAlertSettings(runtimeKey)
+  if (!settings?.milestones?.length) return 0
+  const seen = await store.milestoneIds(runtimeKey)
+  let emitted = 0
+  for (const target of settings.milestones) {
+    if (!target?.enabled) continue
+    const type = MILESTONE_SOURCE[target.metric]
+    const limit = Number(target.target)
+    if (!type || !Number.isFinite(limit) || limit <= 0) continue
+    if (Number(counts?.[type] || 0) < limit) continue
+    const id = `milestone:${target.metric}:${limit}`
+    if (seen.has(id)) continue
+    const event = normalizeKickEvent({ id, type: 'alert.milestone', payload: { broadcaster: { user_id: connection.account?.userId }, metric: target.metric, count: Number(counts[type]), target: limit }, receivedAt: new Date().toISOString() })
+    await store.appendAlertEvent(runtimeKey, event)
+    bus.publish(runtimeKey, event)
+    emitted += 1
+  }
+  return emitted
 }
 
 export function createEventProcessor({ store, bus, getPublicKey, now = () => Date.now() }) {
@@ -61,6 +90,15 @@ export function createEventProcessor({ store, bus, getPublicKey, now = () => Dat
         if (verification.eventType === 'channel.followed') await store.incrementSessionFollowers(connection.id)
         const runtimeKeys = await store.runtimeKeysForConnection(connection.id)
         runtimeKeys.forEach((runtimeKey) => bus.publish(runtimeKey, event))
+        // CP36: alerts are persisted per runtime so a reload resumes instead of replaying, and milestones are
+        // derived from the durable counters. Both happen only for events that actually arrived.
+        if (ALERT_EVENT_TYPES.includes(verification.eventType)) {
+          const counts = await store.incrementEventCount(connection.id, verification.eventType)
+          for (const runtimeKey of runtimeKeys) {
+            await store.appendAlertEvent(runtimeKey, event)
+            await emitMilestones({ store, bus, connection, runtimeKey, counts })
+          }
+        }
       } catch (error) {
         // Delivery failed: release the claim so Kick's retry is processed instead of silently dropped.
         await store.releaseClaim(verification.messageId).catch(() => {})

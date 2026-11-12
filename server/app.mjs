@@ -8,6 +8,15 @@ import { createEventProcessor, normalizeKickEvent } from './event-processor.mjs'
 import { createDonationRegistry } from './donations.mjs'
 import { KICK_EVENT_TYPES, REQUIRED_KICK_SCOPES } from './config.mjs'
 
+/**
+ * CP36: the same answer the Worker gives. Kick's public API exposes no follower total, so the field exists to say
+ * so rather than to be filled with a guess.
+ */
+export const FOLLOWER_TOTAL = { supported: false, reason: 'Kick public API exposes no total follower count' }
+
+/** The union the Worker accepts for a test play. Both backends must offer the same list. */
+export const TEST_EVENT_TYPES = ['chat.message.sent', 'channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted']
+
 function sendJson(response, status, data, extraHeaders = {}) {
   const body = JSON.stringify(data)
   response.writeHead(status, { 'content-type': 'application/json; charset=utf-8', 'content-length': Buffer.byteLength(body), ...extraHeaders })
@@ -97,7 +106,16 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
         const token = await validAccessToken({ connection, store, client: kick, refresher })
         const live = await kick.getLivestream(token, connection.account.userId)
         const viewer = live ? { status: 'live', count: Number(live.viewer_count ?? 0), updatedAt: new Date().toISOString() } : { status: 'offline', count: 0, updatedAt: new Date().toISOString() }
-        await store.updateConnection(connection.id, { viewer, lastSyncAt: new Date().toISOString(), syncError: null })
+        // The same Kick answer describes the broadcast, so the stream widgets have real state before any
+        // livestream webhook arrives. Absent fields stay null rather than becoming empty strings.
+        const stream = {
+          title: typeof live?.session_title === 'string' && live.session_title.trim() ? live.session_title : null,
+          category: typeof live?.categories?.[0]?.name === 'string' ? live.categories[0].name : null,
+          isLive: live ? Boolean(live.is_live ?? true) : false,
+          startedAt: typeof live?.start_time === 'string' ? live.start_time : null,
+          updatedAt: new Date().toISOString(),
+        }
+        await store.updateConnection(connection.id, { viewer, stream, lastSyncAt: new Date().toISOString(), syncError: null })
         const event = { id: randomToken(10), type: 'metric.viewer.updated', receivedAt: viewer.updatedAt, test: false, data: viewer }
         ;(await store.runtimeKeysForConnection(connection.id)).forEach((runtimeKey) => bus.publish(runtimeKey, event))
       } catch (error) {
@@ -180,7 +198,8 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
       if (request.method === 'DELETE' && /^\/api\/overlays\/[^/]+\/publication$/.test(url.pathname)) {
         const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
         const overlayId = decodeURIComponent(url.pathname.split('/')[3] || '')
-        if (!/^[A-Za-z0-9_-]{1,120}$/.test(overlayId)) return sendJson(response, 400, { error: 'invalid_overlay_id' })
+        // Same rule as publish: a publication id that could never have been created is a bad request, not a no-op.
+        if (!/^[A-Za-z0-9_-]{8,120}$/.test(overlayId)) return sendJson(response, 400, { error: 'invalid_overlay_id' })
         const removed = await store.removePublication({ overlayId, connectionId: connection.id })
         // Idempotent: a delete after the publication was already gone still reports success.
         return sendJson(response, 200, { removed: removed.length, overlayId })
@@ -206,19 +225,91 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
       if (request.method === 'POST' && url.pathname === '/api/integrations/test-event') {
         const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
         const body = JSON.parse((await readBody(request)).toString('utf8') || '{}')
-        const type = ['chat.message.sent', 'channel.followed', 'channel.subscription.new', 'kicks.gifted'].includes(body.type) ? body.type : 'channel.followed'
-        const samplePerson = { user_id: 0, username: 'TEST EVENT', profile_picture: null, channel_slug: 'local-test', is_verified: false, identity: { username_color: '#d8ad55', badges: [{ type: 'test', text: 'TEST' }] } }
-        const payload = type === 'chat.message.sent' ? { message_id: randomToken(8), content: body.message || 'پیام آزمایشی — رویداد واقعی Kick نیست', created_at: new Date().toISOString(), sender: samplePerson, broadcaster: { user_id: connection.account.userId } } : type === 'channel.followed' ? { follower: samplePerson, broadcaster: { user_id: connection.account.userId } } : type === 'channel.subscription.new' ? { subscriber: samplePerson, broadcaster: { user_id: connection.account.userId }, duration: 1, created_at: new Date().toISOString() } : { sender: samplePerson, broadcaster: { user_id: connection.account.userId }, gift: { amount: 1, name: 'TEST KICK', type: 'TEST', tier: 'TEST', message: 'Local test only' }, created_at: new Date().toISOString() }
-        const event = normalizeKickEvent({ id: `test_${randomToken(8)}`, type, payload, test: true })
-        ;(await store.runtimeKeysForConnection(connection.id)).forEach((runtimeKey) => bus.publish(runtimeKey, event))
-        return sendJson(response, 200, { delivered: true, test: true, event })
+        const type = TEST_EVENT_TYPES.includes(body.type) ? body.type : 'channel.followed'
+        const username = typeof body.username === 'string' && body.username.trim() ? body.username.trim().slice(0, 40) : 'TEST VIEWER'
+        const samplePerson = { user_id: 0, username, profile_picture: null, channel_slug: 'test', is_verified: false, identity: { username_color: '#e8e8e6', badges: [{ type: 'test', text: 'TEST' }] } }
+        const broadcaster = { user_id: connection.account.userId }
+        const now = new Date().toISOString()
+        const payload = type === 'chat.message.sent'
+          ? { message_id: randomToken(8), content: body.message || 'پیام آزمایشی — رویداد واقعی Kick نیست', created_at: now, sender: samplePerson, broadcaster }
+          : type === 'channel.subscription.renewal' || type === 'channel.subscription.new'
+            ? { subscriber: samplePerson, broadcaster, duration: 1, created_at: now }
+            : type === 'kicks.gifted'
+              ? { sender: samplePerson, broadcaster, gift: { amount: 1, name: 'TEST KICK', type: 'TEST', tier: 'TEST' }, created_at: now }
+              : type === 'channel.subscription.gifts'
+                ? { gifter: samplePerson, giftees: [{ ...samplePerson, username: 'TEST GIFTEES' }], broadcaster, created_at: now }
+                : { follower: samplePerson, broadcaster }
+        const event = normalizeKickEvent({ id: `test_${randomToken(8)}`, type, payload, receivedAt: now, test: true })
+        // CP25 isolation, identical to the Worker: a test writes only alert_test_frames. It never enters the event
+        // stream, the events table, the deliveries table or any counter, so a source on air cannot play it.
+        const keys = await store.runtimeKeysForConnection(connection.id)
+        for (const key of keys) await store.appendTestFrame(key, event)
+        return sendJson(response, 200, { delivered: keys.length > 0, test: true, event, targets: keys.length, stored: 'alert_test_frames' })
+      }
+
+      if (request.method === 'GET' && url.pathname.startsWith('/api/runtime/') && url.pathname.endsWith('/alerts')) {
+        const runtimeKey = url.pathname.split('/')[3]
+        const connection = await store.findByRuntimeKey(runtimeKey)
+        if (!connection) return sendJson(response, 404, { error: 'runtime_not_found' })
+        const after = Math.max(0, Number(url.searchParams.get('after') || 0) || 0)
+        const limit = Math.min(50, Math.max(1, Number(url.searchParams.get('limit') || 20) || 20))
+        const rows = await store.listAlerts(runtimeKey, { after, limit })
+        const alerts = rows.map((row) => ({ seq: row.seq, event: row.event }))
+        const testAlerts = url.searchParams.get('test') === '1'
+          ? (await store.listTestFrames(runtimeKey)).map((frame) => ({ seq: 0, event: frame.event }))
+          : []
+        return sendJson(response, 200, {
+          alerts: [...alerts, ...testAlerts],
+          cursor: alerts.length ? Math.max(...alerts.map((item) => item.seq)) : after,
+          truncated: rows.length === limit,
+          serverTime: new Date().toISOString(),
+        })
+      }
+
+      if (request.method === 'POST' && url.pathname.startsWith('/api/runtime/') && url.pathname.endsWith('/alerts/ack')) {
+        const runtimeKey = url.pathname.split('/')[3]
+        const connection = await store.findByRuntimeKey(runtimeKey)
+        if (!connection) return sendJson(response, 404, { error: 'runtime_not_found' })
+        let body
+        try { body = JSON.parse((await readBody(request)).toString('utf8')) } catch { return sendJson(response, 400, { error: 'malformed_json' }) }
+        const ids = Array.isArray(body?.ids) ? body.ids.filter((id) => typeof id === 'string' && id.length > 0 && id.length <= 128).slice(0, 50) : []
+        if (!ids.length) return sendJson(response, 400, { error: 'no_ids' })
+        // A runtime URL is public, so only an event this runtime actually received can be acknowledged.
+        const acked = await store.ackAlerts(runtimeKey, ids)
+        return sendJson(response, 200, { acked })
+      }
+
+      if (request.method === 'POST' && url.pathname.startsWith('/api/runtime/') && url.pathname.endsWith('/alert-settings')) {
+        const runtimeKey = url.pathname.split('/')[3]
+        const connection = await managedConnection(request); if (!connection) return sendJson(response, 401, { error: 'unauthorized' })
+        const owned = (await store.runtimeKeysForConnection(connection.id)).includes(runtimeKey)
+        if (!owned) return sendJson(response, 403, { error: 'runtime_not_owned' })
+        let body
+        try { body = JSON.parse((await readBody(request)).toString('utf8')) } catch { return sendJson(response, 400, { error: 'malformed_json' }) }
+        const milestones = Array.isArray(body?.milestones) ? body.milestones.slice(0, 6).map((item) => ({
+          metric: item?.metric === 'subscribers' ? 'subscribers' : item?.metric === 'followers' ? 'followers' : null,
+          target: Math.min(1_000_000, Math.max(1, Number(item?.target) || 0)),
+          enabled: Boolean(item?.enabled),
+        })).filter((item) => item.metric && item.target > 0) : []
+        await store.saveAlertSettings(runtimeKey, { milestones })
+        return sendJson(response, 200, { saved: true, milestones: milestones.length })
       }
 
       if (request.method === 'GET' && url.pathname.startsWith('/api/runtime/') && url.pathname.endsWith('/state')) {
         const runtimeKey = url.pathname.split('/')[3]
         const connection = await store.findByRuntimeKey(runtimeKey)
         if (!connection) return sendJson(response, 404, { error: 'runtime_not_found' })
-        return sendJson(response, 200, { connected: connection.connected, viewer: connection.viewer, latestFollower: connection.lastFollower ?? null, sessionFollowerCount: connection.sessionFollowerCount ?? 0, channel: connection.channel, lastEventAt: connection.lastEventAt ?? null })
+        return sendJson(response, 200, {
+          connected: connection.connected,
+          viewer: connection.viewer,
+          latestFollower: connection.lastFollower ?? null,
+          sessionFollowerCount: connection.sessionFollowerCount ?? 0,
+          channel: connection.channel,
+          stream: connection.stream ?? null,
+          lastEventAt: connection.lastEventAt ?? null,
+          followerTotal: FOLLOWER_TOTAL,
+          serverTime: new Date().toISOString(),
+        })
       }
 
       if (request.method === 'GET' && url.pathname.startsWith('/api/runtime/') && url.pathname.endsWith('/events')) {

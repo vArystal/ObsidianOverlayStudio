@@ -3,7 +3,16 @@ import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
 import { encryptJson, decryptJson, hashSecret, randomToken, safeEqual } from './security.mjs'
 
-const emptyState = () => ({ connections: {}, publications: {}, oauth: {}, exchanges: {}, processedEvents: {} })
+const emptyState = () => ({
+  connections: {}, publications: {}, oauth: {}, exchanges: {}, processedEvents: {},
+  // CP36: the alert contract the Worker implements in D1, held here so the local server answers the same routes.
+  alertEvents: {}, alertAcks: {}, alertTestFrames: {}, alertSettings: {}, alertSeq: 0,
+})
+
+/** The alert types that may interrupt the stream. Chat and metric frames are data, not notifications. */
+export const ALERT_EVENT_TYPES = ['channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted', 'alert.milestone']
+export const ALERT_WINDOW_MS = 6 * 60 * 60_000
+export const TEST_FRAME_WINDOW_MS = 5 * 60_000
 
 export function createIntegrationStore({ filePath, encryptionKey, persist = true }) {
   let state = emptyState()
@@ -58,6 +67,17 @@ export function createIntegrationStore({ filePath, encryptionKey, persist = true
     for (const [key, value] of Object.entries(state.oauth)) if (value.expiresAt < now) delete state.oauth[key]
     for (const [key, value] of Object.entries(state.exchanges)) if (value.expiresAt < now) delete state.exchanges[key]
     for (const [key, value] of Object.entries(state.processedEvents)) if (value < now - 24 * 60 * 60_000) delete state.processedEvents[key]
+    // Same windows the Worker's pruneAlertState uses, so a long-running local server cannot grow without bound.
+    for (const [key, rows] of Object.entries(state.alertEvents)) {
+      const kept = (rows ?? []).filter((row) => Date.parse(row.receivedAt) > now - 24 * 60 * 60_000)
+      if (kept.length) state.alertEvents[key] = kept
+      else delete state.alertEvents[key]
+    }
+    for (const [key, frames] of Object.entries(state.alertTestFrames)) {
+      const kept = (frames ?? []).filter((row) => Date.parse(row.createdAt) > now - 30 * 60_000)
+      if (kept.length) state.alertTestFrames[key] = kept
+      else delete state.alertTestFrames[key]
+    }
   }
 
   return {
@@ -184,6 +204,86 @@ export function createIntegrationStore({ filePath, encryptionKey, persist = true
       })
     },
     async listConnected() { await load(); return Object.values(state.connections).filter((item) => item.connected) },
+    /* ---------------------------------------------------------------- alerts */
+    /** Records an alert-capable delivery for one runtime, in the order it arrived. */
+    async appendAlertEvent(runtimeKey, event) {
+      await load()
+      return enqueue(() => {
+        state.alertSeq = Number(state.alertSeq || 0) + 1
+        const rows = state.alertEvents[runtimeKey] ?? []
+        rows.push({ seq: state.alertSeq, messageId: event.id, type: event.type, receivedAt: event.receivedAt ?? new Date().toISOString(), event })
+        state.alertEvents[runtimeKey] = rows
+        prune()
+        return state.alertSeq
+      })
+    },
+    /** Unacknowledged alert rows newer than `after`, oldest first, exactly the Worker's selection. */
+    async listAlerts(runtimeKey, { after = 0, limit = 20, windowMs = ALERT_WINDOW_MS } = {}) {
+      await load()
+      const acked = state.alertAcks[runtimeKey] ?? {}
+      const cutoff = Date.now() - windowMs
+      return (state.alertEvents[runtimeKey] ?? [])
+        .filter((row) => row.seq > after && Date.parse(row.receivedAt) > cutoff && ALERT_EVENT_TYPES.includes(row.type) && !acked[row.messageId] && !row.event?.test)
+        .slice(0, limit)
+        .map((row) => ({ seq: row.seq, event: row.event }))
+    },
+    /** Only ids this runtime actually received can be acknowledged: the runtime URL is public. */
+    async ackAlerts(runtimeKey, ids) {
+      await load()
+      return enqueue(() => {
+        const known = new Set((state.alertEvents[runtimeKey] ?? []).map((row) => row.messageId))
+        const acked = state.alertAcks[runtimeKey] ?? {}
+        let count = 0
+        for (const id of ids) {
+          if (!known.has(id) || acked[id]) continue
+          acked[id] = new Date().toISOString()
+          count += 1
+        }
+        state.alertAcks[runtimeKey] = acked
+        prune()
+        return count
+      })
+    },
+    async appendTestFrame(runtimeKey, event) {
+      await load()
+      return enqueue(() => {
+        const frames = state.alertTestFrames[runtimeKey] ?? []
+        frames.push({ id: event.id, createdAt: new Date().toISOString(), event })
+        state.alertTestFrames[runtimeKey] = frames
+        prune()
+        return frames.length
+      })
+    },
+    async listTestFrames(runtimeKey, windowMs = TEST_FRAME_WINDOW_MS) {
+      await load()
+      const cutoff = Date.now() - windowMs
+      return (state.alertTestFrames[runtimeKey] ?? []).filter((row) => Date.parse(row.createdAt) > cutoff).slice(-5)
+    },
+    async getAlertSettings(runtimeKey) { await load(); return state.alertSettings[runtimeKey] ?? null },
+    async saveAlertSettings(runtimeKey, settings) {
+      await load()
+      return enqueue(() => {
+        state.alertSettings[runtimeKey] = { ...settings, updatedAt: new Date().toISOString() }
+        return state.alertSettings[runtimeKey]
+      })
+    },
+    /** Per-type delivery counters, the durable evidence milestones and the health page read. */
+    async incrementEventCount(connectionId, type) {
+      await load()
+      return enqueue(() => {
+        const connection = state.connections[connectionId]
+        if (!connection) return null
+        connection.eventCounts = { ...(connection.eventCounts ?? {}) }
+        connection.eventCounts[type] = Number(connection.eventCounts[type] || 0) + 1
+        connection.updatedAt = new Date().toISOString()
+        return connection.eventCounts
+      })
+    },
+    /** Milestone ids already emitted for a runtime, so a retried delivery cannot celebrate twice. */
+    async milestoneIds(runtimeKey) {
+      await load()
+      return new Set((state.alertEvents[runtimeKey] ?? []).filter((row) => row.type === 'alert.milestone').map((row) => row.messageId))
+    },
     redact(connection) {
       if (!connection) return null
       const { encryptedTokens: _tokens, managementTokenHash: _management, ...safe } = connection

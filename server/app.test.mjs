@@ -70,8 +70,15 @@ test('management authorization protects status and test events with explicit pro
   assert.equal(response.status, 200)
   assert.equal(body.test, true)
   assert.equal(body.event.test, true)
-  assert.equal(delivered[0].test, true)
-  assert.equal(delivered[0].data.follower.username, 'TEST EVENT')
+  // CP36 contract: a test play is stored as an alert test frame and never enters the event stream, exactly as the
+  // Worker behaves. The label is what keeps it out of a source on air.
+  assert.equal(body.stored, 'alert_test_frames')
+  assert.equal(body.targets, 1)
+  assert.equal(delivered.length, 0)
+  const frames = await app.store.listTestFrames(connection.runtimeKey)
+  assert.equal(frames.length, 1)
+  assert.equal(frames[0].event.test, true)
+  assert.equal(frames[0].event.data.follower.username, 'TEST VIEWER')
 })
 
 test('overlay publication is authenticated, stable, and resolves to sanitized runtime state', async (t) => {
@@ -87,8 +94,8 @@ test('overlay publication is authenticated, stable, and resolves to sanitized ru
   assert.equal(JSON.stringify(state).includes('access'), false)
   const delivered = []; app.bus.subscribe(first.runtimeKey, (event) => delivered.push(event))
   await fetch(`${base}/api/integrations/test-event`, { method: 'POST', headers: options.headers, body: JSON.stringify({ type: 'channel.followed' }) })
-  assert.equal(delivered.length, 1)
-  assert.equal(delivered[0].test, true)
+  assert.equal(delivered.length, 0)
+  assert.equal((await app.store.listTestFrames(first.runtimeKey)).length, 1)
   assert.equal((await fetch(`${base}/api/overlays/publish`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: options.body })).status, 401)
 })
 

@@ -854,6 +854,19 @@ export async function handleRequest(request, env, ctx = {}) {
     return json(request, env, 200, { publicationId: publication.id, overlayId, runtimeKey: publication.runtimeKey, createdAt: publication.createdAt, updatedAt: publication.createdAt })
   }
 
+  // CP36: parity with the Node server. Deleting an overlay must retire its runtime key on both backends, and a
+  // repeated delete still reports success so a retry after a dropped response is safe.
+  if (request.method === 'DELETE' && /^\/api\/overlays\/[^/]+\/publication$/.test(path)) {
+    const connection = await managedConnection(request, env)
+    if (!connection) return json(request, env, 401, { error: 'unauthorized' })
+    const overlayId = decodeURIComponent(path.split('/')[3] || '')
+    // Same rule as publish: an id that could never have been created is a bad request, not a no-op.
+    if (!/^[A-Za-z0-9_-]{8,120}$/.test(overlayId)) return json(request, env, 400, { error: 'invalid_overlay_id' })
+    const existing = await all(env, 'SELECT id FROM publications WHERE overlay_id = ? AND connection_id = ?', overlayId, connection.id)
+    await run(env, 'DELETE FROM publications WHERE overlay_id = ? AND connection_id = ?', overlayId, connection.id)
+    return json(request, env, 200, { removed: existing.length, overlayId })
+  }
+
   if (request.method === 'POST' && path === '/api/integrations/kick/resubscribe') {
     const connection = await managedConnection(request, env)
     if (!connection) return json(request, env, 401, { error: 'unauthorized' })
@@ -882,10 +895,13 @@ export async function handleRequest(request, env, ctx = {}) {
     const connection = await managedConnection(request, env)
     if (!connection) return json(request, env, 401, { error: 'unauthorized' })
     const body = await request.json().catch(() => ({}))
-    const type = ['channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted'].includes(body.type) ? body.type : 'channel.followed'
+    // CP36: the same list the Node server accepts, including chat, so a test play means one thing on both backends.
+    const type = ['chat.message.sent', 'channel.followed', 'channel.subscription.new', 'channel.subscription.renewal', 'channel.subscription.gifts', 'kicks.gifted'].includes(body.type) ? body.type : 'channel.followed'
     const username = typeof body.username === 'string' && body.username.trim() ? body.username.trim().slice(0, 40) : 'TEST VIEWER'
     const sample = { user_id: 0, username, profile_picture: null, channel_slug: 'test', is_verified: false, identity: { username_color: '#e8e8e6', badges: [{ type: 'test', text: 'TEST' }] } }
-    const payload = type === 'channel.subscription.renewal'
+    const payload = type === 'chat.message.sent'
+      ? { message_id: randomToken(8), content: typeof body.message === 'string' && body.message ? body.message : 'پیام آزمایشی — رویداد واقعی Kick نیست', created_at: new Date().toISOString(), sender: sample, broadcaster: { user_id: connection.account_user_id } }
+      : type === 'channel.subscription.renewal'
       ? { subscriber: sample, broadcaster: { user_id: connection.account_user_id }, duration: 1, created_at: new Date().toISOString() }
       : type === 'channel.subscription.new'
         ? { subscriber: sample, broadcaster: { user_id: connection.account_user_id }, duration: 1, created_at: new Date().toISOString() }
