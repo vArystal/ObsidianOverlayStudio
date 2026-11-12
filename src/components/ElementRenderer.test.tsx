@@ -1,7 +1,8 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
 import { createElement } from '../lib/elements'
 import { ElementRenderer } from './ElementRenderer'
+import type { OverlayElement } from '../types'
 import { LiveDataContext } from './LiveDataProvider'
 
 afterEach(cleanup)
@@ -315,5 +316,39 @@ describe('preview mode shows design, never fake data or TEST labels', () => {
     const { container } = render(<ElementRenderer element={viewer} preview />)
     expect(container.textContent).toContain('LIVE WHEN CONNECTED')
     expect(container.textContent).not.toContain('LIVE API PREVIEW')
+  })
+})
+
+describe('decoration toggling', () => {
+  /**
+   * CP33 regression: DecoratedWidget called useLiveData() after two early returns, and the value was never read.
+   * Toggling decoration off and on changed the number of hooks between renders, which React reports as
+   * "Rendered more hooks than during the previous render" and which blanks the element. The hook is gone, so the
+   * toggle must be a plain re-render.
+   */
+  it('survives decoration being switched off and on without a hook-order error', () => {
+    const errors: unknown[] = []
+    const original = console.error
+    console.error = (...args: unknown[]) => { errors.push(args[0]) }
+
+    const base = createElement('text')
+    const element = { ...base, props: { ...base.props, text: 'Frame test' } }
+    const active: OverlayElement = { ...element, decoration: { ...element.decoration, enabled: true, pattern: 'girih', cornerOrnaments: true } }
+    const plain: OverlayElement = { ...element, decoration: { ...element.decoration, enabled: false } }
+
+    const view = render(<ElementRenderer element={active} />)
+    const first = view.container.innerHTML
+    expect(first).toContain('decorated-widget')
+
+    view.rerender(<ElementRenderer element={plain} />)
+    const second = view.container.innerHTML
+    expect(second).not.toContain('decorated-widget')
+    expect(second).toContain('Frame test')
+
+    view.rerender(<ElementRenderer element={active} />)
+    expect(view.container.innerHTML).toBe(first)
+    console.error = original
+
+    expect(errors).toEqual([])
   })
 })
