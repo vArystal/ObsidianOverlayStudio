@@ -1,0 +1,150 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Activity, AlertTriangle, Check, Copy, ExternalLink, Link2, MessageSquare, Radio, RefreshCw, ShieldCheck, Unplug, Users, Webhook, Zap } from 'lucide-react'
+import { AppShell } from '../components/AppShell'
+import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegrationSession, integrationRequest, isBackendConfigured, readExchangeCode, saveIntegrationSession, setBackendUrl, startKickOAuth } from '../lib/integration'
+
+interface StatusResponse {
+  state: string
+  missing?: string[]
+  requiredScopes?: string[]
+  missingScopes?: string[]
+  connection?: Record<string, any>
+  webhook?: { state: string; endpoint: string; subscriptions: Array<Record<string, any>>; error?: string | null }
+  donation?: { state: string; message: string }
+  callbackUrl?: string
+  webhookUrl?: string
+}
+
+const badgeClass = (state: string) => `status-pill status-${state.toLowerCase().replace('_', '-')}`
+
+export function Integrations() {
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const [backend, setBackend] = useState(getBackendUrl())
+  const [status, setStatus] = useState<StatusResponse | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const session = getIntegrationSession()
+
+  async function refresh() {
+    setError('')
+    // A missing backend origin is a configuration state, not a failure: fetching it would hit whatever
+    // host serves the page and 404, which reads as a broken integration to a first-time visitor.
+    if (!isBackendConfigured()) { setStatus({ state: 'NOT_CONFIGURED' }); return }
+    try {
+      const activeSession = getIntegrationSession()
+      const result = activeSession ? await integrationRequest<StatusResponse>('/api/integrations/kick') : await integrationRequest<StatusResponse>('/api/setup', {}, false)
+      setStatus(result)
+    } catch (cause) { setStatus({ state: 'ERROR' }); setError(cause instanceof Error ? cause.message : 'Integration service unavailable') }
+  }
+
+  useEffect(() => {
+    const exchange = readExchangeCode(params.toString(), window.location.hash, window.location.search)
+    if (!exchange) { void refresh(); return }
+    setBusy(true)
+    integrationRequest<any>('/api/auth/session', { method: 'POST', body: JSON.stringify({ code: exchange }) }, false)
+      .then((result) => {
+        saveIntegrationSession({ managementToken: result.managementToken, connectionId: result.connection.id, runtimeKey: result.connection.runtimeKey, channelName: result.connection.channel?.slug || result.connection.account?.username || 'Kick' })
+        clearExchangeFromUrl()
+        navigate('/integrations', { replace: true })
+        return refresh()
+      })
+      .catch((cause) => setError(cause instanceof Error ? cause.message : 'OAuth session exchange failed'))
+      .finally(() => setBusy(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function action(path: string, body?: object) {
+    setBusy(true); setError('')
+    try { await integrationRequest(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }); await refresh() }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Action failed') }
+    finally { setBusy(false) }
+  }
+
+  async function disconnect() {
+    await action('/api/integrations/kick/disconnect')
+    clearIntegrationSession(); setStatus({ state: 'DISCONNECTED' })
+  }
+
+  const connection = status?.connection
+  const viewer = connection?.viewer
+  return (
+    <AppShell>
+      <main className="integrations-page">
+        <section className="integration-hero persian-surface">
+          <div className="ornament-medallion"><Link2 /></div>
+          <div><span className="fa-kicker">درگاه‌های زنده</span><h1>Live integrations</h1><p>Secure, official event delivery for your OBS composition.</p></div>
+          <span className={badgeClass(status?.state || 'DISCONNECTED')}>{status?.state || 'DISCONNECTED'}</span>
+        </section>
+        {error && <div className="error-banner"><AlertTriangle /> {error}</div>}
+        {/* A config probe cannot know whether a connection exists, because the management token lives
+            only in the browser that created it. Saying so stops DISCONNECTED from reading as "broken". */}
+        {status && (status as { connectionStateKnown?: boolean }).connectionStateKnown === false && (
+          <p className="integration-note probe-note">The server is configured and reachable. Connection state is only visible in the browser that created it, so this page cannot confirm or deny an existing connection.</p>
+        )}
+        <div className="integration-layout">
+          <section className="integration-main-card persian-surface">
+            <header><div className="kick-logo">K</div><div><h2>Kick Developer API</h2><p>OAuth 2.1 + PKCE · signed webhooks · server-side tokens</p></div><span className={badgeClass(status?.state || 'DISCONNECTED')}>{status?.state || 'DISCONNECTED'}</span></header>
+            {connection ? (
+              <>
+                <div className="account-identity">
+                  <div className="account-avatar">{connection.account?.avatar ? <img src={connection.account.avatar} alt="" /> : String(connection.account?.username || 'K')[0]}</div>
+                  <div><strong>{connection.account?.username}</strong><span>kick.com/{connection.channel?.slug || connection.account?.username}</span></div>
+                  <div className="sync-copy"><small>Last sync</small><strong>{connection.lastSyncAt ? new Date(connection.lastSyncAt).toLocaleString() : 'Not yet'}</strong></div>
+                </div>
+                <div className="integration-stats">
+                  <article><Radio /><span><small>Viewer data</small><strong>{viewer?.status === 'live' ? `${viewer.count} live` : viewer?.status || 'Unavailable'}</strong><em>{viewer?.updatedAt ? new Date(viewer.updatedAt).toLocaleTimeString() : 'No poll yet'}</em></span></article>
+                  <article><MessageSquare /><span><small>Last real chat</small><strong>{connection.lastChatUser || 'None received'}</strong><em>{connection.lastChatAt ? new Date(connection.lastChatAt).toLocaleTimeString() : 'Webhooks start now'}</em></span></article>
+                  <article><Users /><span><small>Latest follower</small><strong>{connection.lastFollower?.username || 'None received'}</strong><em>{connection.sessionFollowerCount || 0} this connection</em></span></article>
+                  <article><Activity /><span><small>Last event</small><strong>{connection.lastEventType || 'None received'}</strong><em>{connection.lastEventAt ? new Date(connection.lastEventAt).toLocaleTimeString() : 'Waiting'}</em></span></article>
+                </div>
+                {(() => {
+                  // Receipts are the only durable proof that a signed delivery arrived: the event rows
+                  // are pruned after an hour, so counts are what remain.
+                  const counts: Record<string, number> = connection.eventCounts && typeof connection.eventCounts === 'object' ? connection.eventCounts : {}
+                  const entries = Object.entries(counts).filter(([, value]) => Number(value) > 0)
+                  const total = entries.reduce((sum, [, value]) => sum + Number(value), 0)
+                  const slug = connection.channel?.slug || connection.account?.username || 'your channel'
+                  return (
+                    <div className="receipts-block">
+                      <h3>Signed event receipts</h3>
+                      {total > 0 ? (
+                        <>
+                          <div className="receipt-chips">
+                            {entries.map(([type, value]) => <span key={type} className="receipt-chip"><strong>{Number(value)}</strong>{type}</span>)}
+                          </div>
+                          <p className="integration-note">{total} signed {total === 1 ? 'event has' : 'events have'} been verified by the webhook route since this connection was created.</p>
+                        </>
+                      ) : (
+                        <p className="receipts-empty">No signed event has ever reached this server. Post one message in <code>kick.com/{slug}</code> or have someone follow the channel, then check again. Test-button events do not count, because they never touch the webhook route.</p>
+                      )}
+                      <button className="secondary-button" disabled={busy} onClick={() => void refresh()}><RefreshCw /> Check for new events</button>
+                    </div>
+                  )
+                })()}
+                <div className="scope-list"><h3>Granted permissions</h3>{connection.scopes?.map((scope: string) => <span key={scope}><Check />{scope}</span>)}{status?.missingScopes?.map((scope) => <span className="missing" key={scope}><AlertTriangle />{scope}</span>)}</div>
+                {!status?.missingScopes?.length && <p className="integration-note">The status route reports the scopes Kick actually granted this connection.</p>}
+                <div className="integration-actions"><button className="secondary-button" disabled={busy} onClick={() => action('/api/integrations/kick/resubscribe')}><RefreshCw /> Resubscribe webhooks</button><button className="danger-button" disabled={busy} onClick={disconnect}><Unplug /> Disconnect & revoke</button></div>
+              </>
+            ) : (
+              <div className="connect-panel">
+                <ShieldCheck /><h3>Connect without exposing credentials</h3><p>You will sign in on Kick. The client secret, access token, and refresh token stay encrypted on the integration server and never enter this browser or an overlay URL.</p>
+                {status?.state === 'NOT_CONFIGURED'
+                  ? <p className="receipts-empty">This build has no integration server address, so there is nothing to connect to yet. Enter the backend origin below; it is a public URL, never a secret.</p>
+                  : status?.missing?.length ? <div className="setup-missing"><strong>Backend setup required</strong>{status.missing.map((item) => <code key={item}>{item}</code>)}</div> : <button className="kick-connect-button" disabled={busy} onClick={startKickOAuth}>Connect Kick account <ExternalLink /></button>}
+              </div>
+            )}
+          </section>
+          <aside className="integration-side">
+            <section className="integration-card persian-surface"><header><Webhook /><div><h3>Webhook delivery</h3><p>Official signed event subscriptions</p></div><span className={badgeClass(status?.webhook?.state || 'SETUP_REQUIRED')}>{status?.webhook?.state || 'SETUP REQUIRED'}</span></header><div className="endpoint-box"><small>Public endpoint</small><code>{status?.webhook?.endpoint || status?.webhookUrl || 'Backend unavailable'}</code></div><p>{status?.webhook?.subscriptions?.length || 0} active subscriptions</p>{status?.webhook?.error && <div className="mini-error">{status.webhook.error}</div>}</section>
+            <section className="integration-card persian-surface"><header><Zap /><div><h3>Safe test events</h3><p>Ignored by a live source. To watch one, open your overlay URL with <code>?test=1</code> — the preview then labels itself TEST MODE.</p></div></header><div className="test-event-grid"><button disabled={!session || busy} onClick={() => action('/api/integrations/test-event', { type: 'chat.message.sent' })}>Test chat</button><button disabled={!session || busy} onClick={() => action('/api/integrations/test-event', { type: 'channel.followed' })}>Test follow</button><button disabled={!session || busy} onClick={() => action('/api/integrations/test-event', { type: 'channel.subscription.new' })}>Test sub</button><button disabled={!session || busy} onClick={() => action('/api/integrations/test-event', { type: 'kicks.gifted' })}>Test KICKs</button></div></section>
+            <section className="integration-card persian-surface"><header><Activity /><div><h3>Donation provider</h3><p>Adapter boundary</p></div><span className={badgeClass(status?.donation?.state || 'SETUP_REQUIRED')}>{status?.donation?.state || 'SETUP REQUIRED'}</span></header><p>{status?.donation?.message || 'No provider selected. Manual amounts are not verified payments.'}</p></section>
+          </aside>
+        </div>
+        <section className="backend-config persian-surface"><div><h3>Integration server</h3><p>GitHub Pages hosts only the UI. OAuth and webhook delivery require this separate public HTTPS endpoint.</p></div><label><span>Backend URL</span><input value={backend} onChange={(event) => setBackend(event.target.value)} /></label><button className="secondary-button" onClick={() => { setBackendUrl(backend); void refresh() }}>Save & check</button><button className="icon-button" title="Copy callback URL" onClick={() => { void navigator.clipboard.writeText(`${backend}/api/auth/kick/callback`); setCopied(true) }}>{copied ? <Check /> : <Copy />}</button></section>
+      </main>
+    </AppShell>
+  )
+}

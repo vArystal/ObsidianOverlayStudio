@@ -1,0 +1,14 @@
+# Cloudflare Pages deployment of the same backend (free plan, *.pages.dev).
+# Used because Pages Functions execute on this account while Workers scripts do not.
+name = "obsidian-overlay-api"
+compatibility_date = "2025-01-01"
+pages_build_output_dir = "."
+
+[vars]
+PUBLIC_API_URL = "https://obsidian-overlay-api.pages.dev"
+APP_ORIGINS = "https://varystal.github.io"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "obsidian-overlay"
+database_id = "4e7fa326-63e1-4823-8518-063099aad5be"

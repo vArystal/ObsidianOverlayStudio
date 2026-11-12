@@ -1,0 +1,34 @@
+/* CP27 motion studio. Monochrome, compact, and subordinate to the canvas. */
+.motion-studio { display: flex; flex-direction: column; gap: 10px; }
+.motion-preset-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 3px; background: var(--surface-sunken, #0c0c0e); border: 1px solid var(--hairline, #2a2a2e); border-radius: 8px; }
+.motion-preset-bar button { padding: 6px 4px; font-size: 11px; color: var(--text-muted, #9a9a96); background: transparent; border: 0; border-radius: 6px; cursor: pointer; }
+.motion-preset-bar button.active { color: var(--text-strong, #f6f6f4); background: var(--surface-raise, #1b1b1f); }
+.motion-preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.motion-preset-grid button { padding: 7px 6px; font-size: 11px; color: var(--text, #d8d8d4); background: #141416; border: 1px solid #2a2a2e; border-radius: 6px; cursor: pointer; }
+.motion-preset-grid button:hover { border-color: #4a4a50; color: #f6f6f4; }
+.motion-clips { display: flex; flex-direction: column; gap: 4px; }
+.motion-empty { margin: 0; font-size: 11px; line-height: 1.5; color: var(--text-muted, #9a9a96); }
+.motion-clip { display: flex; align-items: center; gap: 4px; border: 1px solid #2a2a2e; border-radius: 6px; padding: 4px 6px; }
+.motion-clip.active { border-color: #6c6c72; background: #16161a; }
+.motion-clip-name { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; background: none; border: 0; color: inherit; cursor: pointer; text-align: left; }
+.motion-clip-name strong { font-size: 11px; font-weight: 500; color: #f6f6f4; }
+.motion-clip-name small { font-size: 10px; color: #8a8a86; }
+.motion-group { border: 1px solid #2a2a2e; border-radius: 8px; padding: 8px; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.motion-group legend { padding: 0 6px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8a8a86; }
+.motion-group label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; color: #8a8a86; }
+.motion-group input[type="number"], .motion-group select { width: 100%; padding: 5px 6px; font-size: 11px; color: #f6f6f4; background: #0f0f11; border: 1px solid #2a2a2e; border-radius: 5px; }
+.motion-keyframes { display: flex; flex-direction: column; gap: 3px; }
+.motion-keyframes-head { display: flex; justify-content: space-between; font-size: 10px; color: #8a8a86; }
+.motion-track-row { display: grid; grid-template-columns: 58px 1fr 22px; align-items: center; gap: 6px; font-size: 10px; color: #9a9a96; }
+.motion-track { position: relative; height: 12px; background: #0f0f11; border: 1px solid #232327; border-radius: 3px; }
+.motion-track b { position: absolute; top: -2px; width: 2px; height: 14px; background: #f6f6f4; border-radius: 1px; }
+.motion-keyframe-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.motion-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; font-size: 10px; color: #d8d8d4; background: #141416; border: 1px solid #2a2a2e; border-radius: 999px; }
+.motion-chip button { background: none; border: 0; color: #8a8a86; cursor: pointer; font-size: 11px; line-height: 1; }
+.motion-transport { display: flex; align-items: center; gap: 6px; }
+.motion-transport small { margin-left: auto; font-size: 10px; color: #8a8a86; font-variant-numeric: tabular-nums; }
+.motion-ruler { position: relative; height: 20px; min-width: 100%; border-bottom: 1px solid #2a2a2e; }
+.motion-ruler i { position: absolute; bottom: 0; width: 1px; height: 6px; background: #3a3a40; }
+.motion-ruler i span { position: absolute; bottom: 7px; left: 2px; font-size: 9px; font-style: normal; color: #6a6a70; }
+.motion-playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: #f6f6f4; box-shadow: 0 0 0 1px rgba(246,246,244,.15); }
+.motion-scrub { width: 100%; margin: 4px 0 0; accent-color: #d8d8d4; }

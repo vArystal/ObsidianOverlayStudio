@@ -1,0 +1,141 @@
+/* CP25 alerts. Monochrome by project rule: separation comes from geometry, material and type weight. */
+
+.alert-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 18px 22px;
+  box-sizing: border-box;
+  color: var(--alert-text, #f6f6f4);
+  background: color-mix(in srgb, var(--alert-bg, #101012) calc(var(--alert-bg-opacity, 0.92) * 100%), transparent);
+  border: var(--alert-border-width, 1px) solid var(--alert-border, #2a2a2e);
+  border-radius: var(--alert-radius, 18px);
+  overflow: hidden;
+  will-change: transform, opacity;
+}
+
+.alert-stage.alert-layout-banner { flex-direction: column; justify-content: center; text-align: center; }
+.alert-stage.alert-layout-split .alert-body { justify-content: space-between; }
+.alert-stage.alert-align-center .alert-copy { align-items: center; text-align: center; }
+
+.alert-ornament { color: var(--alert-accent); opacity: 0.7; font-size: 0.9em; letter-spacing: 0.2em; }
+.alert-ornament-after { margin-inline-start: auto; }
+.alert-ornament-before { margin-inline-end: 4px; }
+.alert-ornament-double .alert-stage,
+.alert-stage.alert-ornament-double { box-shadow: inset 0 0 0 4px color-mix(in srgb, var(--alert-border) 55%, transparent); }
+.alert-ornament-corners { position: relative; }
+.alert-ornament-corners::before,
+.alert-ornament-corners::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--alert-accent);
+  opacity: 0.75;
+}
+.alert-ornament-corners::before { inset-block-start: 8px; inset-inline-start: 8px; border-inline-end: 0; border-block-end: 0; }
+.alert-ornament-corners::after { inset-block-end: 8px; inset-inline-end: 8px; border-inline-start: 0; border-block-start: 0; }
+
+.alert-icon { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; background: color-mix(in srgb, var(--alert-accent) 14%, transparent); color: var(--alert-accent); flex: none; }
+.alert-icon img { width: 100%; height: 100%; object-fit: contain; border-radius: 10px; }
+.alert-glyph { font-size: 20px; line-height: 1; }
+
+.alert-body { display: flex; align-items: center; gap: 12px; min-width: 0; width: 100%; }
+.alert-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex: none; }
+.alert-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.alert-headline { font-size: var(--alert-headline, 26px); font-weight: 700; letter-spacing: 0.01em; }
+.alert-username { font-size: var(--alert-username, 22px); font-weight: 600; color: var(--alert-accent); }
+.alert-message { font-size: var(--alert-message, 18px); color: var(--alert-muted); overflow-wrap: anywhere; }
+
+.alert-preview-note,
+.alert-test-mark,
+.alert-audio-blocked {
+  position: absolute;
+  inset-block-end: 4px;
+  inset-inline-start: 8px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--alert-muted, #a5a5a2);
+  opacity: 0.8;
+}
+
+.alert-anim-fade { animation: alert-fade var(--alert-enter-ms) ease-out both; }
+.alert-anim-slide { animation: alert-slide var(--alert-enter-ms) cubic-bezier(.2,.8,.2,1) both; }
+.alert-anim-scale { animation: alert-scale var(--alert-enter-ms) ease-out both; }
+.alert-anim-pop { animation: alert-pop var(--alert-enter-ms) cubic-bezier(.16,1.2,.3,1) both; }
+.alert-anim-ornamental { animation: alert-ornamental var(--alert-enter-ms) ease-out both; }
+.alert-phase-exit.alert-anim-fade { animation: alert-fade var(--alert-exit-ms) ease-in reverse both; }
+.alert-phase-exit.alert-anim-slide { animation: alert-slide var(--alert-exit-ms) ease-in reverse both; }
+.alert-phase-exit.alert-anim-scale { animation: alert-scale var(--alert-exit-ms) ease-in reverse both; }
+.alert-phase-exit.alert-anim-pop,
+.alert-phase-exit.alert-anim-ornamental { animation: alert-scale var(--alert-exit-ms) ease-in reverse both; }
+
+/* Only transform and opacity animate: a filter or layout property here would repaint every frame on air. */
+@keyframes alert-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes alert-slide { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes alert-scale { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: scale(1); } }
+@keyframes alert-pop { 0% { opacity: 0; transform: scale(.88); } 60% { opacity: 1; transform: scale(1.02); } 100% { transform: scale(1); } }
+@keyframes alert-ornamental { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 70% { opacity: 1; } 100% { transform: translateY(0) scale(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .alert-stage { animation: none !important; }
+}
+
+/* ------------------------------------------------------------------ studio */
+
+.alert-studio { display: flex; flex-direction: column; gap: 12px; }
+.alert-studio-preview { height: 132px; border-radius: 16px; padding: 8px; background: #0b0b0d; border: 1px solid #232326; box-sizing: border-box; }
+.alert-studio-preview .alert-stage { pointer-events: none; }
+
+.alert-kinds { display: flex; flex-wrap: wrap; gap: 6px; }
+.alert-kinds button {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+  border: 1px solid #2a2a2e; background: #141416; color: #d8d8d5; font-size: 11px; cursor: pointer;
+}
+.alert-kinds button.active { border-color: #f6f6f4; color: #f6f6f4; background: #1c1c1f; }
+.alert-kinds button small { font-size: 9px; color: #8a8a88; text-transform: uppercase; }
+
+.alert-source { margin: 0; font-size: 10px; letter-spacing: 0.06em; color: #8a8a88; }
+
+.alert-group { border: 1px solid #232326; border-radius: 14px; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 8px; }
+.alert-group legend { padding: 0 6px; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #9a9a98; }
+.alert-field { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #b6b6b3; }
+.alert-field > span { display: flex; justify-content: space-between; gap: 8px; }
+.alert-field small { color: #77777a; font-size: 10px; }
+.alert-field input[type="text"], .alert-field input:not([type]), .alert-field input[type="number"], .alert-field select, .alert-field textarea {
+  background: #101012; border: 1px solid #2a2a2e; border-radius: 8px; color: #f6f6f4; padding: 6px 8px; font-size: 12px; font-family: inherit;
+}
+.alert-field input[type="color"] { width: 100%; height: 28px; background: #101012; border: 1px solid #2a2a2e; border-radius: 8px; padding: 2px; }
+.alert-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.alert-row .alert-field { flex: 1 1 64px; }
+
+.alert-slider { display: flex; align-items: center; gap: 8px; }
+.alert-slider input[type="range"] { flex: 1; accent-color: #f6f6f4; }
+.alert-slider output { min-width: 52px; text-align: end; font-variant-numeric: tabular-nums; color: #d8d8d5; font-size: 11px; }
+
+.alert-toggle { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #c9c9c6; }
+.alert-toggle input { accent-color: #f6f6f4; }
+
+.alert-presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.alert-preset { display: flex; flex-direction: column; gap: 2px; text-align: start; padding: 8px; border-radius: 10px; border: 1px solid #2a2a2e; background: #141416; color: #ececea; cursor: pointer; }
+.alert-preset strong { font-size: 11px; }
+.alert-preset small { font-size: 9px; color: #8a8a88; line-height: 1.3; }
+
+.alert-upload { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px dashed #2f2f33; border-radius: 10px; font-size: 11px; color: #c9c9c6; cursor: pointer; }
+.alert-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+.alert-hint { margin: 0; font-size: 10px; line-height: 1.5; color: #8a8a88; }
+.alert-status { margin: 0; font-size: 10px; color: #b6b6b3; }
+.alert-status.error { color: #f0b4b4; }
+
+/* CP27: the motion host owns transform/opacity/filter, so it must not introduce layout of its own. */
+.motion-host {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  backface-visibility: hidden;
+}
