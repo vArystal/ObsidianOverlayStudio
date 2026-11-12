@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, Sparkles, UserPlus, UserRound } from 'lucide-react'
+import { Camera, Eye, Gamepad2, Image as ImageIcon, Radio, UserPlus, UserRound } from 'lucide-react'
 import { useLiveData } from './LiveDataProvider'
-import { resolveDecoration, themeCssVars } from '../lib/themes'
+import { resolveDecoration } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
 import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
 import { renderKickWidget } from './widgets'
 import { AlertRuntime, useAlertSurface } from './alerts/AlertRuntime'
-import type { LiveOverlayEvent, OverlayElement, OverlayTheme } from '../types'
+import type { OverlayElement, OverlayTheme } from '../types'
 
 interface ElementRendererProps {
   element: OverlayElement
@@ -16,7 +16,6 @@ interface ElementRendererProps {
   runtime?: boolean
   /** Editor preview: every configured element, clean of editor chrome, no fabricated live data. */
   preview?: boolean
-  testAlertNonce?: number
 }
 const text = (element: OverlayElement, key: string, fallback = '') => String(element.props[key] ?? fallback)
 const num = (element: OverlayElement, key: string, fallback = 0) => Number(element.props[key] ?? fallback)
@@ -54,7 +53,6 @@ function DecoratedWidget({ element, theme, children }: { element: OverlayElement
     '--frame-padding': `${decoration.padding}px`,
     '--frame-glow': theme?.glow ?? decoration.borderColor,
   } as CSSProperties
-  const live = useLiveData()
   return (
     <div className={`decorated-widget pattern-${decoration.pattern} ${decoration.innerBorder ? 'has-inner-border' : ''} ${decoration.shadow ? 'has-frame-shadow' : ''} ${decoration.glow ? 'has-frame-glow' : ''} ${decoration.highlight ? 'has-highlight' : ''} texture-${texture}`} style={style}>
       {decoration.cornerOrnaments && <><i className="persian-corner corner-tl" /><i className="persian-corner corner-tr" /><i className="persian-corner corner-bl" /><i className="persian-corner corner-br" /></>}
@@ -190,7 +188,7 @@ function messageTime(createdAt: string | undefined) {
  * context so the canvas and the published source cannot be given different documents, and a studio preview never
  * opens a connection or acknowledges anything.
  */
-function LiveAlert({ element, runtime, preview }: { element: OverlayElement; runtime: boolean; preview: boolean }) {
+function LiveAlert({ element, runtime }: { element: OverlayElement; runtime: boolean }) {
   const live = useLiveData()
   const surface = useAlertSurface()
   const settings = surface.settings
@@ -208,7 +206,7 @@ function LiveAlert({ element, runtime, preview }: { element: OverlayElement; run
   )
 }
 
-function ElementContent({ element, runtime, preview, testAlertNonce }: { element: OverlayElement; runtime: boolean; preview: boolean; testAlertNonce: number }) {
+function ElementContent({ element, runtime, preview }: { element: OverlayElement; runtime: boolean; preview: boolean }) {
   const live = useLiveData(); const p = element.props
   // CP24: every widget in the registry renders through one shared component tree, so the editor canvas and the
   // published source cannot drift. `runtime`/`preview` are deliberately not forwarded: the widget's job is to show
@@ -240,7 +238,7 @@ function ElementContent({ element, runtime, preview, testAlertNonce }: { element
       return <div className="placeholder-element capture-placeholder" style={{ borderRadius: shape, background: runtime ? 'transparent' : colorWithOpacity(text(element, 'fillColor', '#0b0610'), num(element, 'fillOpacity', .34)) }}>{!runtime && !preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Layout guide only · add your game source in OBS</small></>}{preview && <><Gamepad2 /><span>{text(element, 'label')}</span><small>Transparent guide · capture your game window in OBS, not here</small></>}</div>
     }
     case 'chat': return <ChatWidget element={element} runtime={runtime} preview={preview} />
-    case 'alert': return <LiveAlert element={element} runtime={runtime} preview={preview} />
+    case 'alert': return <LiveAlert element={element} runtime={runtime} />
     case 'goal': {
       if (runtime && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
       const target = Math.max(1, num(element, 'target', 1000)); const current = Math.max(0, num(element, 'current', 0)); const progress = Math.min(100, current / target * 100)
@@ -274,13 +272,13 @@ function ElementContent({ element, runtime, preview, testAlertNonce }: { element
   }
 }
 
-export function ElementRenderer({ element, theme, runtime = false, preview = false, testAlertNonce = 0 }: ElementRendererProps) {
+export function ElementRenderer({ element, theme, runtime = false, preview = false }: ElementRendererProps) {
   const live = useLiveData()
   // These gates describe what a published source may put on air. Applying them to the editor preview
   // is what made configured elements vanish from Preview.
   if (runtime && element.type === 'chat' && !live.messages.length) return null
   if (runtime && element.type === 'supporter' && text(element, 'dataSource', 'none') === 'none') return null
   if (runtime && element.type === 'goal' && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
-  const content = <ElementContent element={element} runtime={runtime} preview={preview} testAlertNonce={testAlertNonce} />
+  const content = <ElementContent element={element} runtime={runtime} preview={preview} />
   return <DecoratedWidget element={element} theme={theme}>{content}</DecoratedWidget>
 }

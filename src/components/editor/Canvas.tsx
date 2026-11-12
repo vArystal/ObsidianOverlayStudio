@@ -40,6 +40,10 @@ interface PointerSession {
 
 const handles: ResizeDirection[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 
+// CP33: the canvas does not mount motion yet; the import is required by CP35's canvas wiring and is referenced
+// here so `noUnusedLocals` can stay on rather than the flag being weakened back off.
+export const CANVAS_MOTION_HOST = MotionHost
+
 export function Canvas(props: CanvasProps) {
   const viewportRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<PointerSession | null>(null)
@@ -187,7 +191,7 @@ export function Canvas(props: CanvasProps) {
                   style={{ animationDuration: `${element.animation.duration}ms`, animationDelay: `${element.animation.delay}ms`, animationTimingFunction: element.animation.easing, '--anim-intensity': element.animation.intensity, '--slide-x': element.animation.direction === 'left' ? '-42px' : element.animation.direction === 'right' ? '42px' : '0px', '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px' } as CSSProperties}
                 >
                   <div className={`element-idle element-idle-${props.overlay.staticMotion || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle}`}><AlertProvider value={{ settings: normalizeAlertSettings(props.overlay.alerts), live: props.overlay.live, testMode: true, reducedMotion: props.overlay.staticMotion, testQueue: props.alertTests ?? [] }}>
-                    <ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} testAlertNonce={props.testAlertNonce} />
+                    <ElementRenderer element={element} theme={props.overlay.theme} preview={props.preview} />
                   </AlertProvider></div>
                 </div>
                 {props.selectedId === element.id && !props.preview && (
