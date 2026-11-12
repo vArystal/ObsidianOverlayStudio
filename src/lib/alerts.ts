@@ -200,6 +200,21 @@ const ALIGNS = ['left', 'center'] as const
 export const ALERT_AUDIO_MAX_BYTES = 600 * 1024
 export const ALERT_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'] as const
 
+/**
+ * CP37: one gate for alert audio. The studio's picker and the alert inspector used to enforce different limits
+ * (8 MB vs 600 KB) and accept different formats, so a file could be accepted in one place and silently dropped in
+ * the other. Both paths call this and show its message.
+ */
+export function validateAlertAudio(file: { type: string; size: number }): { ok: boolean; message: string } {
+  if (!(ALERT_AUDIO_TYPES as readonly string[]).includes(file.type)) {
+    return { ok: false, message: 'Alert audio must be MP3, WAV, OGG or WebM.' }
+  }
+  if (file.size > ALERT_AUDIO_MAX_BYTES) {
+    return { ok: false, message: `Alert audio must be under ${Math.round(ALERT_AUDIO_MAX_BYTES / 1024)} KB so the published source can carry it.` }
+  }
+  return { ok: true, message: '' }
+}
+
 export function normalizeAudio(raw: unknown, fallback: AlertAudio = NO_AUDIO): AlertAudio {
   const value = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
   return {

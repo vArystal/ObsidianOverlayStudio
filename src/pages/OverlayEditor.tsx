@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, Check, ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
@@ -12,8 +12,10 @@ import { clampElement } from '../lib/geometry'
 import { createElement, duplicateElement } from '../lib/elements'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
 import { LAYER_MAX_EDGE, LAYER_TARGET_BYTES, optimizeImage, snapshotBudget } from '../lib/images'
-import { getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
-import { normalizeAlertSettings, testAlertEvent } from '../lib/alerts'
+import { deletePublication, getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
+import { getAlertHealth, subscribeAlertHealth } from '../lib/alertHealth'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { normalizeAlertSettings, testAlertEvent, validateAlertAudio } from '../lib/alerts'
 import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
 import type { LiveOverlayEvent, ElementType, Overlay, OverlayElement } from '../types'
@@ -49,6 +51,11 @@ export function OverlayEditor() {
   // CP25: studio test plays are held here and handed to the canvas queue. They never leave this browser.
   const [alertTests, setAlertTests] = useState<LiveOverlayEvent[]>([])
   const [publishUrl, setPublishUrl] = useState('')
+  // CP37: a failed alert-settings registration is a standing fact about this publication, so it lives until the
+  // author re-publishes instead of fading out with the toast.
+  const alertHealth = useSyncExternalStore(subscribeAlertHealth, getAlertHealth)
+  const [publishIssue, setPublishIssue] = useState('')
+  const [unpublishOpen, setUnpublishOpen] = useState(false)
   const [publishVerdict, setPublishVerdict] = useState<{ level: 'ok' | 'warn' | 'blocked'; message: string } | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null)
   const interactionStart = useRef<Overlay | null>(null)
@@ -267,9 +274,14 @@ export function OverlayEditor() {
 
   async function upload(file: File, target: 'image' | 'alert-image' | 'alert-sound', elementId = selectedId) {
     const audio = target === 'alert-sound'
-    const valid = audio ? ['audio/mpeg', 'audio/wav', 'audio/ogg'].includes(file.type) : VALID_IMAGE_TYPES.includes(file.type)
-    if (!valid) return setNotice(audio ? 'Use MP3, WAV, or OGG audio.' : 'Use PNG, JPEG, or WebP images.')
-    if (file.size > (audio ? 8 : 12) * 1024 * 1024) return setNotice(audio ? 'Audio must be under 8 MB.' : 'Image must be under 12 MB; larger files are downscaled, not stored raw.')
+    if (audio) {
+      // One validator, one limit, one message: this path used to accept 8 MB where the alert inspector allowed 600 KB.
+      const verdict = validateAlertAudio(file)
+      if (!verdict.ok) return setNotice(verdict.message)
+    } else {
+      if (!VALID_IMAGE_TYPES.includes(file.type)) return setNotice('Use PNG, JPEG, or WebP images.')
+      if (file.size > 12 * 1024 * 1024) return setNotice('Image must be under 12 MB; larger files are downscaled, not stored raw.')
+    }
     try {
       if (audio) {
         const data = await readFile(file)
@@ -324,9 +336,8 @@ export function OverlayEditor() {
 
   /** Alert assets are read to a data URL here, so the studio never touches File objects. */
   async function readAlertAudio(file: File): Promise<string | null> {
-    const valid = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'].includes(file.type)
-    if (!valid) { setNotice('Use MP3, WAV, OGG or WebM audio.'); return null }
-    if (file.size > 600 * 1024) { setNotice('Alert audio must be under 600 KB so the published source can carry it.'); return null }
+    const verdict = validateAlertAudio(file)
+    if (!verdict.ok) { setNotice(verdict.message); return null }
     return readFile(file)
   }
   async function readAlertImage(file: File): Promise<string | null> {
@@ -382,10 +393,33 @@ export function OverlayEditor() {
       input.value = value
       document.body.appendChild(input)
       input.select()
-      const copied = document.execCommand('copy')
-      input.remove()
-      return copied
+      try {
+        return document.execCommand('copy')
+      } catch {
+        // A browser without execCommand still publishes; the dialog shows the URL to copy by hand.
+        return false
+      } finally {
+        input.remove()
+      }
     }
+  }
+
+  /**
+   * CP37: retiring a publication revokes the runtime key on the backend before the local document forgets it. A
+   * failed revoke leaves the overlay published, because a local "unpublished" flag over a live key is a lie.
+   */
+  async function unpublish() {
+    const current = overlayRef.current
+    setUnpublishOpen(false)
+    if (!current) return
+    const runtimeKey = current.live?.runtimeKey
+    if (runtimeKey) {
+      const result = await deletePublication(current.publicId)
+      if (!result.ok) { setPublishIssue(`Could not revoke the live output: ${result.error ?? 'unknown error'}. The publication is still active.`); return }
+    }
+    commit((value) => ({ ...value, publishedAt: null, live: value.live ? { ...value.live, runtimeKey: '' } : value.live }))
+    setPublishIssue('')
+    setNotice('Publication revoked — the runtime key no longer resolves')
   }
 
   async function publish() {
@@ -402,13 +436,19 @@ export function OverlayEditor() {
         const registration = await integrationRequest<{ publicationId: string; runtimeKey: string }>('/api/overlays/publish', { method: 'POST', body: JSON.stringify({ overlayId: published.publicId }) })
         published = { ...published, live: { ...published.live, runtimeKey: registration.runtimeKey } }
         // CP25: milestone targets live on the server so a crossed target is derived during ingestion, not guessed
-        // in the browser. Failing this must not block publishing: the overlay still plays every event alert.
-        await integrationRequest(`/api/runtime/${encodeURIComponent(registration.runtimeKey)}/alert-settings`, {
-          method: 'POST', body: JSON.stringify({ milestones: normalizeAlertSettings(published.alerts).milestones }),
-        }).catch(() => null)
+        // in the browser. Failing this must not block publishing, but it must be visible: without the settings row
+        // there is no milestone derivation and the server cannot persist this publication's alert configuration.
+        try {
+          await integrationRequest(`/api/runtime/${encodeURIComponent(registration.runtimeKey)}/alert-settings`, {
+            method: 'POST', body: JSON.stringify({ milestones: normalizeAlertSettings(published.alerts).milestones }),
+          })
+          setPublishIssue('')
+        } catch (error: unknown) {
+          setPublishIssue(`Alert durability is not active for this publication: ${error instanceof Error ? error.message : 'alert settings were rejected'}. Milestones will not fire until a re-publish succeeds.`)
+        }
         liveRegistration = ` · live ID ${registration.publicationId.slice(0, 8)}`
-      } catch {
-        setNotice('Static snapshot published; live registration needs an active Integrations session')
+      } catch (error: unknown) {
+        setNotice(`Static snapshot published; live registration failed: ${error instanceof Error ? error.message : 'the integration backend did not answer'}`)
       }
     }
     const result = saveOverlay(published)
@@ -423,7 +463,8 @@ export function OverlayEditor() {
     const url = buildHashUrl(`/overlay/${result.value.publicId}?snapshot=${snapshot}`)
     setPublishVerdict(verdict)
     setPublishUrl(url)
-    await copyText(url)
+    const copied = await copyText(url).catch(() => false)
+    if (!copied) setNotice('Published. This browser blocked the clipboard: copy the URL from the dialog.')
     if (liveRegistration) setNotice(`Published with stable server-backed live runtime${liveRegistration}`)
   }
 
@@ -530,6 +571,23 @@ export function OverlayEditor() {
           />
         </div>
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
+        {alertHealth.degraded && <div className="publish-issue degraded" role="status"><AlertTriangle aria-hidden="true" /><span>{alertHealth.message}</span></div>}
+        {publishIssue && <div className="publish-issue" role="alert"><AlertTriangle aria-hidden="true" /><span>{publishIssue}</span></div>}
+        {(overlay.publishedAt || overlay.live?.runtimeKey) && (
+          <div className="publish-issue actions">
+            <span>{overlay.live?.runtimeKey ? 'This overlay has a live runtime attached.' : 'This overlay is published as a snapshot.'}</span>
+            <button type="button" className="secondary-button" onClick={() => setUnpublishOpen(true)}>Unpublish</button>
+          </div>
+        )}
+        <ConfirmDialog
+          open={unpublishOpen}
+          title="Unpublish this overlay?"
+          description="The runtime key stops resolving immediately, so OBS shows nothing until you publish again. Your local composition is not changed."
+          confirmLabel="Unpublish"
+          destructive
+          onConfirm={unpublish}
+          onCancel={() => setUnpublishOpen(false)}
+        />
         {notice && <div className="toast">{notice}</div>}
         {publishUrl && (
           <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setPublishUrl(''); setPublishVerdict(null) } }}>

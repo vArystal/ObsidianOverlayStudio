@@ -18,6 +18,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { cloneOverlay, createEmptyOverlay } from '../lib/elements'
 import { deleteOverlay, encodeOverlaySnapshot, loadOverlays, saveOverlay } from '../lib/storage'
 import { deletePublication } from '../lib/integration'
+import { EyeOff } from 'lucide-react'
 import { snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig } from '../lib/integration'
 import { buildHashUrl } from '../lib/urls'
@@ -29,6 +30,7 @@ export function OverlayList() {
   const [query, setQuery] = useState('')
   const [menu, setMenu] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Overlay | null>(null)
+  const [pendingUnpublish, setPendingUnpublish] = useState<Overlay | null>(null)
   const liveConfig = useMemo(() => getPublicIntegrationConfig(), [])
   const [error, setError] = useState('')
 
@@ -52,6 +54,22 @@ export function OverlayList() {
     if (!result.ok || !result.value) return setError(result.error ?? 'Could not duplicate overlay')
     setOverlays((items) => [...items, result.value!])
     setMenu(null)
+  }
+
+  /**
+   * CP37: unpublish retires the runtime key first. If the backend refuses, the card keeps its Published badge so the
+   * UI never claims a revoke that did not happen.
+   */
+  async function confirmUnpublish() {
+    if (!pendingUnpublish) return
+    const target = pendingUnpublish
+    setPendingUnpublish(null)
+    const result = await deletePublication(target.publicId)
+    if (!result.ok) { setError(result.error ?? 'Could not revoke the published output'); return }
+    const next: Overlay = { ...target, publishedAt: null, live: target.live ? { ...target.live, runtimeKey: '' } : target.live }
+    const saved = saveOverlay(next)
+    if (!saved.ok || !saved.value) { setError(saved.error ?? 'Could not save the unpublished overlay'); return }
+    setOverlays((items) => items.map((item) => (item.id === target.id ? saved.value! : item)))
   }
 
   function remove(overlay: Overlay) {
@@ -143,6 +161,9 @@ export function OverlayList() {
                             title={budget.level === 'blocked' ? budget.message : 'Open this saved composition in a clean output window'}
                           ><ExternalLink /> Open output{budget.level !== 'ok' ? ` (${budget.level})` : ''}</button>
                         })()}
+                        {(overlay.publishedAt || overlay.live?.runtimeKey) && (
+                          <button onClick={() => { setPendingUnpublish(overlay); setMenu(null) }}><EyeOff /> Unpublish</button>
+                        )}
                         <button onClick={() => duplicate(overlay)}><Copy /> Duplicate</button>
                         <button className="danger" onClick={() => remove(overlay)}><Trash2 /> Delete</button>
                       </div>
@@ -176,6 +197,15 @@ export function OverlayList() {
           <span>Designs are saved in this browser. They are not synced to another device or account.</span>
         </aside>
       </main>
+      <ConfirmDialog
+        open={Boolean(pendingUnpublish)}
+        title="Unpublish this overlay?"
+        description={pendingUnpublish ? `The runtime key for “${pendingUnpublish.name}” stops resolving immediately, so OBS shows nothing until you publish again. The composition itself is untouched.` : ''}
+        confirmLabel="Unpublish"
+        destructive
+        onConfirm={() => { void confirmUnpublish() }}
+        onCancel={() => setPendingUnpublish(null)}
+      />
       <ConfirmDialog
         open={Boolean(pendingDelete)}
         title="Delete this overlay?"

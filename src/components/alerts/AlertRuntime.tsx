@@ -9,6 +9,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { AlertQueueEngine, acknowledgeAlerts, fetchPendingAlerts, loadAlertCursor, saveAlertCursor } from '../../lib/alertQueue'
+import { clearAlertFailure, reportAlertFailure } from '../../lib/alertHealth'
 import type { AlertFrame, AlertQueueEngine as Engine, QueueSnapshot } from '../../lib/alertQueue'
 import { createAlertSettings } from '../../lib/alerts'
 import type { AlertSettings } from '../../lib/alerts'
@@ -92,13 +93,18 @@ export function AlertRuntime({ settings, live, testMode = false, reducedMotion =
       try {
         const feed = await fetchPendingAlerts(live.backendUrl, live.runtimeKey as string, cursorRef.current, 20)
         if (cancelled) return
+        clearAlertFailure()
         if (feed.alerts.length) {
           engine.push(feed.alerts.map((item) => item.event))
           const highest = Math.max(cursorRef.current, ...feed.alerts.map((item) => item.seq))
           cursorRef.current = Math.max(cursorRef.current, feed.cursor, highest)
           saveAlertCursor(live.runtimeKey as string, cursorRef.current)
         }
-      } catch { /* the SSE stream remains the primary path; polling retries on its own cadence */ }
+      } catch (error: unknown) {
+        // The SSE stream stays the primary path, but a failing feed has to be visible: silence here once hid a
+        // backend returning 500 for a whole stream.
+        if (!cancelled) reportAlertFailure(error)
+      }
     }
     void pull()
     // Polling is the fallback, not the engine: 15s, paused while the tab is hidden, plus an immediate catch-up
@@ -129,7 +135,9 @@ export function AlertRuntime({ settings, live, testMode = false, reducedMotion =
     if (preview || testMode || !live?.runtimeKey) return
     const ids = engine.takePendingAcks()
     if (!ids.length) return
-    void acknowledgeAlerts(live.backendUrl, live.runtimeKey, ids).catch(() => engine.restoreAck(ids))
+    void acknowledgeAlerts(live.backendUrl, live.runtimeKey, ids)
+      .then(() => clearAlertFailure())
+      .catch((error: unknown) => { reportAlertFailure(error); engine.restoreAck(ids) })
   }, [snapshot, preview, testMode, live?.runtimeKey, live?.backendUrl, engine])
 
   // ------------------------------------------------------------------ audio

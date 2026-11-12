@@ -125,3 +125,25 @@ describe('overlay editor workflow', () => {
     expect(String(image?.props.src)).toMatch(/^data:image\/png;base64,/)
   })
 })
+
+describe('publish failure reporting', () => {
+  // CP37: alert-settings registration used `.catch(() => null)`, so a rejected registration looked like success and
+  // milestones silently never fired.
+  it('keeps a standing notice when alert settings are rejected', async () => {
+    const overlay = createEmptyOverlay('Live notice')
+    overlay.live = { backendUrl: 'https://api.example', runtimeKey: 'rt_before', connectionId: 'con_1', channelName: 'arystal' }
+    saveOverlay(overlay)
+    const fetchStub = vi.fn(async (url: string) => {
+      if (String(url).endsWith('/api/overlays/publish')) return { ok: true, status: 200, json: async () => ({ publicationId: 'pub_1', runtimeKey: 'rt_new' }) } as unknown as Response
+      if (String(url).includes('/alert-settings')) return { ok: false, status: 500, json: async () => ({ error: 'd1 write failed' }) } as unknown as Response
+      return { ok: true, status: 200, json: async () => ({}) } as unknown as Response
+    })
+    vi.stubGlobal('fetch', fetchStub)
+    renderEditor(overlay.id)
+    fireEvent.click(screen.getByRole('button', { name: /Publish/ }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Alert durability is not active'))
+    expect(screen.getByRole('alert').textContent).toContain('d1 write failed')
+    // Still published: a rejected settings row must not block the overlay itself.
+    await waitFor(() => expect(getOverlay(overlay.id)?.publishedAt).toBeTruthy())
+  })
+})
