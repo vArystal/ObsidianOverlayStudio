@@ -157,7 +157,6 @@ export function Canvas(props: CanvasProps) {
             selectedId={props.selectedId}
             testAlertNonce={props.testAlertNonce}
             alertTests={props.alertTests}
-            motionHost={false}
             backgroundClassName="editor-background"
             className={`${props.overlay.settings.transparent ? 'checkerboard' : 'dark-stage'} ${props.overlay.settings.showGrid ? 'show-grid' : ''}`}
             style={{

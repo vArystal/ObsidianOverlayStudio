@@ -16,9 +16,10 @@ import type { LiveOverlayEvent, Overlay, OverlayElement, OverlayTheme } from '..
  * runtime rebuilt an AlertProvider per element on every render. Both surfaces now mount this component; the only
  * legitimate differences live behind `mode`.
  *
- * CP35 owns the motion host wiring: the runtime mounts MotionHost today, the editor passes `motionHost={false}` so
- * this phase does not silently start animating the canvas. That is the one remaining divergence, and it is a prop
- * this component already owns rather than two copies of the wrapper.
+ * CP35: both modes mount MotionHost, so a studio scrub and the OBS source sample the same clip with the same
+ * sampler. Precedence rule: when an element has keyframed clips, the host owns the transform, so the legacy
+ * `element-anim-*` entrance class is suppressed in both modes. Two animations writing one transform is the
+ * double-animation bug this rule exists to prevent.
  */
 export interface OverlayStageProps {
   overlay: Overlay
@@ -49,8 +50,6 @@ export interface OverlayStageProps {
   className?: string
   style?: CSSProperties
   backgroundClassName?: string
-  /** Runtime mounts the shared motion host; the editor leaves that to CP35. */
-  motionHost?: boolean
   /** Extra data-* attributes on the stage element, used by the runtime's diagnostics and probes. */
   stageAttributes?: Record<string, string>
 }
@@ -88,7 +87,9 @@ export function OverlayStage(props: OverlayStageProps) {
       <AlertProvider value={{ settings, live: overlay.live, testMode: editor, reducedMotion: props.staticElements, testQueue: editor ? props.alertTests ?? [] : [] }}>
         {elements.map((element, index) => {
           const idle = props.staticElements || element.animation.reducedMotion === 'static' ? 'none' : element.animation.idle
-          const enter = props.staticElements ? 'none' : element.animation.type
+          // Precedence: keyframed motion wins over the legacy entrance class in both modes, never both at once.
+          const keyframed = Boolean(element.motion?.clips.length)
+          const enter = props.staticElements || keyframed ? 'none' : element.animation.type
           const content = (
             <div className={`element-idle element-idle-${idle}`}>
               {(idle === 'glow' || idle === 'sparkle') && <span className={`idle-layer idle-${idle}`} aria-hidden="true" />}
@@ -123,9 +124,7 @@ export function OverlayStage(props: OverlayStageProps) {
                   '--slide-y': element.animation.direction === 'up' ? '42px' : element.animation.direction === 'down' ? '-42px' : '0px',
                 } as CSSProperties}
               >
-                {props.motionHost === false
-                  ? content
-                  : <MotionHost element={element} reducedMotion={props.staticElements}>{content}</MotionHost>}
+                <MotionHost element={element} reducedMotion={props.staticElements}>{content}</MotionHost>
               </div>
               {editor && props.renderElementChrome ? props.renderElementChrome(element) : null}
             </div>

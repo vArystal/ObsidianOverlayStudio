@@ -224,7 +224,11 @@ export function sampleMotion(
   return frame
 }
 
-/** Longest running moment of the element's clips, used to stop the frame loop and to size the timeline. */
+/**
+ * Longest running moment of the element's clips, used to size the timeline and to pick the static frame a
+ * reduced-motion viewer sees. A looping clip (`repeat < 0`) contributes exactly one cycle: it never ends, so the
+ * only meaningful finite length it has is the one cycle that is visible in a still frame.
+ */
 export function motionSpan(motion: ElementMotion | undefined) {
   if (!motion) return 0
   let span = motion.timelineDuration || 0
@@ -234,6 +238,35 @@ export function motionSpan(motion: ElementMotion | undefined) {
     if (length > span) span = length
   }
   return span
+}
+
+/** True when any clip loops forever, which is what the loop presets (pulse, breathing, floating…) build. */
+export function hasInfiniteClip(motion: ElementMotion | undefined) {
+  return Boolean(motion?.clips.some((clip) => clip.repeat < 0))
+}
+
+/**
+ * The last moment any clip is on screen, ignoring the studio's ruler length: a host that kept sampling for
+ * `timelineDuration` would schedule an empty frame loop for seconds after a 200ms fade had finished.
+ */
+export function motionClipSpan(motion: ElementMotion | undefined) {
+  if (!motion) return 0
+  let span = 0
+  for (const clip of motion.clips) {
+    const cycles = clip.repeat < 0 ? 1 : Math.max(1, clip.repeat + 1)
+    const length = clip.delay + cycles * (clip.duration + clip.repeatDelay)
+    if (length > span) span = length
+  }
+  return span
+}
+
+/**
+ * How long a host should keep sampling. A finite composition stops when its last clip is done; one looping clip
+ * makes the answer `Infinity`, because a host that unsubscribes at the end of the first cycle freezes a pulse
+ * preset after a single breath. The sampler itself is periodic, so there is nothing to accumulate and no drift.
+ */
+export function motionPlaybackSpan(motion: ElementMotion | undefined) {
+  return hasInfiniteClip(motion) ? Number.POSITIVE_INFINITY : motionClipSpan(motion)
 }
 
 export function motionStyle(frame: MotionFrame): Record<string, string | number> {

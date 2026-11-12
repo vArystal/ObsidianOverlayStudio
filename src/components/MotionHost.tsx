@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { OverlayElement } from '../types'
-import { effectsStyle, motionSpan, motionStyle, sampleMotion } from '../lib/motion'
+import { effectsStyle, motionClipSpan, motionPlaybackSpan, motionStyle, sampleMotion } from '../lib/motion'
 
 /**
  * CP27 host for keyframed motion.
@@ -78,7 +78,10 @@ interface MotionHostProps {
 export function MotionHost({ element, reducedMotion = false, timeOverride = null, restartKey = 0, children }: MotionHostProps) {
   const ref = useRef<HTMLDivElement>(null)
   const motion = element.motion
-  const span = useMemo(() => motionSpan(motion), [motion])
+  // The still frame is the last frame of the last clip (one cycle of a loop); the playback span is what the loop
+  // actually runs for, and it is infinite as soon as one clip repeats forever.
+  const span = useMemo(() => motionClipSpan(motion), [motion])
+  const playback = useMemo(() => motionPlaybackSpan(motion), [motion])
   const staticEffects = useMemo(() => (motion ? effectsStyle(motion.effects) : {}), [motion])
 
   useEffect(() => {
@@ -92,38 +95,49 @@ export function MotionHost({ element, reducedMotion = false, timeOverride = null
       const blur = String(style.filter ?? '')
       node.style.filter = blur || ''
     }
-    // The studio playhead wins over the live clock, so what the author scrubs is exactly what samples later.
-    const scrubTime = timeOverride ?? getMotionPreviewTime()
-    if (scrubTime !== null && scrubTime !== undefined) {
-      apply(scrubTime)
-      return subscribeMotionPreview((time) => {
-        if (time === null) return
-        const node2 = ref.current
-        if (!node2) return
-        const style = motionStyle(sampleMotion(motion, time, { reducedMotion }))
-        node2.style.transform = String(style.transform ?? '')
-        node2.style.opacity = style.opacity === undefined ? '' : String(style.opacity)
-        node2.style.filter = String(style.filter ?? '')
-      })
-    }
-    const started = performance.now()
-    if (reducedMotion) {
-      apply(span + 1)
-      return
-    }
-    // The host unsubscribes itself the moment its clips are exhausted, so a static overlay schedules no work at all.
+    // Reduced motion renders the element at rest. The sampler drops every clip in that mode, so this writes the
+    // element's own styles back rather than a paused keyframe the author never chose.
+    const applyStill = () => apply(Math.max(0, span - 1))
+
+    let started = performance.now()
+    let unsubscribeLoop: (() => void) | null = null
+    /**
+     * A finite host unsubscribes the moment its clips are exhausted, so a static overlay schedules no work at all.
+     * A looping host never reaches that point: it keeps sampling the periodic clip instead of freezing after one
+     * cycle, which is what the old `elapsed > span + 60` check did to every loop preset.
+     */
     const tick: Subscriber = (now) => {
       const elapsed = now - started
-      if (elapsed > span + 60) {
-        apply(span + 60)
-        unsubscribe()
+      if (Number.isFinite(playback) && elapsed > playback + 60) {
+        apply(playback + 60)
+        unsubscribeLoop?.()
+        unsubscribeLoop = null
         return
       }
       apply(elapsed)
     }
-    const unsubscribe = subscribe(tick)
-    return unsubscribe
-  }, [motion, reducedMotion, span, timeOverride, restartKey])
+    const startLoop = () => { if (!unsubscribeLoop) unsubscribeLoop = subscribe(tick) }
+    const stopLoop = () => { unsubscribeLoop?.(); unsubscribeLoop = null }
+
+    // The studio playhead wins over the live clock, and the subscription is permanent: the canvas mounts a host
+    // once, so a host that only listened when it happened to mount during a scrub never moved again.
+    const offPreview = subscribeMotionPreview((time) => {
+      if (time === null) {
+        if (reducedMotion) { applyStill(); return }
+        started = performance.now()
+        startLoop()
+        return
+      }
+      stopLoop()
+      apply(time)
+    })
+
+    const initial = timeOverride ?? getMotionPreviewTime()
+    if (initial !== null && initial !== undefined) { apply(initial); return offPreview }
+    if (reducedMotion) { applyStill(); return offPreview }
+    startLoop()
+    return () => { stopLoop(); offPreview() }
+  }, [motion, reducedMotion, playback, span, timeOverride, restartKey])
 
   if (!motion) return <>{children}</>
   return (

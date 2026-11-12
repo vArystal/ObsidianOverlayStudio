@@ -2,17 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pause, Play, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { OverlayElement } from '../../types'
 import {
-  MOTION_PRESETS, MOTION_PROPERTY_LABELS, MOTION_TRIGGERS, clipFromPreset, createMotion, motionSpan, normalizeMotion,
-  removeKeyframe, upsertKeyframe,
+  MOTION_PRESETS, MOTION_PROPERTIES, MOTION_PROPERTY_LABELS, MOTION_TRIGGERS, clipFromPreset, createMotion, motionSpan,
+  normalizeMotion, removeKeyframe, upsertKeyframe,
 } from '../../lib/motion'
-import type { ElementMotion, MotionClip, MotionPreset, MotionProperty } from '../../lib/motion'
+import type { ElementMotion, MotionClip, MotionPreset } from '../../lib/motion'
 import { setMotionPreviewTime } from '../MotionHost'
 
 interface MotionStudioProps { element: OverlayElement; onChange: (motion: ElementMotion | undefined) => void }
 
 const KIND_LABELS: Record<MotionPreset['kind'], string> = { entrance: 'Entrance', exit: 'Exit', loop: 'Loop', emphasis: 'Emphasis' }
-const PROPERTIES: MotionProperty[] = ['x', 'y', 'scaleX', 'scaleY', 'rotate', 'opacity']
-
 export function MotionStudio({ element, onChange }: MotionStudioProps) {
   const motion = useMemo(() => normalizeMotion(element.motion) ?? createMotion(), [element.motion])
   const [selectedClip, setSelectedClip] = useState<string | null>(motion.clips[0]?.id ?? null)
@@ -99,7 +97,7 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
 
           <div className="motion-keyframes">
             <div className="motion-keyframes-head"><span>Keyframes</span><small>playhead {Math.round(time)}ms</small></div>
-            {PROPERTIES.map((property) => {
+            {MOTION_PROPERTIES.map((property) => {
               const keyframes = clip.tracks.find((track) => track.property === property)?.keyframes ?? []
               return (
                 <div key={property} className="motion-track-row">
