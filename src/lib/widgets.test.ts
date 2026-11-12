@@ -1,3 +1,5 @@
+const DEDICATED_INSPECTOR = ['text', 'image', 'shape', 'container', 'frame', 'capture', 'webcam']
+
 import { describe, expect, it } from 'vitest'
 import { ELEMENT_LABELS, createElement, duplicateElement } from './elements'
 import { WIDGETS, WIDGET_GROUPS, availabilityLabel, createWidgetProps, resetWidgetProps, searchWidgets, widgetFor } from './widgets'
@@ -19,7 +21,11 @@ describe('widget registry', () => {
       expect(WIDGET_GROUPS).toContain(widget.group)
       expect(widget.width).toBeGreaterThan(0)
       expect(widget.height).toBeGreaterThan(0)
-      expect(widget.controls.length).toBeGreaterThan(0)
+      // CP38: `controls` now describes what WidgetSettings renders. Canvas primitives (text, image, shape,
+      // container, frame, capture, webcam) are edited by their own studio sections, so they declare no group here
+      // rather than advertising groups that would render empty.
+      if (DEDICATED_INSPECTOR.includes(widget.type)) expect(widget.controls).toEqual([])
+      else expect(widget.controls.length).toBeGreaterThan(0)
     }
   })
 

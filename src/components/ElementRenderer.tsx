@@ -5,7 +5,7 @@ import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
 import { isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
-import { renderKickWidget } from './widgets'
+import { shellElement, renderKickWidget, Shell } from './widgets'
 import { AlertRuntime, useAlertSurface } from './alerts/AlertRuntime'
 import type { OverlayElement, OverlayTheme } from '../types'
 
@@ -173,7 +173,7 @@ function Countdown({ element }: { element: OverlayElement }) {
   const formatted = hours > 0
     ? `${hours}:${Math.floor((remaining % 3600) / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
     : `${Math.floor(remaining / 60).toString().padStart(2, '0')}:${(remaining % 60).toString().padStart(2, '0')}`
-  return <div className={`metric-widget countdown-widget ${remaining === 0 ? 'countdown-done' : ''}`} style={{ color: text(element, 'color', '#fff8e7') }}><small>{text(element, 'label', 'شروع استریم تا')}</small><strong>{formatted}</strong></div>
+  return <Shell element={element} className={`metric-widget countdown-widget ${remaining === 0 ? 'countdown-done' : ''}`}><small>{text(element, 'label', 'شروع استریم تا')}</small><strong>{formatted}</strong></Shell>
 }
 
 /** Wall-clock for a chat line. Invalid or missing timestamps render nothing rather than a fake time. */
@@ -242,7 +242,7 @@ function ElementContent({ element, runtime, preview }: { element: OverlayElement
     case 'goal': {
       if (runtime && text(element, 'dataSource', 'preview') === 'preview' && !bool(element, 'includePreviewOutput')) return null
       const target = Math.max(1, num(element, 'target', 1000)); const current = Math.max(0, num(element, 'current', 0)); const progress = Math.min(100, current / target * 100)
-      return <div className="goal-widget" style={{ color: text(element, 'textColor', '#fff8e7') }}><div className="goal-copy"><strong>{text(element, 'title')}</strong><span>{text(element, 'currency', '€')}{current} / {text(element, 'currency', '€')}{target}</span></div><div className="goal-track" style={{ background: text(element, 'trackColor', '#2b1238') }}><div className="animated-progress" style={{ width: `${progress}%`, background: text(element, 'fillColor', '#d8ad55') }} /></div>{!runtime && <small className="data-note">MANUAL PREVIEW · NOT VERIFIED PAYMENT DATA</small>}</div>
+      return <Shell element={shellElement(element, 'textColor', '#fff8e7')} className="goal-widget"><div className="goal-copy"><strong>{text(element, 'title')}</strong><span>{text(element, 'currency', '€')}{current} / {text(element, 'currency', '€')}{target}</span></div><div className="goal-track" style={{ background: text(element, 'trackColor', '#2b1238') }}><div className="animated-progress" style={{ width: `${progress}%`, background: text(element, 'fillColor', '#d8ad55') }} /></div>{!runtime && <small className="data-note">MANUAL PREVIEW · NOT VERIFIED PAYMENT DATA</small>}</Shell>
     }
     case 'container': {
       // A container is a single CSS box: no children, no images, nothing to lay out per frame.
@@ -251,7 +251,7 @@ function ElementContent({ element, runtime, preview }: { element: OverlayElement
     }
     case 'shape': return <div className="shape-element" style={{ background: colorWithOpacity(text(element, 'fillColor', '#6d28a8'), num(element, 'fillOpacity', .16)), borderColor: text(element, 'borderColor', '#d8ad55'), borderWidth: num(element, 'borderWidth', 2), borderRadius: text(element, 'shape') === 'ellipse' ? '50%' : num(element, 'borderRadius', 24) }} />
     case 'frame': return <div className="standalone-frame" />
-    case 'counter': return <div className="metric-widget" style={{ color: text(element, 'color', '#fff8e7') }}><small>{text(element, 'label')}</small><strong key={text(element, 'value')} className="number-transition">{text(element, 'value', '0')}</strong></div>
+    case 'counter': return <Shell element={element} className="metric-widget"><small>{text(element, 'label')}</small><strong key={text(element, 'value')} className="number-transition">{text(element, 'value', '0')}</strong></Shell>
     case 'countdown': return <Countdown element={element} />
     case 'viewerCount': {
       // Four states must stay distinguishable: a stale cached count is not the same as offline,
@@ -261,13 +261,17 @@ function ElementContent({ element, runtime, preview }: { element: OverlayElement
       // "No Kick connection attached" and "the Kick API failed" are different problems with different
       // fixes; showing UNREACHABLE for an unconnected overlay sends the operator hunting a broken API.
       const connected = live.configured !== false
-      const value = known ? live.viewer.count : status === 'offline' ? text(element, 'offlineText', 'آفلاین') : text(element, 'unavailableText', connected ? 'Unavailable' : 'Not connected')
+      // A blank text prop means "use the honest default for this state", so an empty inspector field can never
+      // collapse "not connected" and "API unreachable" into one label.
+      const value = known ? live.viewer.count : status === 'offline' ? (text(element, 'offlineText') || 'آفلاین') : (text(element, 'unavailableText') || (connected ? 'Unavailable' : 'Not connected'))
       const caption = !runtime ? 'LIVE WHEN CONNECTED' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
-      return <div className={`metric-widget live-metric viewer-${status}`} style={{ color: text(element, 'color', '#fff8e7') }}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></div>
+      // Surface props (background, border, radius, shadow, padding, font) come from the shared Shell, exactly as
+      // the CP24 widgets do; only the live states and geometry below are specific to this widget.
+      return <Shell element={element} className={`metric-widget live-metric viewer-${status}`}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></Shell>
     }
-    case 'sessionFollowers': return <div className="metric-widget live-metric" style={{ color: text(element, 'color', '#fff8e7') }}><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>{runtime ? 'follows this session' : 'follows this session · live'}</em></div>
-    case 'latestFollower': return <div className="supporter-widget" style={{ color: text(element, 'color', '#fff8e7') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{live.latestFollower?.username || text(element, 'emptyText', 'No follower yet')}</strong></span><em>{live.latestFollower ? 'latest follow' : 'updates on the next real follow'}</em></div>
-    case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <div className="supporter-widget" style={{ color: text(element, 'color') }}><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</div>
+    case 'sessionFollowers': return <Shell element={element} className="metric-widget live-metric"><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>{runtime ? 'follows this session' : 'follows this session · live'}</em></Shell>
+    case 'latestFollower': return <Shell element={element} className="supporter-widget"><UserRound /><span><small>{text(element, 'label')}</small><strong>{live.latestFollower?.username || text(element, 'emptyText', 'No follower yet')}</strong></span><em>{live.latestFollower ? 'latest follow' : 'updates on the next real follow'}</em></Shell>
+    case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <Shell element={element} className="supporter-widget"><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</Shell>
     default: return <div>{String(p.label ?? element.name)}</div>
   }
 }

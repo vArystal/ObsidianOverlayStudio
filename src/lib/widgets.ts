@@ -48,7 +48,7 @@ export const WIDGETS: WidgetDefinition[] = [
     defaults: {
       label: 'NOW STREAMING', fallback: 'Stream title not reported', color: '#f6f6f4', backgroundColor: '#121214',
       backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, textAlign: 'left',
-      maxLines: 2, fontFamily: 'inter', fontSize: 38, fontWeight: 700, uppercaseLabel: true, showLabel: true,
+      maxLines: 2, fontFamily: 'inter', fontSize: 38, fontWeight: 700, showLabel: true,
     },
   },
   {
@@ -147,74 +147,74 @@ export const WIDGETS: WidgetDefinition[] = [
   /* ------------------------------------------------------- existing widgets */
   {
     type: 'text', label: 'Text', group: 'Content', icon: 'text', width: 600, height: 126, blurb: 'Custom copy with the full typography studio',
-    controls: ['content', 'typography', 'colors', 'surface'], data: 'local', availability: 'available', defaults: {},
+    controls: [], data: 'local', availability: 'available', defaults: {},
   },
   {
     type: 'image', label: 'Image / logo', group: 'Content', icon: 'image', width: 360, height: 220, blurb: 'PNG, JPEG or WebP',
-    controls: ['content', 'surface'], data: 'local', availability: 'available', defaults: {},
+    controls: [], data: 'local', availability: 'available', defaults: {},
   },
   {
     type: 'shape', label: 'Shape / border', group: 'Content', icon: 'shape', width: 420, height: 240, blurb: 'Decorative visual layer',
-    controls: ['content'], data: 'none', availability: 'available', defaults: {},
+    controls: [], data: 'none', availability: 'available', defaults: {},
   },
   {
     type: 'container', label: 'Empty container', group: 'Content', icon: 'container', width: 560, height: 320, blurb: 'Blank box you can style',
-    controls: ['surface'], data: 'none', availability: 'available', defaults: {},
+    controls: [], data: 'none', availability: 'available', defaults: {},
   },
   {
     type: 'frame', label: 'Ornamental frame', group: 'Content', icon: 'frame', width: 720, height: 420, blurb: 'Independent border layer',
-    controls: ['content'], data: 'none', availability: 'available', defaults: {},
+    controls: [], data: 'none', availability: 'available', defaults: {},
   },
   {
     type: 'capture', label: 'Game capture plan', group: 'Planning', icon: 'capture', width: 1280, height: 720,
-    blurb: 'Layout guide for an OBS source, not a capture', controls: ['content'], data: 'none', availability: 'available',
+    blurb: 'Layout guide for an OBS source, not a capture', controls: [], data: 'none', availability: 'available',
     note: 'A browser source cannot read another application’s window, so this is geometry to align OBS with.', defaults: {},
   },
   {
     type: 'webcam', label: 'Webcam frame', group: 'Planning', icon: 'webcam', width: 480, height: 270, blurb: 'Frame, or this browser’s camera',
-    controls: ['content'], data: 'local', availability: 'available', defaults: {},
+    controls: [], data: 'local', availability: 'available', defaults: {},
   },
   {
     type: 'chat', label: 'Kick chat', group: 'Community', icon: 'chat', width: 460, height: 560, blurb: 'Live chat with badges and timestamps',
     controls: ['content', 'typography', 'colors', 'surface', 'community'], data: 'kick', availability: 'requires-kick',
-    note: 'Real chat.message.sent deliveries only. Nothing is invented when chat is quiet.', defaults: {},
+    note: 'Real chat.message.sent deliveries only. Nothing is invented when chat is quiet.', defaults: { emptyText: 'Chat messages appear here', fontFamily: 'vazirmatn', fontSize: 20, textColor: '#f6f6f4', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 18, padding: 14, shadow: true, fontWeight: 600, textAlign: 'left', messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', direction: 'auto' },
   },
   {
     type: 'alert', label: 'Event alert', group: 'Alerts', icon: 'alert', width: 560, height: 280, blurb: 'Queued follow and subscription alerts',
-    controls: ['content', 'colors', 'surface', 'sound', 'behavior', 'community'], data: 'kick', availability: 'requires-kick',
+    controls: ['behavior', 'sound'], data: 'kick', availability: 'requires-kick',
     note: 'Queue is drained by event identity, so repeated and simultaneous events each play once.', defaults: {},
   },
   {
     type: 'goal', label: 'Goal progress', group: 'Goals', icon: 'goal', width: 580, height: 132, blurb: 'Manual or event-driven progress bar',
-    controls: ['content', 'colors', 'goal', 'data'], data: 'local', availability: 'available', defaults: {},
+    controls: ['content', 'colors', 'goal', 'data', 'surface'], data: 'local', availability: 'available', defaults: { title: 'هدف حمایت', target: 1000, current: 0, currency: '€', trackColor: '#232326', fillColor: '#e8e8e6', textColor: '#f6f6f4', dataSource: 'preview', includePreviewOutput: false, backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'counter', label: 'Custom counter', group: 'Goals', icon: 'counter', width: 320, height: 138, blurb: 'A number you set yourself',
-    controls: ['content', 'colors', 'surface'], data: 'local', availability: 'available', defaults: {},
+    controls: ['content', 'colors', 'surface'], data: 'local', availability: 'available', defaults: { label: 'پیروزی‌ها', value: 12, color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'countdown', label: 'Countdown', group: 'Content', icon: 'countdown', width: 390, height: 145, blurb: 'Counts to an absolute deadline',
-    controls: ['content', 'colors', 'countdown'], data: 'local', availability: 'available', defaults: {},
+    controls: ['content', 'colors', 'countdown'], data: 'local', availability: 'available', defaults: { label: 'شروع استریم تا', minutes: 10, targetAt: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'viewerCount', label: 'Live viewers', group: 'Stream', icon: 'viewer', width: 300, height: 104, blurb: 'Kick viewer count with honest states',
     controls: ['content', 'typography', 'colors', 'surface'], data: 'kick', availability: 'requires-kick',
-    note: 'Stale, offline, unreachable and unconnected are four different states and are labelled as such.', defaults: {},
+    note: 'Stale, offline, unreachable and unconnected are four different states and are labelled as such.', defaults: { label: 'بیننده زنده', offlineText: 'آفلاین', unavailableText: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'sessionFollowers', label: 'Follows this session', group: 'Community', icon: 'followers', width: 300, height: 104,
     blurb: 'Counted client-side since this page loaded', controls: ['content', 'typography', 'colors', 'surface'], data: 'kick',
-    availability: 'requires-kick', note: 'Never the backend lifetime total, which is what made this widget jump on reload.', defaults: {},
+    availability: 'requires-kick', note: 'Never the backend lifetime total, which is what made this widget jump on reload.', defaults: { label: 'دنبال‌کننده این نشست', startValue: 0, color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'latestFollower', label: 'Latest follower', group: 'Community', icon: 'follower', width: 430, height: 108,
     blurb: 'The newest real follow', controls: ['content', 'typography', 'colors', 'surface'], data: 'kick', availability: 'requires-kick',
-    defaults: {},
+    defaults: { label: 'آخرین دنبال‌کننده', emptyText: 'منتظر رویداد واقعی Kick', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'supporter', label: 'Latest supporter', group: 'Goals', icon: 'supporter', width: 430, height: 108,
-    blurb: 'Donation slot', controls: ['content'], data: 'none', availability: 'unsupported',
-    note: 'No donation provider is connected to this project, so this widget is excluded from OBS output.', defaults: {},
+    blurb: 'Donation slot', controls: ['content', 'colors', 'surface', 'data'], data: 'none', availability: 'unsupported',
+    note: 'No donation provider is connected to this project, so this widget is excluded from OBS output.', defaults: { label: 'آخرین حامی', value: 'Donation provider not connected', dataSource: 'none', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
 ]
 

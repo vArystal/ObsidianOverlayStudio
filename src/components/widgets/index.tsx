@@ -32,7 +32,7 @@ const timeOf = (iso: string) => {
 }
 
 /** The panel chrome every widget shares. Colours come from props, so a widget never needs its own stylesheet. */
-function Shell({ element, children, className = '' }: { element: OverlayElement; children: ReactNode; className?: string }) {
+export function Shell({ element, children, className = '' }: { element: OverlayElement; children: ReactNode; className?: string }) {
   const style: CSSProperties = {
     color: str(element, 'color', '#f6f6f4'),
     background: withAlpha(str(element, 'backgroundColor', '#121214'), num(element, 'backgroundOpacity', 0.72)),
@@ -47,6 +47,12 @@ function Shell({ element, children, className = '' }: { element: OverlayElement;
   }
   return <div className={`widget-shell ${className}`.trim()} style={style}>{children}</div>
 }
+
+/** A widget with its own colour key (the goal's textColor) still gets the shared surface from Shell. */
+export const shellElement = (element: OverlayElement, key: string, fallback: string): OverlayElement => ({
+  ...element,
+  props: { ...element.props, color: str(element, key, fallback) },
+})
 
 const Kicker = ({ element }: { element: OverlayElement }) => (
   str(element, 'label') ? <small className="widget-kicker">{str(element, 'label')}</small> : null
@@ -244,7 +250,7 @@ function SocialLinksWidget({ element }: { element: OverlayElement }) {
       <Kicker element={element} />
       {rows.length === 0
         ? <StateLine phase="empty" text={str(element, 'emptyText', 'Add a channel and handle')} />
-        : <ul className="widget-rows widget-social-rows">{rows.map((row) => (
+        : <ul className={`widget-rows widget-social-rows layout-${str(element, 'layout', 'list')}`} data-layout={str(element, 'layout', 'list')}>{rows.map((row) => (
           <li className="widget-row" key={`${row.label}-${row.handle}`}>
             {row.label && <span className="widget-row-label">{row.label}</span>}
             <strong style={{ color: str(element, 'accentColor', '#f6f6f4') }}>{row.handle}</strong>

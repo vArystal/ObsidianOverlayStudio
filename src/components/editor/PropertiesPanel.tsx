@@ -192,6 +192,8 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           element={element}
           onProp={prop}
           onReplaceProps={(next) => props.onPatch({ props: next })}
+          alerts={element.type === 'alert' ? normalizeAlertSettings(props.overlay.alerts) : undefined}
+          onAlerts={props.onAlerts}
         />
 
         {element.type === 'text' && (
