@@ -51,7 +51,7 @@ describe('stream widgets read real data and name every absence', () => {
     expect(screen.getByText('12')).toBeTruthy()
     subs.unmount()
 
-    const status = mount(createElement('liveStatus'), liveState())
+    mount(createElement('liveStatus'), liveState())
     expect(screen.getByText('LIVE')).toBeTruthy()
   })
 
@@ -72,6 +72,7 @@ describe('stream widgets read real data and name every absence', () => {
     const subs = mount(createElement('subscriberCount'), liveState({ channel: { slug: 'arystal', activeSubscribers: null } }))
     expect(screen.queryByText('0')).toBeNull()
     expect(screen.getByText('Not reported')).toBeTruthy()
+    subs.unmount()
   })
 
   it('labels a disconnected channel and never renders a number for it', () => {
@@ -79,7 +80,7 @@ describe('stream widgets read real data and name every absence', () => {
     const subs = mount(createElement('subscriberCount'), state)
     expect(screen.getByText('Kick not connected')).toBeTruthy()
     subs.unmount()
-    const followers = mount(createElement('recentFollowers'), state)
+    mount(createElement('recentFollowers'), state)
     expect(screen.getByText('Kick not connected')).toBeTruthy()
   })
 
@@ -87,7 +88,7 @@ describe('stream widgets read real data and name every absence', () => {
     const loading = mount(createElement('streamTitle'), liveState({ state: 'connecting', stream: null }))
     expect(screen.getByText('Connecting…')).toBeTruthy()
     loading.unmount()
-    const error = mount(createElement('recentFollowers'), liveState({ state: 'error', recentFollowers: [] }))
+    mount(createElement('recentFollowers'), liveState({ state: 'error', recentFollowers: [] }))
     expect(screen.getByText('Connection problem')).toBeTruthy()
   })
 })
@@ -97,7 +98,7 @@ describe('community widgets', () => {
     const list = mount(createElement('recentFollowers'), liveState())
     expect(screen.getByText('greasea')).toBeTruthy()
     list.unmount()
-    const empty = mount(createElement('recentFollowers'), liveState({ recentFollowers: [] }))
+    mount(createElement('recentFollowers'), liveState({ recentFollowers: [] }))
     expect(screen.getByText('No follows yet')).toBeTruthy()
   })
 

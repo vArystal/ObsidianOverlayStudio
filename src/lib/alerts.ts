@@ -298,7 +298,6 @@ export interface AlertPayload {
 export function alertPayload(event: LiveOverlayEvent): AlertPayload {
   const data = (event.data ?? {}) as Record<string, any>
   const person = data.follower ?? data.subscriber ?? data.gifter ?? data.sender ?? null
-  const giftees = Array.isArray(data.giftees) ? data.giftees.length : 0
   const metric = typeof data.metric === 'string' ? data.metric : ''
   return {
     username: typeof person?.username === 'string' ? person.username : '',

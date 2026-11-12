@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, Check, ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
 import { Canvas } from '../components/editor/Canvas'
@@ -32,7 +32,6 @@ function readFile(file: File): Promise<string> {
 
 export function OverlayEditor() {
   const { id = '' } = useParams()
-  const navigate = useNavigate()
   const initial = useMemo(() => getOverlay(id), [id])
   const [overlay, setOverlay] = useState<Overlay | null>(initial ?? null)
   const overlayRef = useRef(overlay)

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createElement, createEmptyOverlay } from './elements'
 import { normalizeOverlay } from './storage'
-import { DECORATION_PRESETS, LEGACY_THEME_MAP, THEMES, THEME_ORDER, getTheme, migrateThemeId, resolveDecoration } from './themes'
+import { DECORATION_PRESETS, LEGACY_THEME_MAP, THEMES, THEME_ORDER, migrateThemeId, resolveDecoration } from './themes'
 
 describe('CP20 theme system', () => {
   it('offers exactly four presets with a full palette each', () => {

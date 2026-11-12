@@ -1,12 +1,9 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { TypographyStudio } from './TypographyStudio'
 import {
-  AlignCenter,
   AlignHorizontalJustifyCenter,
   AlignHorizontalJustifyEnd,
   AlignHorizontalJustifyStart,
-  AlignLeft,
-  AlignRight,
   AlignVerticalJustifyCenter,
   AlignVerticalJustifyEnd,
   AlignVerticalJustifyStart,
@@ -14,16 +11,12 @@ import {
   ArrowUpToLine,
   Box,
   Copy,
-  Eye,
-  EyeOff,
   Info,
-  Lock,
   Link2,
   Palette,
   Radio,
   SlidersHorizontal,
   Trash2,
-  Unlock,
   Upload,
   Zap,
 } from 'lucide-react'

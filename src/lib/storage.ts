@@ -1,7 +1,7 @@
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import type { ElementDecoration, Overlay, OverlayAnimation, OverlayElement, StorageResult } from '../types'
 import { createAnimation, normalizeContainerProps } from './elements'
-import { createDecoration, getTheme, migrateThemeId } from './themes'
+import { createDecoration, getTheme } from './themes'
 import { normalizeBackground } from './backgrounds'
 import { normalizeAlertSettings } from './alerts'
 import { normalizeMotion } from './motion'

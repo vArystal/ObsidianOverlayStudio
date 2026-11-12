@@ -6,7 +6,7 @@
  * comes from the LiveDataProvider snapshot, and every absence is rendered as a named state.
  */
 import type { CSSProperties, ReactNode } from 'react'
-import type { CommunityPerson, LiveChatMessage, OverlayElement, WidgetActivity } from '../../types'
+import type { CommunityPerson, OverlayElement, WidgetActivity } from '../../types'
 import { useLiveData } from '../LiveDataProvider'
 import { fontStack } from '../../lib/typography'
 import {

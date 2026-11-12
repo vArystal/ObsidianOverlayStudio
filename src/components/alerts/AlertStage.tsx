@@ -9,7 +9,6 @@ import { alertPayload, createAlertSettings, fillTemplate, renderAlertCopy, testA
 import type { AlertKind, AlertSettings, AlertTemplate } from '../../lib/alerts'
 import type { AlertPhase, QueuedAlert } from '../../lib/alertQueue'
 import { fontStack } from '../../lib/typography'
-import type { LiveOverlayEvent } from '../../types'
 
 const ORNAMENT_GLYPH: Record<string, string> = { none: '', rule: '—', corners: '◢', double: '❖' }
 

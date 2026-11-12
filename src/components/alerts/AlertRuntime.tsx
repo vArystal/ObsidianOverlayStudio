@@ -7,7 +7,7 @@
  * The editor mounts the same component with `preview`, which renders the stage from a local engine and never
  * touches the network, so authoring cannot create, acknowledge or consume a production alert.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { AlertQueueEngine, acknowledgeAlerts, fetchPendingAlerts, loadAlertCursor, saveAlertCursor } from '../../lib/alertQueue'
 import type { AlertFrame, AlertQueueEngine as Engine, QueueSnapshot } from '../../lib/alertQueue'
 import { createAlertSettings } from '../../lib/alerts'
