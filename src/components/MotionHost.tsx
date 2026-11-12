@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import type { ReactNode } from 'react'
 import type { OverlayElement } from '../types'
-import { effectsStyle, motionClipSpan, motionPlaybackSpan, motionStyle, sampleMotion } from '../lib/motion'
+import { IMPLEMENTED_TRIGGERS, effectsStyle, motionClipSpan, motionPlaybackSpan, motionStyle, sampleMotion } from '../lib/motion'
 
 /**
  * CP27 host for keyframed motion.
@@ -88,7 +88,8 @@ export function MotionHost({ element, reducedMotion = false, timeOverride = null
     const node = ref.current
     if (!node || !motion || !motion.clips.length) return
     const apply = (timeMs: number) => {
-      const frameValue = sampleMotion(motion, timeMs, { reducedMotion })
+      // CP40: the sampler is told which triggers may fire, so a clip waiting on an event nobody emits cannot play.
+      const frameValue = sampleMotion(motion, timeMs, { reducedMotion, triggers: IMPLEMENTED_TRIGGERS })
       const style = motionStyle(frameValue)
       node.style.transform = String(style.transform ?? '')
       node.style.opacity = style.opacity === undefined ? '' : String(style.opacity)

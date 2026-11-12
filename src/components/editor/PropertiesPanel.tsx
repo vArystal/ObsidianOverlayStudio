@@ -23,7 +23,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { Overlay, OverlayBackground, OverlayElement } from '../../types'
-import { DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
+import { DECORATION_PRESET_LABELS, DECORATION_PRESET_ORDER, DECORATION_PRESETS, THEMES, toggleDecoration } from '../../lib/themes'
 import { ThemeGallery } from './ThemeGallery'
 import { CONTAINER_PRESETS, containerStyle } from '../../lib/elements'
 import { WidgetSettings } from './WidgetSettings'
@@ -417,7 +417,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
         <Section title="Persian decoration">
           <Toggle checked={element.decoration.enabled} onChange={(enabled) => props.onPatch({ decoration: toggleDecoration(element.decoration, enabled) })} label="Decorative frame" description="Independent from widget content and safe to remove." />
-          <Field label="Frame preset"><select value={element.decoration.preset} onChange={(event) => props.onPatch({ decoration: structuredClone(DECORATION_PRESETS[event.target.value as OverlayElement['decoration']['preset']]) })}><option value="none">None</option><option value="royal-panel">Royal panel</option><option value="turquoise-panel">Turquoise panel</option><option value="imperial-card">Imperial card</option><option value="esports-line">Minimal esports</option><option value="ornamental-frame">Ornamental frame</option></select></Field>
+          <Field label="Frame preset"><select value={element.decoration.preset} onChange={(event) => props.onPatch({ decoration: structuredClone(DECORATION_PRESETS[event.target.value as OverlayElement['decoration']['preset']]) })}>{(['none', ...DECORATION_PRESET_ORDER] as OverlayElement['decoration']['preset'][]).map((preset) => <option key={preset} value={preset}>{DECORATION_PRESET_LABELS[preset]}</option>)}</select></Field>
           <Toggle checked={element.decoration.inheritTheme} onChange={(inheritTheme) => decorate({ inheritTheme })} label="Use theme colors" description="Theme changes never move or rewrite this layer's content." />
           <Toggle checked={element.decoration.borderVisible} onChange={(borderVisible) => decorate({ borderVisible })} label="Outer border" />
           <div className="two-columns"><Field label="Border"><NumberInput value={element.decoration.borderWidth} min={0} max={24} onChange={(borderWidth) => decorate({ borderWidth })} suffix="px" /></Field><Field label="Radius"><NumberInput value={element.decoration.radius} min={0} max={160} onChange={(radius) => decorate({ radius })} suffix="px" /></Field></div>
@@ -431,7 +431,6 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           <Field label="Inner border color"><ColorInput value={element.decoration.innerBorderColor} onChange={(innerBorderColor) => decorate({ innerBorderColor, inheritTheme: false })} /></Field>
           <Toggle checked={element.decoration.cornerOrnaments} onChange={(cornerOrnaments) => decorate({ cornerOrnaments })} label="Ornamental corners" />
           <Toggle checked={element.decoration.separator} onChange={(separator) => decorate({ separator })} label="Persian divider" />
-          <Toggle checked={element.decoration.gradient} onChange={(gradient) => decorate({ gradient })} label="Layered background" />
           <Toggle checked={element.decoration.shadow} onChange={(shadow) => decorate({ shadow })} label="Sophisticated shadow" />
           <Toggle checked={element.decoration.glow} onChange={(glow) => decorate({ glow })} label="Subtle border glow" />
           <Toggle checked={element.decoration.highlight} onChange={(highlight) => decorate({ highlight })} label="Ivory surface highlight" />
@@ -442,14 +441,12 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
         <Section title="Animation inspector">
           <Field label="Layer opacity"><NumberInput value={Math.round(element.opacity * 100)} min={0} max={100} onChange={(value) => props.onPatch({ opacity: value / 100 })} suffix="%" /></Field>
           <Field label="Entrance"><select value={element.animation.type} onChange={(event) => animate({ type: event.target.value as OverlayElement['animation']['type'] })}><option value="none">None</option><option value="fade">Fade</option><option value="slide">Directional slide</option><option value="scale">Scale</option><option value="pop">Premium pop</option><option value="ornamental">Ornamental reveal</option></select></Field>
-          <Field label="Exit"><select value={element.animation.exit} onChange={(event) => animate({ exit: event.target.value as OverlayElement['animation']['exit'] })}><option value="none">None</option><option value="fade">Fade</option><option value="slide">Slide</option><option value="scale">Scale</option><option value="pop">Pop</option><option value="ornamental">Ornamental close</option></select></Field>
           <Field label="Idle effect"><select value={element.animation.idle} onChange={(event) => animate({ idle: event.target.value as OverlayElement['animation']['idle'] })}><option value="none">None</option><option value="shimmer">Gold shimmer</option><option value="glow">Border glow</option><option value="float">Subtle float</option><option value="sparkle">Persian sparkle</option></select></Field>
-          <div className="two-columns"><Field label="Entrance duration"><NumberInput value={element.animation.duration} min={100} max={4000} step={50} onChange={(duration) => animate({ duration })} suffix="ms" /></Field><Field label="Exit duration"><NumberInput value={element.animation.exitDuration} min={100} max={4000} step={50} onChange={(exitDuration) => animate({ exitDuration })} suffix="ms" /></Field></div>
+          <Field label="Entrance duration"><NumberInput value={element.animation.duration} min={100} max={4000} step={50} onChange={(duration) => animate({ duration })} suffix="ms" /></Field>
           <div className="two-columns"><Field label="Delay"><NumberInput value={element.animation.delay} min={0} max={10000} step={50} onChange={(delay) => animate({ delay })} suffix="ms" /></Field><Field label="Intensity"><NumberInput value={Math.round(element.animation.intensity * 100)} min={10} max={100} onChange={(value) => animate({ intensity: value / 100 })} suffix="%" /></Field></div>
           <Field label="Direction"><select value={element.animation.direction} onChange={(event) => animate({ direction: event.target.value as OverlayElement['animation']['direction'] })}><option value="up">Up</option><option value="down">Down</option><option value="left">Left</option><option value="right">Right</option></select></Field>
           <Field label="Easing"><select value={element.animation.easing} onChange={(event) => animate({ easing: event.target.value as OverlayElement['animation']['easing'] })}><option value="ease-out">Ease out</option><option value="ease-in-out">Ease in/out</option><option value="ease">Ease</option><option value="linear">Linear</option></select></Field>
           <Toggle checked={element.animation.reducedMotion === 'static'} onChange={(value) => animate({ reducedMotion: value ? 'static' : 'respect' })} label="Always static for this layer" description="Overrides entrance and idle motion without changing the overlay-wide setting." />
-          {element.type === 'alert' && <Field label="Alert hold"><NumberInput value={element.animation.holdDuration} min={500} max={30000} step={100} onChange={(holdDuration) => animate({ holdDuration })} suffix="ms" /></Field>}
           <button className="secondary-button full" onClick={props.onTest}><Zap /> Preview selected effects</button>
         </Section>
       </div>

@@ -86,10 +86,6 @@ body:not(.runtime-root) {
 .element-anim-scale { animation-name: premium-scale; animation-fill-mode: both; }
 .element-anim-pop { animation-name: premium-pop; animation-fill-mode: both; }
 .element-anim-ornamental { animation-name: ornamental-reveal; animation-fill-mode: both; }
-.element-exit-fade { animation-name: premium-fade-out; animation-fill-mode: both; }
-.element-exit-slide { animation-name: premium-slide-out; animation-fill-mode: both; }
-.element-exit-scale, .element-exit-pop { animation-name: premium-scale-out; animation-fill-mode: both; }
-.element-exit-ornamental { animation-name: ornamental-close; animation-fill-mode: both; }
 .element-idle { width: 100%; height: 100%; }
 /* Idle glow: a static shadow on its own layer, animated with opacity. The old rule animated
    filter: drop-shadow, which repaints the element on every frame. */
@@ -108,9 +104,6 @@ body:not(.runtime-root) {
 @keyframes premium-scale { from { opacity: 0; transform: scale(calc(1 - var(--anim-intensity,.65) * .16)); } to { opacity: 1; transform: scale(1); } }
 @keyframes premium-pop { 0% { opacity: 0; transform: scale(.72); } 72% { opacity: 1; transform: scale(1.04); } 100% { transform: scale(1); } }
 @keyframes ornamental-reveal { 0% { opacity: 0; clip-path: inset(48% 48% 48% 48% round 20px); filter: brightness(1.5); } 58% { opacity: 1; } 100% { clip-path: inset(0 0 0 0 round 0); filter: brightness(1); } }
-@keyframes ornamental-close { from { opacity: 1; clip-path: inset(0); } to { opacity: 0; clip-path: inset(48% 48%); } }
-@keyframes premium-fade-out { to { opacity: 0; } }
-@keyframes premium-slide-out { to { opacity: 0; transform: translate(var(--slide-x,0),var(--slide-y,-32px)); } }
 @keyframes premium-scale-out { to { opacity: 0; transform: scale(.78); } }
 @keyframes elegant-glow { 0%,100% { filter: drop-shadow(0 0 3px rgba(235, 235, 235,.12)); } 50% { filter: drop-shadow(0 0 10px rgba(235, 235, 235,.38)); } }
 @keyframes subtle-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }

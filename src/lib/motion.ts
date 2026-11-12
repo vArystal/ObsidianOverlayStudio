@@ -38,14 +38,15 @@ export interface MotionTrack {
 
 export type MotionTrigger = 'load' | 'alert' | 'reveal' | 'interaction' | 'queue-complete' | 'custom'
 
-export const MOTION_TRIGGERS: { id: MotionTrigger; label: string }[] = [
-  { id: 'load', label: 'On load' },
-  { id: 'alert', label: 'On alert activation' },
-  { id: 'reveal', label: 'On show' },
-  { id: 'interaction', label: 'On interaction' },
-  { id: 'queue-complete', label: 'On queue completion' },
-  { id: 'custom', label: 'Custom event' },
-]
+/**
+ * CP40: only `load` has a real event source. The other ids stay in the type so a saved overlay still loads, but no
+ * UI offers them and the sampler is asked for `load` only, which is exactly what every clip did before: play on
+ * mount. A trigger with no source was the same lie as a slider with no consumer.
+ */
+export const MOTION_TRIGGERS: { id: MotionTrigger; label: string }[] = [{ id: 'load', label: 'On load' }]
+
+/** The triggers the runtime can actually honour. MotionHost gates sampling on this list. */
+export const IMPLEMENTED_TRIGGERS: MotionTrigger[] = ['load']
 
 export type MotionDirection = 'up' | 'down' | 'left' | 'right' | 'center' | 'clockwise' | 'counter-clockwise'
 
@@ -592,7 +593,7 @@ function normalizeClip(raw: unknown): MotionClip | null {
     id: typeof source.id === 'string' && source.id ? source.id : `clip_${Math.random().toString(36).slice(2, 9)}`,
     label: typeof source.label === 'string' ? source.label.slice(0, 40) : 'Clip',
     preset: typeof source.preset === 'string' ? source.preset : 'custom',
-    trigger: MOTION_TRIGGERS.some((item) => item.id === source.trigger) ? (source.trigger as MotionTrigger) : 'load',
+    trigger: IMPLEMENTED_TRIGGERS.includes(source.trigger as MotionTrigger) ? (source.trigger as MotionTrigger) : 'load',
     delay: clamp(num(source.delay, 0), 0, 20_000),
     duration: clamp(num(source.duration, 600), 60, 20_000),
     // Infinity, 999 and -1 all mean forever; anything else is a pass count. Null (the JSON form of a missing

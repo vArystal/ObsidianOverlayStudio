@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pause, Play, Plus, RotateCcw, Trash2, ZoomIn, ZoomOut } from 'lucide-react'
 import type { OverlayElement } from '../../types'
 import {
-  MOTION_PRESETS, MOTION_PROPERTIES, MOTION_PROPERTY_LABELS, MOTION_TRIGGERS, clipFromPreset, createMotion, motionSpan,
+  MOTION_PRESETS, MOTION_PROPERTIES, MOTION_PROPERTY_LABELS, clipFromPreset, createMotion, motionSpan,
   normalizeMotion, removeKeyframe, upsertKeyframe,
 } from '../../lib/motion'
 import type { ElementMotion, MotionClip, MotionPreset } from '../../lib/motion'
@@ -89,10 +89,7 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
             <label>Start<input type="number" min={0} max={30000} step={50} value={Math.round(clip.delay)} onChange={(event) => patchClip({ delay: Number(event.target.value) })} /></label>
             <label>Duration<input type="number" min={80} max={30000} step={50} value={Math.round(clip.duration)} onChange={(event) => patchClip({ duration: Number(event.target.value) })} /></label>
           </div>
-          <div className="two-columns">
-            <label>Trigger<select value={clip.trigger} onChange={(event) => patchClip({ trigger: event.target.value as MotionClip['trigger'] })}>{(MOTION_TRIGGERS ?? []).map((trigger) => <option key={trigger.id} value={trigger.id}>{trigger.label}</option>)}</select></label>
-            <label>Repeats<input type="number" min={0} max={50} value={clip.repeat} onChange={(event) => patchClip({ repeat: Number(event.target.value) })} /></label>
-          </div>
+          <label>Repeats<input type="number" min={0} max={50} value={clip.repeat} onChange={(event) => patchClip({ repeat: Number(event.target.value) })} /></label>
           <label className="alert-toggle"><input type="checkbox" checked={clip.alternate} onChange={(event) => patchClip({ alternate: event.target.checked })} /><span>Alternate direction on repeat</span></label>
 
           <div className="motion-keyframes">
@@ -162,6 +159,27 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
             <label>Reach<input type="range" min={20} max={100} value={motion.effects.mask.scale} onChange={(event) => patchEffect({ mask: { ...motion.effects.mask, scale: Number(event.target.value) } })} /></label>
           </div>
         )}
+
+        <label className="motion-toggle"><input type="checkbox" checked={motion.effects.neon.enabled} onChange={(event) => patchEffect({ neon: { ...motion.effects.neon, enabled: event.target.checked } })} /><span>Neon edge glow</span></label>
+        {motion.effects.neon.enabled && (
+          <div className="motion-effect-grid">
+            <label>Intensity<input type="range" min={0} max={100} value={Math.round(motion.effects.neon.intensity * 100)} onChange={(event) => patchEffect({ neon: { ...motion.effects.neon, intensity: Number(event.target.value) / 100 } })} /></label>
+            <label>Colour<input type="color" value={motion.effects.neon.color} onChange={(event) => patchEffect({ neon: { ...motion.effects.neon, color: event.target.value } })} /></label>
+          </div>
+        )}
+
+        <label className="motion-toggle"><input type="checkbox" checked={motion.effects.blur.enabled} onChange={(event) => patchEffect({ blur: { ...motion.effects.blur, enabled: event.target.checked } })} /><span>Static blur</span></label>
+        {motion.effects.blur.enabled && (
+          <label className="motion-field">Amount
+            <input type="range" min={0} max={20} step={0.5} value={motion.effects.blur.amount} onChange={(event) => patchEffect({ blur: { ...motion.effects.blur, amount: Number(event.target.value) } })} />
+          </label>
+        )}
+
+        <label className="motion-field">Shape clip
+          <select value={motion.effects.clip.shape} onChange={(event) => patchEffect({ clip: { ...motion.effects.clip, shape: event.target.value as typeof motion.effects.clip.shape } })}>
+            <option value="none">No clip</option><option value="inset">Rounded inset</option><option value="circle">Circle</option><option value="hex">Hexagon</option>
+          </select>
+        </label>
 
         <label className="motion-toggle"><input type="checkbox" checked={motion.effects.gradient.enabled} onChange={(event) => patchEffect({ gradient: { ...motion.effects.gradient, enabled: event.target.checked } })} /><span>Gradient sheen</span></label>
         {motion.effects.gradient.enabled && (

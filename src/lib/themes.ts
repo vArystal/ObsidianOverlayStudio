@@ -197,8 +197,21 @@ export const DECORATION_PRESETS: Record<DecorationPresetId, ElementDecoration> =
   'thorn-vine': { ...baseDecoration, preset: 'thorn-vine', borderWidth: 1, radius: 14, innerBorder: false, pattern: 'none', backgroundOpacity: 0.7, padding: 22 },
 }
 
-/** Presets offered in the inspector, in a deliberate order. */
-export const DECORATION_PRESET_ORDER: DecorationPresetId[] = ['royal-panel', 'turquoise-panel', 'imperial-card', 'esports-line', 'ornamental-frame']
+/**
+ * Presets offered in the inspector, in a deliberate order. CP40: this list and the labels are the only source the
+ * select reads, so a preset cannot exist in the registry and be missing from the UI again (thorn-vine was).
+ */
+export const DECORATION_PRESET_ORDER: DecorationPresetId[] = ['royal-panel', 'turquoise-panel', 'imperial-card', 'esports-line', 'ornamental-frame', 'thorn-vine']
+
+export const DECORATION_PRESET_LABELS: Record<DecorationPresetId, string> = {
+  none: 'None',
+  'royal-panel': 'Royal panel',
+  'turquoise-panel': 'Turquoise panel',
+  'imperial-card': 'Imperial card',
+  'esports-line': 'Minimal esports',
+  'ornamental-frame': 'Ornamental frame',
+  'thorn-vine': 'Vine inset',
+}
 
 export function createDecoration(preset: DecorationPresetId = 'royal-panel'): ElementDecoration {
   return structuredClone(DECORATION_PRESETS[preset] ?? DECORATION_PRESETS['royal-panel'])
