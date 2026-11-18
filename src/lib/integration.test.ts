@@ -4,12 +4,16 @@ import { clearExchangeFromUrl, clearIntegrationSession, getBackendUrl, getIntegr
 beforeEach(() => { localStorage.clear(); sessionStorage.clear(); vi.restoreAllMocks() })
 
 describe('browser integration boundary', () => {
-  it('keeps opaque management session in tab storage and returns token-free runtime config', () => {
+  // CP42 supersedes the "tab storage" policy: a sessionStorage token died with the tab, so the app reported the
+  // Kick connection as lost on every visit. It now persists per browser (same-origin only, cleared by Disconnect),
+  // and the public runtime config still never carries the management token.
+  it('persists the opaque management session per browser and returns token-free runtime config', () => {
     setBackendUrl('https://api.example/')
     saveIntegrationSession({ managementToken: 'opaque-management', connectionId: 'connection', runtimeKey: 'runtime-key', channelName: 'channel' })
     expect(getBackendUrl()).toBe('https://api.example')
     expect(getIntegrationSession()?.managementToken).toBe('opaque-management')
-    expect(localStorage.getItem('obsidian-integration-session-v1')).toBeNull()
+    expect(sessionStorage.getItem('obsidian-integration-session-v1')).toBeNull()
+    expect(localStorage.getItem('obsidian-integration-session-v1')).toContain('opaque-management')
     expect(JSON.stringify(getPublicIntegrationConfig())).not.toContain('opaque-management')
     expect(getPublicIntegrationConfig()?.runtimeKey).toBe('runtime-key')
     clearIntegrationSession()

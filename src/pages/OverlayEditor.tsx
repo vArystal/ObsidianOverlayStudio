@@ -76,6 +76,13 @@ export function OverlayEditor() {
     return () => window.removeEventListener('beforeunload', listener)
   }, [dirty])
 
+  // CP42: only the save path ever cleared its own toast, so errors sat on screen forever.
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(''), 7000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
   const commit = useCallback((transform: (value: Overlay) => Overlay) => {
     const current = overlayRef.current
     if (!current) return
@@ -539,14 +546,8 @@ export function OverlayEditor() {
             onToggleLock={(elementId) => { const item = overlay.elements.find((element) => element.id === elementId); if (item) patchElementById(elementId, { locked: !item.locked }) }}
             onRename={renameLayer} onMoveLayer={moveLayer} onDuplicate={duplicate} onDelete={deleteElement}
             onUploadAsset={uploadAsset} onUploadBackground={uploadBackground}
-            footer={(
-              <details className="panel-drawer">
-                <summary><span>Animated background</span>{overlay.background?.enabled ? <em>{overlay.background.kind}</em> : <em>off</em>}</summary>
-                <div className="panel-drawer-body">
-                  <BackgroundSection background={overlay.background} onChange={(background) => commit((item) => ({ ...item, background }))} />
-                </div>
-              </details>
-            )}
+            footer={() => <BackgroundSection background={overlay.background} onChange={(background) => commit((item) => ({ ...item, background }))} />}
+            footerStatus={overlay.background?.enabled ? overlay.background.kind : 'off'}
           />
           <section className="canvas-column">
             <Canvas
@@ -621,7 +622,12 @@ export function OverlayEditor() {
           onSubmit={submitResolution}
           onCancel={() => setResolutionOpen(false)}
         />
-        {notice && <div className="toast">{notice}</div>}
+        {notice && (
+          <div className="toast" role="status">
+            <span>{notice}</span>
+            <button type="button" aria-label="Dismiss notification" onClick={() => setNotice('')}><X aria-hidden="true" /></button>
+          </div>
+        )}
         {publishUrl && (
           <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setPublishUrl(''); setPublishVerdict(null) } }}>
             <section className="publish-modal" role="dialog" aria-modal="true" aria-labelledby="publish-title">

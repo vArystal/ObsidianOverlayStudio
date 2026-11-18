@@ -547,3 +547,26 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 .publish-issue.actions { bottom: 122px; justify-content: space-between; }
 .publish-issue.degraded { border-color: #5a4a2a; color: #efd9a8; }
 .publish-issue + .publish-issue { bottom: 74px; }
+
+/* CP42: the background drawer is a real control now: 44px target, always visible at the foot of the rail. */
+.panel-drawer { border-top: 1px solid #242424; background: #101010; }
+.panel-drawer-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; min-height: 44px; padding: 0 14px; cursor: pointer;
+  background: transparent; border: 0; color: #dcdcdc;
+  font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+}
+.panel-drawer-toggle::before { content: '▸'; color: #8d8d8d; margin-right: 6px; }
+.panel-drawer.is-open .panel-drawer-toggle::before { content: '▾'; }
+.panel-drawer-toggle em { font-style: normal; text-transform: none; letter-spacing: 0; color: #a1a1a1; font-weight: 600; font-size: 10px; }
+.panel-drawer-toggle:hover { background: #1b1b1b; }
+.panel-drawer-toggle:focus-visible { outline: 2px solid #f6f6f4; outline-offset: -2px; }
+.panel-drawer-body { padding: 0 14px 14px; max-height: 46vh; overflow: auto; }
+/* CP42: a toast needs a way out that is not waiting. */
+.toast { display: flex; align-items: center; gap: 10px; }
+.toast > button {
+  flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
+  margin: -10px -12px -10px 0; background: transparent; border: 0; color: inherit; cursor: pointer; border-radius: 8px;
+}
+.toast > button:hover { background: rgba(255,255,255,.08); }
+.toast > button svg { width: 16px; height: 16px; }

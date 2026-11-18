@@ -13,12 +13,17 @@ export interface IntegrationSession {
 
 export function getBackendUrl() { return localStorage.getItem(BACKEND_KEY) || DEFAULT_BACKEND }
 export function setBackendUrl(url: string) { localStorage.setItem(BACKEND_KEY, url.replace(/\/$/, '')) }
+/**
+ * CP42: this used to live in sessionStorage, so closing the tab threw the management token away and the app
+ * reported the Kick connection as lost on every visit. It is now persisted per browser, which is what "connected
+ * once, stays connected" means to an operator, and Disconnect still clears it.
+ */
 export function getIntegrationSession(): IntegrationSession | null {
-  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') } catch { return null }
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null') } catch { return null }
 }
 export function saveIntegrationSession(value: IntegrationSession) {
-  localStorage.removeItem(SESSION_KEY)
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(value))
+  sessionStorage.removeItem(SESSION_KEY)
+  localStorage.setItem(SESSION_KEY, JSON.stringify(value))
 }
 export function clearIntegrationSession() {
   sessionStorage.removeItem(SESSION_KEY)

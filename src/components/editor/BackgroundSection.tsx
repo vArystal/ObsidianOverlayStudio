@@ -38,7 +38,11 @@ export function BackgroundSection({ background, onChange }: BackgroundSectionPro
     <div className="background-section">
       <div className="bg-row">
         <label className="toggle-row">
-          <input type="checkbox" checked={bg.enabled} onChange={(event) => update({ enabled: event.target.checked })} aria-label="Enable animated background" />
+          <input type="checkbox" checked={bg.enabled} onChange={(event) => {
+            // Flipping this on with no scene chosen used to render nothing, which reads as a broken switch.
+            const kind = event.target.checked && bg.kind === 'none' ? 'aurora-flow' : bg.kind
+            update({ enabled: event.target.checked, kind })
+          }} aria-label="Enable animated background" />
           <span>Animated background</span>
         </label>
         <label className="toggle-row">

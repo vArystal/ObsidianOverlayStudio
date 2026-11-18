@@ -60,7 +60,9 @@ interface ElementsPanelProps {
   onUploadAsset: (file: File) => void
   onUploadBackground: (file: File) => void
   /** Extra rail content under the tabs: the document-level background controls live here, beside the layers. */
-  footer?: ReactNode
+  /** Drawer content, rendered only while the drawer is open so a closed drawer costs nothing. */
+  footer?: () => ReactNode
+  footerStatus?: string
 }
 
 type Tab = 'elements' | 'layers' | 'assets'
@@ -68,6 +70,7 @@ type Tab = 'elements' | 'layers' | 'assets'
 export function ElementsPanel(props: ElementsPanelProps) {
   const [tab, setTab] = useState<Tab>('elements')
   const [query, setQuery] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const results = searchWidgets(query)
   const tabs = ['elements', 'layers', 'assets'] as const
   const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -129,7 +132,12 @@ export function ElementsPanel(props: ElementsPanelProps) {
       {tab === 'layers' && (
         <div className="panel-scroll layers-panel" role="tabpanel" id="panel-layers" aria-labelledby="tab-layers">
           <div className="panel-heading"><div><h2>Layers</h2><p>Top items render in front.</p></div></div>
-          {!props.elements.length && <div className="panel-empty"><Layers3 /><strong>No layers yet</strong><span>Add an element to begin.</span></div>}
+          {!props.elements.length && (
+            <div className="panel-empty">
+              <Layers3 /><strong>No layers yet</strong><span>Add an element to begin.</span>
+              <button type="button" className="secondary-button" onClick={() => setTab('elements')}>Browse elements</button>
+            </div>
+          )}
           <div className="layers-list">
             {[...props.elements].reverse().map((element, reverseIndex) => {
               const actualIndex = props.elements.length - 1 - reverseIndex
@@ -182,7 +190,15 @@ export function ElementsPanel(props: ElementsPanelProps) {
           <div className="limit-note"><strong>Storage note</strong>Embedded images count toward browser storage and snapshot URL size. Use a hosted asset service for production-scale media.</div>
         </div>
       )}
-      {props.footer && <div className="panel-footer">{props.footer}</div>}
+      {props.footer && (
+        <div className={`panel-drawer ${drawerOpen ? 'is-open' : ''}`}>
+          <button type="button" className="panel-drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
+            <span>Animated background</span>
+            <em>{props.footerStatus ?? 'off'}</em>
+          </button>
+          {drawerOpen && <div className="panel-drawer-body">{props.footer()}</div>}
+        </div>
+      )}
     </aside>
   )
 }
