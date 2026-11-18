@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { BackgroundKind, OverlayBackground } from '../../types'
 import { BACKGROUND_PRESETS, DEFAULT_BACKGROUND, normalizeBackground, presetFor } from '../../lib/backgrounds'
-import { BackgroundLayer } from '../BackgroundLayer'
 
 interface BackgroundSectionProps {
   background: OverlayBackground | undefined
@@ -64,10 +63,13 @@ export function BackgroundSection({ background, onChange }: BackgroundSectionPro
               onClick={() => onChange(normalizeBackground({ ...bg, kind: option.kind as BackgroundKind, ...option.defaults, enabled: true }))}
               title={option.blurb}
             >
-              {/* The thumbnail is the real renderer at card size, so the choice is never a guess. */}
-              <span className="bg-thumb-stage">
-                <BackgroundLayer background={{ ...bg, ...option.defaults, kind: option.kind, enabled: true, paused: true, opacity: 0.95 }} />
-              </span>
+              {/* CP49: a static swatch instead of a live scene. Six mounted scenes inside the rail froze slower
+                  laptops; the swatch still shows each preset's own colours, so the choice is not a guess. */}
+              <span
+                className="bg-thumb-stage bg-swatch"
+                aria-hidden="true"
+                style={{ backgroundImage: `radial-gradient(circle at 30% 25%, ${option.defaults.primary}, transparent 62%), radial-gradient(circle at 72% 70%, ${option.defaults.secondary}, transparent 58%), linear-gradient(140deg, ${option.defaults.accent}, #0b0b0c 78%)` }}
+              />
               <strong>{option.label}</strong>
               <small>{option.blurb}</small>
             </button>

@@ -185,9 +185,11 @@ describe('browser versus OBS fitting', () => {
     return container.querySelector('.runtime-stage') as HTMLElement
   }
 
-  it('fills a browser window by default', () => {
+  // CP49 supersedes the "browser fills the window" default: cover cropped the composition and read as a zoomed-in
+  // quarter of the overlay, so the whole frame is shown again in every surface and cover stays opt-in.
+  it('shows the whole composition in a browser by default', () => {
     withAgent('Mozilla/5.0 (Windows NT 10.0) Chrome/120', () => {
-      expect(stageFor().getAttribute('data-fit')).toBe('cover')
+      expect(stageFor().getAttribute('data-fit')).toBe('contain')
     })
   })
 

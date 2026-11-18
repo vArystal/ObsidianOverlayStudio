@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   AlignJustify,
@@ -17,6 +17,7 @@ import {
   Gamepad2,
   Image,
   ImagePlus,
+  Wand2,
   Layers3,
   Lock,
   MessageSquare,
@@ -60,25 +61,20 @@ interface ElementsPanelProps {
   onUploadAsset: (file: File) => void
   onUploadBackground: (file: File) => void
   /** Extra rail content under the tabs: the document-level background controls live here, beside the layers. */
-  /** Drawer content, rendered only while the drawer is open so a closed drawer costs nothing. */
+  /** Background tab content. The owner asked for a tab next to Elements/Layers/Assets instead of a button that
+   *  opened a sheet: a sheet over the canvas was heavy enough to stall a slower laptop. */
   footer?: () => ReactNode
   footerStatus?: string
 }
 
-type Tab = 'elements' | 'layers' | 'assets'
+type Tab = 'elements' | 'layers' | 'assets' | 'background'
 
 export function ElementsPanel(props: ElementsPanelProps) {
   const [tab, setTab] = useState<Tab>('elements')
   const [query, setQuery] = useState('')
-  const [drawerOpen, setDrawerOpen] = useState(false)
-  useEffect(() => {
-    if (!drawerOpen) return
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setDrawerOpen(false) }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [drawerOpen])
+
   const results = searchWidgets(query)
-  const tabs = ['elements', 'layers', 'assets'] as const
+  const tabs: readonly Tab[] = props.footer ? ['elements', 'layers', 'assets', 'background'] : ['elements', 'layers', 'assets']
   const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
     event.preventDefault()
@@ -97,6 +93,9 @@ export function ElementsPanel(props: ElementsPanelProps) {
         <button role="tab" id="tab-elements" aria-selected={tab === 'elements'} aria-controls="panel-elements" tabIndex={tab === 'elements' ? 0 : -1} className={tab === 'elements' ? 'active' : ''} onClick={() => setTab('elements')}><Plus /> Elements</button>
         <button role="tab" id="tab-layers" aria-selected={tab === 'layers'} aria-controls="panel-layers" tabIndex={tab === 'layers' ? 0 : -1} className={tab === 'layers' ? 'active' : ''} onClick={() => setTab('layers')}><Layers3 /> Layers <span aria-label={`${props.elements.length} layers`}>{props.elements.length}</span></button>
         <button role="tab" id="tab-assets" aria-selected={tab === 'assets'} aria-controls="panel-assets" tabIndex={tab === 'assets' ? 0 : -1} className={tab === 'assets' ? 'active' : ''} onClick={() => setTab('assets')}><ImagePlus /> Assets</button>
+        {props.footer && (
+          <button role="tab" id="tab-background" aria-selected={tab === 'background'} aria-controls="panel-background" tabIndex={tab === 'background' ? 0 : -1} className={tab === 'background' ? 'active' : ''} onClick={() => setTab('background')}><Wand2 /> Background</button>
+        )}
       </div>
 
       {tab === 'elements' && (
@@ -196,26 +195,12 @@ export function ElementsPanel(props: ElementsPanelProps) {
           <div className="limit-note"><strong>Storage note</strong>Embedded images count toward browser storage and snapshot URL size. Use a hosted asset service for production-scale media.</div>
         </div>
       )}
-      {props.footer && (
-        <>
-          <div className={`panel-drawer ${drawerOpen ? 'is-open' : ''}`}>
-            <button type="button" className="panel-drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
-              <span>Animated background</span>
-              <em>{props.footerStatus ?? 'off'}</em>
-            </button>
-          </div>
-          {drawerOpen && (
-            <div className="bg-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDrawerOpen(false) }}>
-              <section className="bg-modal" role="dialog" aria-modal="true" aria-label="Animated background">
-                <header className="bg-modal-head">
-                  <h2>Animated background</h2>
-                  <button type="button" className="bg-modal-close" aria-label="Close background settings" onClick={() => setDrawerOpen(false)}>×</button>
-                </header>
-                <div className="bg-modal-body">{props.footer()}</div>
-              </section>
-            </div>
-          )}
-        </>
+
+      {props.footer && tab === 'background' && (
+        <div className="panel-scroll background-panel" role="tabpanel" id="panel-background" aria-labelledby="tab-background">
+          <div className="panel-heading"><div><h2>Background</h2><p>{props.footerStatus && props.footerStatus !== 'off' ? `Scene: ${props.footerStatus}` : 'Off · the composition is transparent'}</p></div></div>
+          {props.footer()}
+        </div>
       )}
     </aside>
   )
