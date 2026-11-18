@@ -23,8 +23,8 @@ const num = (element: OverlayElement, key: string, fallback = 0) => Number(eleme
 const bool = (element: OverlayElement, key: string, fallback = false) => Boolean(element.props[key] ?? fallback)
 
 const sampleMessages = [
-  { id: 'sample-1', username: 'Roya', content: 'سلام! قاب جدید فوق‌العاده‌ست ✨', createdAt: new Date().toISOString(), color: '#f1d89a', avatar: 'ر', badges: [{ type: 'subscriber', text: 'SUB', count: 6 }] },
-  { id: 'sample-2', username: 'ArashGG', content: 'برای راند بعدی آماده‌ایم!', createdAt: new Date().toISOString(), color: '#67e8f9', avatar: 'A', badges: [{ type: 'vip', text: 'VIP' }] },
+  { id: 'sample-1', username: 'Roya', content: 'This new frame looks great ✨', createdAt: new Date().toISOString(), color: '#f1d89a', avatar: 'ر', badges: [{ type: 'subscriber', text: 'SUB', count: 6 }] },
+  { id: 'sample-2', username: 'ArashGG', content: 'Ready for the next round!', createdAt: new Date().toISOString(), color: '#67e8f9', avatar: 'A', badges: [{ type: 'vip', text: 'VIP' }] },
   { id: 'sample-3', username: 'NovaSky', content: 'That Persian frame is so clean.', createdAt: new Date().toISOString(), color: '#c4b5fd', avatar: 'N', badges: [{ type: 'moderator', text: 'MOD' }] },
 ]
 
@@ -78,7 +78,7 @@ function ChatWidget({ element, runtime, preview }: { element: OverlayElement; ru
   if (runtime && !messages.length) return null
   return (
     <div className={`chat-widget premium-chat ${bool(element, 'scrolling', true) ? 'chat-scroll' : 'chat-stack'}`} dir={text(element, 'direction', 'auto') as 'auto' | 'ltr' | 'rtl'} style={{ fontFamily: fontStack(text(element, 'fontFamily', 'vazirmatn')), fontSize: num(element, 'fontSize', 20), color: text(element, 'textColor', '#fff8e7'), gap: num(element, 'messageSpacing', 14) }}>
-      {!runtime && !preview && <div className="preview-chip">نمونه نمایشی · SAMPLE ONLY</div>}
+      {!runtime && !preview && <div className="preview-chip">SAMPLE ONLY</div>}
       {preview && !messages.length && <div className="chat-empty"><span>{text(element, 'emptyText', 'Chat messages appear here')}</span><small>Your frame, type and colours render now · real messages arrive when the channel is live</small></div>}
       {messages.map((message, index) => (
         <div className={`chat-message live-message entrance-${text(element, 'entrance', 'ornamental')} ${'exiting' in message && message.exiting ? `message-exit-${text(element, 'exit', 'fade')}` : ''}`} key={message.id} style={{ animationDelay: `${index * 60}ms` }}>

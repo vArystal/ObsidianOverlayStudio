@@ -12,11 +12,11 @@ describe('widget preview boundaries', () => {
     const chat = createElement('chat')
     const editor = render(<ElementRenderer element={chat} />)
     expect(screen.getByText(/SAMPLE ONLY/)).toBeTruthy()
-    expect(screen.getByText(/قاب جدید/)).toBeTruthy()
+    expect(screen.getByText(/new frame/)).toBeTruthy()
     editor.unmount()
 
     const runtime = render(<ElementRenderer element={chat} runtime />)
-    expect(runtime.queryByText(/قاب جدید/)).toBeNull()
+    expect(runtime.queryByText(/new frame/)).toBeNull()
     expect(runtime.container.textContent).toBe('')
   })
 

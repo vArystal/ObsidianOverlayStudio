@@ -48,7 +48,7 @@ export const WIDGETS: WidgetDefinition[] = [
     defaults: {
       label: 'NOW STREAMING', fallback: 'Stream title not reported', color: '#f6f6f4', backgroundColor: '#121214',
       backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, textAlign: 'left',
-      maxLines: 2, fontFamily: 'inter', fontSize: 38, fontWeight: 700, showLabel: true,
+      maxLines: 2, fontFamily: 'inter', fontSize: 22, fontWeight: 700, showLabel: true,
     },
   },
   {
@@ -58,7 +58,7 @@ export const WIDGETS: WidgetDefinition[] = [
     defaults: {
       label: 'STATUS', liveText: 'LIVE', offlineText: 'OFFLINE', unknownText: 'UNKNOWN',
       color: '#f6f6f4', liveColor: '#f6f6f4', offlineColor: '#a5a5a2', backgroundColor: '#121214', backgroundOpacity: 0.72,
-      borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, showPulse: true, fontSize: 26, fontWeight: 700,
+      borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, showPulse: true, fontSize: 22, fontWeight: 700,
       fontFamily: 'inter',
     },
   },
@@ -68,7 +68,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: `${KICK} Comes from livestream metadata; hidden until Kick reports one.`,
     defaults: {
       label: 'CATEGORY', fallback: 'Category not reported', color: '#f6f6f4', backgroundColor: '#121214',
-      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 26, fontWeight: 600,
+      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 22, fontWeight: 600,
       fontFamily: 'inter',
     },
   },
@@ -78,7 +78,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: 'Counts from the real start time Kick reports. Offline shows the last known duration or a clear state.',
     defaults: {
       label: 'UPTIME', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderColor: '#2a2a2e',
-      borderWidth: 1, radius: 16, shadow: true, fontSize: 30, fontWeight: 700, fontFamily: 'jetbrains-mono', showHours: true,
+      borderWidth: 1, radius: 16, shadow: true, fontSize: 22, fontWeight: 700, fontFamily: 'inter', showHours: true,
     },
   },
   {
@@ -87,7 +87,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: 'Kick reports active subscribers only. A total follower number does not exist in its public API.',
     defaults: {
       label: 'SUBSCRIBERS', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', backgroundOpacity: 0.72,
-      borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 34, fontWeight: 700, fontFamily: 'inter',
+      borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 22, fontWeight: 700, fontFamily: 'inter',
       unavailableText: 'Not reported',
     },
   },
@@ -98,7 +98,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: 'Built from channel.followed deliveries. Empty until someone actually follows.',
     defaults: {
       label: 'NEW FOLLOWERS', maxItems: 5, color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214',
-      backgroundOpacity: 0.76, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, showAvatars: true,
+      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, showAvatars: true,
       emptyText: 'No follows yet', fontSize: 22, fontWeight: 600, fontFamily: 'inter', showTimestamps: true,
     },
   },
@@ -108,7 +108,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: 'Built from channel.subscription.* deliveries; each row keeps its own kind.',
     defaults: {
       label: 'NEW SUBSCRIBERS', maxItems: 4, color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214',
-      backgroundOpacity: 0.76, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, emptyText: 'No subscribers yet',
+      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, emptyText: 'No subscribers yet',
       fontSize: 22, fontWeight: 600, fontFamily: 'inter', showKinds: true, showTimestamps: false,
     },
   },
@@ -118,8 +118,8 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'kick', availability: 'requires-kick', note: 'Mixed feed ordered by arrival. Chat lines are included only when you switch them on.',
     defaults: {
       label: 'ACTIVITY', maxItems: 6, color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214',
-      backgroundOpacity: 0.76, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, includeChat: true,
-      includeFollows: true, includeSubs: true, emptyText: 'Waiting for the first event', fontSize: 20, fontWeight: 500,
+      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, includeChat: true,
+      includeFollows: true, includeSubs: true, emptyText: 'Waiting for the first event', fontSize: 22, fontWeight: 500,
       fontFamily: 'inter', showTimestamps: true,
     },
   },
@@ -130,7 +130,7 @@ export const WIDGETS: WidgetDefinition[] = [
     data: 'local', availability: 'available', note: 'Runs from the viewer’s clock, so it is correct in OBS without a backend.',
     defaults: {
       label: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderColor: '#2a2a2e',
-      borderWidth: 1, radius: 16, shadow: true, fontSize: 40, fontWeight: 700, fontFamily: 'jetbrains-mono',
+      borderWidth: 1, radius: 16, shadow: true, fontSize: 22, fontWeight: 700, fontFamily: 'inter',
       hour12: false, showSeconds: true, timeZone: '', showLabel: false,
     },
   },
@@ -139,7 +139,7 @@ export const WIDGETS: WidgetDefinition[] = [
     blurb: 'A titled list of your channels and handles', controls: ['content', 'typography', 'colors', 'surface', 'social'],
     data: 'local', availability: 'available', note: 'Plain text, no outbound links in OBS output: a browser source cannot be clicked reliably.',
     defaults: {
-      label: 'FIND ME', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', backgroundOpacity: 0.76,
+      label: 'FIND ME', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', backgroundOpacity: 0.72,
       borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, fontSize: 22, fontWeight: 600, fontFamily: 'inter',
       handlePrefix: '@', layout: 'list',
     },
@@ -177,7 +177,7 @@ export const WIDGETS: WidgetDefinition[] = [
   {
     type: 'chat', label: 'Kick chat', group: 'Community', icon: 'chat', width: 460, height: 560, blurb: 'Live chat with badges and timestamps',
     controls: ['content', 'typography', 'colors', 'surface', 'community'], data: 'kick', availability: 'requires-kick',
-    note: 'Real chat.message.sent deliveries only. Nothing is invented when chat is quiet.', defaults: { emptyText: 'Chat messages appear here', fontFamily: 'vazirmatn', fontSize: 20, textColor: '#f6f6f4', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 18, padding: 14, shadow: true, fontWeight: 600, textAlign: 'left', messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', direction: 'auto' },
+    note: 'Real chat.message.sent deliveries only. Nothing is invented when chat is quiet.', defaults: { emptyText: 'Chat messages appear here', fontFamily: 'inter', fontSize: 22, textColor: '#f6f6f4', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 18, padding: 14, shadow: true, fontWeight: 600, textAlign: 'left', messageSpacing: 14, maxMessages: 7, messageDuration: 28, showUsernames: true, showTimestamps: false, showAvatars: true, showBadges: true, entrance: 'ornamental', exit: 'fade', scrolling: true, dataSource: 'kick', direction: 'auto' },
   },
   {
     type: 'alert', label: 'Event alert', group: 'Alerts', icon: 'alert', width: 560, height: 280, blurb: 'Queued follow and subscription alerts',
