@@ -561,7 +561,17 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 .panel-drawer-toggle em { font-style: normal; text-transform: none; letter-spacing: 0; color: #a1a1a1; font-weight: 600; font-size: 10px; }
 .panel-drawer-toggle:hover { background: #1b1b1b; }
 .panel-drawer-toggle:focus-visible { outline: 2px solid #f6f6f4; outline-offset: -2px; }
-.panel-drawer-body { padding: 0 14px 14px; max-height: 46vh; overflow: auto; }
+.panel-drawer { position: relative; flex: 0 0 auto; }
+/* CP43: the drawer floats above the rail instead of shrinking it. Before this, opening it crushed the widget list
+   to a few pixels, which looked exactly like "all elements disappeared and the section is empty". */
+.panel-drawer-body {
+  position: absolute; bottom: 100%; left: 0; right: 0; z-index: 6;
+  max-height: min(58vh, 420px); overflow: auto; padding: 12px 14px 14px;
+  background: #0d0d0d; border-top: 1px solid #242424;
+  box-shadow: 0 -14px 34px rgba(0, 0, 0, .55);
+}
+/* The list keeps a floor of its own even in a short window. */
+.editor-panel > .panel-scroll { min-height: 180px; }
 /* CP42: a toast needs a way out that is not waiting. */
 .toast { display: flex; align-items: center; gap: 10px; }
 .toast > button {

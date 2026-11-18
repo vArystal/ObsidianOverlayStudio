@@ -114,3 +114,19 @@ describe('CP21 background engine', () => {
     expect(grid.controls).toContain('scale')
   })
 })
+
+/**
+ * CP43: there is no "no scene" state to get stuck in. `none` is not a registered scene, so any stored `none` resolves
+ * to a real one, and an enabled background therefore always paints something.
+ */
+describe('a stored scene name always resolves to a real scene', () => {
+  it('turns a stored "none" into a real scene', () => {
+    const fixed = normalizeBackground({ enabled: true, kind: 'none' })
+    expect(fixed.kind).toBe('aurora-flow')
+    expect(fixed.enabled).toBe(true)
+  })
+
+  it('keeps a registered scene exactly as stored', () => {
+    expect(normalizeBackground({ enabled: true, kind: 'neon-grid' }).kind).toBe('neon-grid')
+  })
+})
