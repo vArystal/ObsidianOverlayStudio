@@ -200,3 +200,24 @@ describe('history exactness under StrictMode', () => {
     await waitFor(() => expect(screen.getByLabelText('Lower third layer')).toBeTruthy())
   })
 })
+
+/**
+ * CP44: the published strip sat over the canvas with no way out except unpublishing. It is dismissible now, and the
+ * dismissal is tied to that publication so a new publish is announced again.
+ */
+describe('published status strip', () => {
+  it('can be dismissed without unpublishing, and stays dismissed for the same publication', () => {
+    const scene = createEmptyOverlay('Published scene')
+    saveOverlay({ ...scene, publishedAt: '2026-11-18T00:00:00.000Z' })
+    const first = renderEditor(scene.id)
+    expect(screen.getByText(/published as a snapshot/i)).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Dismiss published notice'))
+    expect(screen.queryByText(/published as a snapshot/i)).toBeNull()
+    // The publication is untouched: the toolbar still marks it as published.
+    expect(screen.getByLabelText('Published')).toBeTruthy()
+    first.unmount()
+    // Reopening the same publication keeps the strip closed.
+    renderEditor(scene.id)
+    expect(screen.queryByText(/published as a snapshot/i)).toBeNull()
+  })
+})

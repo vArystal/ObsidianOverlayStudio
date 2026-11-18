@@ -23,6 +23,7 @@ import { getTheme } from '../lib/themes'
 import { buildHashUrl } from '../lib/urls'
 import type { LiveOverlayEvent, ElementType, Overlay, OverlayElement } from '../types'
 
+const PUBLISH_NOTICE_KEY = 'obsidian-publish-notice-v1'
 const VALID_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp']
 
 function readFile(file: File): Promise<string> {
@@ -60,6 +61,15 @@ export function OverlayEditor() {
   const alertHealth = useSyncExternalStore(subscribeAlertHealth, getAlertHealth)
   const [publishIssue, setPublishIssue] = useState('')
   const [unpublishOpen, setUnpublishOpen] = useState(false)
+  // CP44: the published strip is a status, not a modal. It sits over the canvas until the author hides it, and it
+  // comes back only when a different publication exists, so hiding it never hides a new publish.
+  const [dismissedPublish, setDismissedPublish] = useState<string>(() => localStorage.getItem(PUBLISH_NOTICE_KEY) ?? '')
+  const publishMark = overlay?.publishedAt ?? (overlay?.live?.runtimeKey ? 'live' : '')
+  const publishStripVisible = !!publishMark && dismissedPublish !== publishMark
+  const dismissPublishStrip = useCallback(() => {
+    setDismissedPublish(publishMark)
+    localStorage.setItem(PUBLISH_NOTICE_KEY, publishMark)
+  }, [publishMark])
   const [publishVerdict, setPublishVerdict] = useState<{ level: 'ok' | 'warn' | 'blocked'; message: string } | null>(null)
   const [mobilePanel, setMobilePanel] = useState<'left' | 'right' | null>(null)
   const interactionStart = useRef<Overlay | null>(null)
@@ -438,6 +448,8 @@ export function OverlayEditor() {
     }
     commit((value) => ({ ...value, publishedAt: null, live: value.live ? { ...value.live, runtimeKey: '' } : value.live }))
     setPublishIssue('')
+    setDismissedPublish('')
+    localStorage.removeItem(PUBLISH_NOTICE_KEY)
     setNotice('Publication revoked — the runtime key no longer resolves')
   }
 
@@ -523,6 +535,7 @@ export function OverlayEditor() {
     <AppShell>
       <main className={`editor-page ${preview ? 'is-previewing' : ''} ${mobilePanel ? `show-${mobilePanel}` : ''}`}>
         <EditorToolbar
+            published={!!publishMark}
           name={overlay.name} dirty={dirty} saving={saving} saveError={saveError}
           canUndo={historyNonce >= 0 && historyRef.current.past.length > 0} canRedo={historyNonce >= 0 && historyRef.current.future.length > 0} preview={preview}
           resolution={resolution} themeId={overlay.theme.id} zoomPercent={Math.round(actualScale * 100)}
@@ -586,10 +599,13 @@ export function OverlayEditor() {
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
         {alertHealth.degraded && <div className="publish-issue degraded" role="status"><AlertTriangle aria-hidden="true" /><span>{alertHealth.message}</span></div>}
         {publishIssue && <div className="publish-issue" role="alert"><AlertTriangle aria-hidden="true" /><span>{publishIssue}</span></div>}
-        {(overlay.publishedAt || overlay.live?.runtimeKey) && (
+        {publishStripVisible && (
           <div className="publish-issue actions">
             <span>{overlay.live?.runtimeKey ? 'This overlay has a live runtime attached.' : 'This overlay is published as a snapshot.'}</span>
-            <button type="button" className="secondary-button" onClick={() => setUnpublishOpen(true)}>Unpublish</button>
+            <div className="publish-issue-actions">
+              <button type="button" className="secondary-button" onClick={() => setUnpublishOpen(true)}>Unpublish</button>
+              <button type="button" className="publish-issue-close" aria-label="Dismiss published notice" onClick={dismissPublishStrip}><X aria-hidden="true" /></button>
+            </div>
           </div>
         )}
         <ConfirmDialog

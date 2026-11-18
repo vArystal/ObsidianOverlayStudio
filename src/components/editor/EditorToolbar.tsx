@@ -21,6 +21,8 @@ interface EditorToolbarProps {
   dirty: boolean
   saving: boolean
   saveError: string
+  /** Keeps the published state visible after the status strip is dismissed. */
+  published?: boolean
   canUndo: boolean
   canRedo: boolean
   preview: boolean
@@ -88,7 +90,7 @@ export function EditorToolbar(props: EditorToolbarProps) {
       </div>
       {props.selectedIsTestable && <button className="toolbar-button test-button" onClick={props.onTest}><Zap /> Test widget</button>}
       <div className="toolbar-spacer" />
-      <button className="toolbar-button" onClick={props.onCopyUrl} title="Publish this composition and copy its OBS browser source URL"><Copy /> Publish</button>
+      <button className="toolbar-button" onClick={props.onCopyUrl} title={props.published ? 'Published. Publishing again replaces the live snapshot and copies its OBS browser source URL' : 'Publish this composition and copy its OBS browser source URL'}><Copy /> Publish{props.published && <span className="published-dot" aria-label="Published" title="Published" />}</button>
       <button className="primary-button compact" onClick={props.onSave}><Save /> Save</button>
     </div>
   )

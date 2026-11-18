@@ -580,3 +580,13 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 }
 .toast > button:hover { background: rgba(255,255,255,.08); }
 .toast > button svg { width: 16px; height: 16px; }
+
+/* CP44: a status strip the author can close, and the marker that keeps the fact visible afterwards. */
+.publish-issue-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.publish-issue-close {
+  width: 44px; height: 44px; display: grid; place-items: center; flex: none;
+  margin: -8px -8px -8px 0; border: 0; border-radius: 8px; background: transparent; color: inherit; cursor: pointer;
+}
+.publish-issue-close:hover { background: rgba(255, 255, 255, .08); }
+.publish-issue-close svg { width: 15px; height: 15px; }
+.published-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; margin-left: 2px; }
