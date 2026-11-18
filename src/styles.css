@@ -392,8 +392,9 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slide-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes scale-in { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+/* Studio chrome only. The stage used to be caught by this global rule, which froze the broadcast graphic. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
+  .app-shell *, .app-shell *::before, .app-shell *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
 
 @media (max-width: 1250px) {

@@ -112,7 +112,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; }
+  .app-shell { --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; }
 }
 
 /* ---------------------------------------------------------------- Theme textures

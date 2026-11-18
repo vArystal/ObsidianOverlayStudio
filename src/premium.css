@@ -113,9 +113,10 @@ body:not(.runtime-root) {
 @keyframes number-pop { from { opacity: .35; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
 .static-motion *, .static-motion *::before, .static-motion *::after { animation: none !important; transition: none !important; }
-@media (prefers-reduced-motion: reduce) {
-  .canvas-stage *, .canvas-stage *::before, .canvas-stage *::after, .overlay-runtime *, .overlay-runtime *::before, .overlay-runtime *::after { animation: none !important; transition: none !important; }
-}
+/* The output surface is the product: it holds still only when the author says so, or when the operator asks for
+   calm output with ?motion=calm on a machine that prefers reduced motion. */
+.static-motion *, .static-motion *::before, .static-motion *::after,
+.calm-motion *, .calm-motion *::before, .calm-motion *::after { animation: none !important; transition: none !important; }
 
 /* Theme selector and inspector additions. */
 .theme-control { min-width: 145px; border-color: rgba(235, 235, 235,.22); }

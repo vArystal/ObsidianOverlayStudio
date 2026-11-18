@@ -81,9 +81,7 @@
 @keyframes alert-pop { 0% { opacity: 0; transform: scale(.88); } 60% { opacity: 1; transform: scale(1.02); } 100% { transform: scale(1); } }
 @keyframes alert-ornamental { 0% { opacity: 0; transform: translateY(10px) scale(.97); } 70% { opacity: 1; } 100% { transform: translateY(0) scale(1); } }
 
-@media (prefers-reduced-motion: reduce) {
-  .alert-stage { animation: none !important; }
-}
+.static-motion .alert-stage, .calm-motion .alert-stage { animation: none !important; }
 
 /* ------------------------------------------------------------------ studio */
 

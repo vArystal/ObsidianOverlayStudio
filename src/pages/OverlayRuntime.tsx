@@ -52,7 +52,7 @@ export function OverlayRuntime() {
   }
   return (
     <LiveDataProvider config={overlay.live} testMode={testMode}>
-      <main className={`overlay-runtime theme-${theme.id} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={themeCssVars(theme) as CSSProperties}>
+      <main className={`overlay-runtime theme-${theme.id} ${overlay.staticMotion ? 'static-motion' : ''} ${calm && prefersReducedMotion ? 'calm-motion' : ''}`} aria-label={`${overlay.name} output`} style={themeCssVars(theme) as CSSProperties}>
         {testMode && <div className="runtime-test-mode" role="status">TEST MODE · SYNTHETIC EVENTS · NOT FOR AIR</div>}
         {diag && (
           <div className="runtime-diagnostics" role="status" data-pixel-perfect={pixelPerfect}>

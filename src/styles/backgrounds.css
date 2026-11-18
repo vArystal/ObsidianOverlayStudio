@@ -204,9 +204,7 @@
 /* ---------------------------------------------------------------- preferences
    A viewer who asks for less motion gets the scene, not the movement. The editor keeps its own default so an
    author can still judge the effect, and a paused background freezes the same way. */
-@media (prefers-reduced-motion: reduce) {
-  .overlay-background.is-animated * { animation: none !important; }
-}
+.overlay-background.is-still * { animation: none !important; }
 
 /* Opacity-only weather: the ribbons keep their painted shape and trade brightness, which the compositor can do
    without touching pixels. This is what lifted Aurora from 18fps to the frame budget at 1920. */
