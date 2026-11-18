@@ -68,10 +68,11 @@ export function OverlayStage(props: OverlayStageProps) {
     () => overlay.elements.filter((element) => element.visible && (editor || element.includeInOutput)),
     [overlay.elements, editor],
   )
-  const shift = props.offset && (props.offset.x || props.offset.y) ? `translate(${props.offset.x}px, ${props.offset.y}px) ` : ''
   const scaleStyle: CSSProperties = props.scaleMode === 'zoom' && Math.abs(props.scale - 1) > 0.001
-    ? { zoom: props.scale, ...(shift ? { transform: shift.trim() } : {}) }
-    : { transform: `${shift}scale(${props.scale})` }
+    ? { zoom: props.scale }
+    : { transform: `scale(${props.scale})` }
+  // Offsets are layout, not transform: a translate inside a scaled transform is multiplied by that scale.
+  const offsetStyle: CSSProperties = props.offset ? { left: props.offset.x, top: props.offset.y } : {}
 
   return (
     <div
@@ -81,6 +82,7 @@ export function OverlayStage(props: OverlayStageProps) {
       style={{
         width: overlay.width,
         height: overlay.height,
+        ...offsetStyle,
         ...scaleStyle,
         ...props.style,
       }}
