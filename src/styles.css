@@ -562,14 +562,26 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 .panel-drawer-toggle:hover { background: #1b1b1b; }
 .panel-drawer-toggle:focus-visible { outline: 2px solid #f6f6f4; outline-offset: -2px; }
 .panel-drawer { position: relative; flex: 0 0 auto; }
-/* CP43: the drawer floats above the rail instead of shrinking it. Before this, opening it crushed the widget list
-   to a few pixels, which looked exactly like "all elements disappeared and the section is empty". */
-.panel-drawer-body {
-  position: absolute; bottom: 100%; left: 0; right: 0; z-index: 6;
-  max-height: min(58vh, 420px); overflow: auto; padding: 12px 14px 14px;
-  background: #0d0d0d; border-top: 1px solid #242424;
-  box-shadow: 0 -14px 34px rgba(0, 0, 0, .55);
+/* CP45: the background editor is a modal sheet. An in-rail popover was clipped by its ancestors, so the enable
+   switch and the scene gallery sat above the fold and the panel looked empty until you scrolled. */
+.bg-modal-backdrop {
+  position: fixed; inset: 0; z-index: 120; display: grid; place-items: center;
+  padding: 24px; background: rgba(8, 8, 9, .72);
 }
+.bg-modal {
+  display: flex; flex-direction: column; width: min(520px, 100%); max-height: min(86vh, 760px);
+  background: #101012; border: 1px solid #2a2a2e; border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .6); overflow: hidden;
+}
+.bg-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 6px 6px 18px; border-bottom: 1px solid #242428; }
+.bg-modal-head h2 { margin: 0; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #f6f6f4; }
+.bg-modal-close {
+  width: 44px; height: 44px; display: grid; place-items: center; font-size: 20px; line-height: 1;
+  background: transparent; border: 0; border-radius: 10px; color: #d6d6d3; cursor: pointer;
+}
+.bg-modal-close:hover { background: rgba(255, 255, 255, .08); color: #fff; }
+.bg-modal-close:focus-visible { outline: 2px solid #f6f6f4; outline-offset: -2px; }
+.bg-modal-body { padding: 16px 18px 20px; overflow: auto; }
 /* The list keeps a floor of its own even in a short window. */
 .editor-panel > .panel-scroll { min-height: 180px; }
 /* CP42: a toast needs a way out that is not waiting. */

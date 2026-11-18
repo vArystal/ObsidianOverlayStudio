@@ -39,12 +39,17 @@ export function OverlayRuntime() {
   // Test mode is opt-in per source URL, so an operator can check the wiring in OBS without waiting for a
   // real event, and a normal source can never be contaminated by the test buttons on Integrations.
   const testMode = params.get('test') === '1'
+  const calm = params.get('motion') === 'calm'
   // ?diag=1 exists because an OBS browser source is a black box: the operator needs to see the size and pixel
   // ratio OBS actually reports, and whether the stage is landing on whole pixels, without opening devtools.
   const diag = params.get('diag') === '1'
   const devicePixels = { width: Math.round(overlay.width * scale), height: Math.round(overlay.height * scale) }
   const exact = Math.abs(devicePixels.width - overlay.width * scale) < 0.01 && Math.abs(devicePixels.height - overlay.height * scale) < 0.01
   const pixelPerfect = Math.abs(scale - 1) < 0.001 && exact
+  const offset = {
+    x: Math.max(0, Math.round((viewport.width - overlay.width * scale) / 2)),
+    y: Math.max(0, Math.round((viewport.height - overlay.height * scale) / 2)),
+  }
   return (
     <LiveDataProvider config={overlay.live} testMode={testMode}>
       <main className={`overlay-runtime theme-${theme.id} ${overlay.staticMotion ? 'static-motion' : ''}`} aria-label={`${overlay.name} output`} style={themeCssVars(theme) as CSSProperties}>
@@ -58,13 +63,14 @@ export function OverlayRuntime() {
           </div>
         )}
         <OverlayStage
+          offset={offset}
           overlay={overlay}
           theme={theme}
           mode="runtime"
           scale={scale}
           scaleMode={fit === 'stretch' ? 'transform' : zoomable ? 'zoom' : 'transform'}
-          staticElements={overlay.staticMotion || prefersReducedMotion}
-          reducedMotion={overlay.staticMotion || prefersReducedMotion}
+          staticElements={overlay.staticMotion || (calm && prefersReducedMotion)}
+          reducedMotion={overlay.staticMotion || (calm && prefersReducedMotion)}
           style={fit === 'stretch' ? { width: '100%', height: '100%', transform: 'none' } : undefined}
           stageAttributes={{
             'data-scale-mode': fit === 'stretch' ? 'stretch' : zoomable && Math.abs(scale - 1) > 0.001 ? 'zoom' : 'transform',

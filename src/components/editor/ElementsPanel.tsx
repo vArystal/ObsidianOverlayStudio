@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   AlignJustify,
@@ -71,6 +71,12 @@ export function ElementsPanel(props: ElementsPanelProps) {
   const [tab, setTab] = useState<Tab>('elements')
   const [query, setQuery] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  useEffect(() => {
+    if (!drawerOpen) return
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setDrawerOpen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [drawerOpen])
   const results = searchWidgets(query)
   const tabs = ['elements', 'layers', 'assets'] as const
   const handleTabKey = (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -191,13 +197,25 @@ export function ElementsPanel(props: ElementsPanelProps) {
         </div>
       )}
       {props.footer && (
-        <div className={`panel-drawer ${drawerOpen ? 'is-open' : ''}`}>
-          <button type="button" className="panel-drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen((open) => !open)}>
-            <span>Animated background</span>
-            <em>{props.footerStatus ?? 'off'}</em>
-          </button>
-          {drawerOpen && <div className="panel-drawer-body">{props.footer()}</div>}
-        </div>
+        <>
+          <div className={`panel-drawer ${drawerOpen ? 'is-open' : ''}`}>
+            <button type="button" className="panel-drawer-toggle" aria-expanded={drawerOpen} onClick={() => setDrawerOpen(true)}>
+              <span>Animated background</span>
+              <em>{props.footerStatus ?? 'off'}</em>
+            </button>
+          </div>
+          {drawerOpen && (
+            <div className="bg-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setDrawerOpen(false) }}>
+              <section className="bg-modal" role="dialog" aria-modal="true" aria-label="Animated background">
+                <header className="bg-modal-head">
+                  <h2>Animated background</h2>
+                  <button type="button" className="bg-modal-close" aria-label="Close background settings" onClick={() => setDrawerOpen(false)}>×</button>
+                </header>
+                <div className="bg-modal-body">{props.footer()}</div>
+              </section>
+            </div>
+          )}
+        </>
       )}
     </aside>
   )

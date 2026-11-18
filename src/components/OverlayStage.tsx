@@ -29,6 +29,8 @@ export interface OverlayStageProps {
   scale: number
   /** `zoom` keeps glyphs crisp under scaling (OBS); `transform` is the fallback and stretches nothing. */
   scaleMode?: 'zoom' | 'transform'
+  /** Letterbox offset, so a stage that does not fill the viewport is centred instead of pinned to the corner. */
+  offset?: { x: number; y: number }
   /** True when entrance and idle effects must hold still (staticMotion, or reduced motion in the runtime). */
   staticElements: boolean
   /** True when the animated background must hold still. */
@@ -66,9 +68,10 @@ export function OverlayStage(props: OverlayStageProps) {
     () => overlay.elements.filter((element) => element.visible && (editor || element.includeInOutput)),
     [overlay.elements, editor],
   )
+  const shift = props.offset && (props.offset.x || props.offset.y) ? `translate(${props.offset.x}px, ${props.offset.y}px) ` : ''
   const scaleStyle: CSSProperties = props.scaleMode === 'zoom' && Math.abs(props.scale - 1) > 0.001
-    ? { zoom: props.scale }
-    : { transform: `scale(${props.scale})` }
+    ? { zoom: props.scale, ...(shift ? { transform: shift.trim() } : {}) }
+    : { transform: `${shift}scale(${props.scale})` }
 
   return (
     <div
