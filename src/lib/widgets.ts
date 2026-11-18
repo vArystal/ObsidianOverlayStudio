@@ -199,7 +199,7 @@ export const WIDGETS: WidgetDefinition[] = [
   {
     type: 'viewerCount', label: 'Live viewers', group: 'Stream', icon: 'viewer', width: 300, height: 104, blurb: 'Kick viewer count with honest states',
     controls: ['content', 'typography', 'colors', 'surface'], data: 'kick', availability: 'requires-kick',
-    note: 'Stale, offline, unreachable and unconnected are four different states and are labelled as such.', defaults: { label: 'بیننده زنده', offlineText: 'آفلاین', unavailableText: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
+    note: 'Stale, offline and unreachable are labelled; an unconnected overlay stays silent.', defaults: { label: 'Live viewers', offlineText: 'Offline', unavailableText: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
   {
     type: 'sessionFollowers', label: 'Follows this session', group: 'Community', icon: 'followers', width: 300, height: 104,
@@ -214,7 +214,7 @@ export const WIDGETS: WidgetDefinition[] = [
   {
     type: 'supporter', label: 'Latest supporter', group: 'Goals', icon: 'supporter', width: 430, height: 108,
     blurb: 'Donation slot', controls: ['content', 'colors', 'surface', 'data'], data: 'none', availability: 'unsupported',
-    note: 'No donation provider is connected to this project, so this widget is excluded from OBS output.', defaults: { label: 'آخرین حامی', value: 'Donation provider not connected', dataSource: 'none', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
+    note: 'No donation provider is connected to this project, so this widget is excluded from OBS output.', defaults: { label: 'Latest supporter', value: '—', dataSource: 'none', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
 ]
 

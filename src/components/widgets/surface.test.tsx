@@ -72,6 +72,6 @@ describe('legacy widgets share the CP24 surface', () => {
         <ElementRenderer element={blank} runtime />
       </LiveDataContext.Provider>,
     )
-    expect(second.container.textContent).toContain('Not connected')
+    expect(second.container.textContent).not.toMatch(/not connected/i)
   })
 })

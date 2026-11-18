@@ -75,13 +75,16 @@ describe('stream widgets read real data and name every absence', () => {
     subs.unmount()
   })
 
-  it('labels a disconnected channel and never renders a number for it', () => {
+  it('stays silent about our own connection and never renders a number for it', () => {
+    // CP48: the owner asked for the connection notice to leave the output entirely. An unconnected overlay shows the
+    // neutral placeholder and no explanation, so the audience never reads our plumbing.
     const state = liveState({ state: 'disconnected', configured: false, stream: null, channel: null, recentFollowers: [], activities: [] })
     const subs = mount(createElement('subscriberCount'), state)
-    expect(screen.getByText('Kick not connected')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/not connected|kick/i)
+    expect(screen.queryByText('0')).toBeNull()
     subs.unmount()
     mount(createElement('recentFollowers'), state)
-    expect(screen.getByText('Kick not connected')).toBeTruthy()
+    expect(document.body.textContent).not.toMatch(/not connected|kick/i)
   })
 
   it('says loading while connecting and error when the channel is broken', () => {

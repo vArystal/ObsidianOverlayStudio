@@ -125,36 +125,38 @@ describe('viewer metric honesty', () => {
   it('shows the live count and marks it live', () => {
     const el = renderViewer({ status: 'live', count: 128, updatedAt: new Date().toISOString() })
     expect(el.querySelector('.live-metric strong')?.textContent).toBe('128')
-    expect(el.querySelector('.live-metric em')?.textContent).toBe('LIVE')
+    expect(el.querySelector('.live-metric em')?.textContent).toBe('Live')
   })
 
   it('keeps a stale count visible and labels it stale instead of offline', () => {
     const el = renderViewer({ status: 'stale', count: 42, updatedAt: new Date(Date.now() - 600_000).toISOString() })
     expect(el.querySelector('.live-metric strong')?.textContent).toBe('42')
-    expect(el.querySelector('.live-metric em')?.textContent).toBe('CACHED · STALE')
+    expect(el.querySelector('.live-metric em')?.textContent).toBe('Cached')
     expect(el.querySelector('.live-metric')?.className).toContain('viewer-stale')
   })
 
   it('renders offline for an offline channel without inventing a number', () => {
     const el = renderViewer({ status: 'offline', count: null, updatedAt: null })
-    expect(el.querySelector('.live-metric strong')?.textContent).toBe('آفلاین')
+    expect(el.querySelector('.live-metric strong')?.textContent).toBe('Offline')
     expect(el.querySelector('.live-metric strong')?.textContent).not.toBe('0')
   })
 
   it('never turns an API failure into zero viewers', () => {
     const el = renderViewer({ status: 'unavailable', count: null, updatedAt: null })
     expect(el.querySelector('.live-metric strong')?.textContent).toBe('Unavailable')
-    expect(el.querySelector('.live-metric em')?.textContent).toBe('KICK API UNREACHABLE')
+    expect(el.querySelector('.live-metric em')?.textContent).toBe('Unavailable')
   })
 
-  it('says not connected, not unreachable, when no Kick connection is attached at all', () => {
+  it('says nothing about our own connection when Kick is not attached', () => {
     const el = render(
       <LiveDataContext.Provider value={{ state: 'disconnected', messages: [], viewer: { status: 'unavailable', count: null, updatedAt: null }, latestFollower: null, sessionFollowerCount: 0, alerts: [], lastEventAt: null, configured: false }}>
         <ElementRenderer element={createElement('viewerCount')} runtime />
       </LiveDataContext.Provider>,
     ).container
-    expect(el.querySelector('.live-metric strong')?.textContent).toBe('Not connected')
-    expect(el.querySelector('.live-metric em')?.textContent).toBe('KICK NOT CONNECTED')
+    // The operator knows whether Kick is attached; the audience must never read our plumbing.
+    expect(el.querySelector('.live-metric strong')?.textContent).toBe('—')
+    expect(el.querySelector('.live-metric em')).toBeNull()
+    expect(el.textContent).not.toMatch(/not connected|kick/i)
   })
 })
 
@@ -314,7 +316,8 @@ describe('preview mode shows design, never fake data or TEST labels', () => {
   it('does not claim a live API reading in the editor', () => {
     const viewer = createElement('viewerCount')
     const { container } = render(<ElementRenderer element={viewer} preview />)
-    expect(container.textContent).toContain('LIVE WHEN CONNECTED')
+    // CP48: the editor no longer prints a connection caption either, so a clean preview stays clean.
+    expect(container.textContent).not.toMatch(/connected|kick/i)
     expect(container.textContent).not.toContain('LIVE API PREVIEW')
   })
 })

@@ -73,7 +73,7 @@ export const PHASE_TEXT: Record<WidgetPhase, string> = {
   live: '',
   loading: 'Connecting…',
   empty: '',
-  disconnected: 'Kick not connected',
+  disconnected: '—',
   unavailable: 'Not reported',
   error: 'Connection problem',
 }

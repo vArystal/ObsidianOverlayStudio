@@ -5,6 +5,7 @@ import { useLiveData } from './LiveDataProvider'
 import { resolveDecoration } from '../lib/themes'
 import { containerStyle } from '../lib/elements'
 import { fontStack, isFontMissing, readTypography, textBoxStyle, typographyStyle } from '../lib/typography'
+import { WIDGET_COPY } from '../lib/widgetCopy'
 import { shellElement, renderKickWidget, Shell } from './widgets'
 import { AlertRuntime, useAlertSurface } from './alerts/AlertRuntime'
 import type { OverlayElement, OverlayTheme } from '../types'
@@ -263,14 +264,15 @@ function ElementContent({ element, runtime, preview }: { element: OverlayElement
       const connected = live.configured !== false
       // A blank text prop means "use the honest default for this state", so an empty inspector field can never
       // collapse "not connected" and "API unreachable" into one label.
-      const value = known ? live.viewer.count : status === 'offline' ? (text(element, 'offlineText') || 'آفلاین') : (text(element, 'unavailableText') || (connected ? 'Unavailable' : 'Not connected'))
-      const caption = !runtime ? 'LIVE WHEN CONNECTED' : !connected ? 'KICK NOT CONNECTED' : status === 'stale' ? 'CACHED · STALE' : status === 'unavailable' ? 'KICK API UNREACHABLE' : status === 'offline' ? 'OFFLINE' : 'LIVE'
+      const value = known ? live.viewer.count : status === 'offline' ? (text(element, 'offlineText') || WIDGET_COPY.offline) : (text(element, 'unavailableText') || (connected ? WIDGET_COPY.unavailable : WIDGET_COPY.placeholder))
+      // A missing Kick connection prints nothing: the caption describes the stream, never our wiring.
+      const caption = !runtime || !connected ? '' : status === 'stale' ? WIDGET_COPY.stale : status === 'unavailable' ? WIDGET_COPY.unavailable : status === 'offline' ? WIDGET_COPY.offline : WIDGET_COPY.live
       // Surface props (background, border, radius, shadow, padding, font) come from the shared Shell, exactly as
       // the CP24 widgets do; only the live states and geometry below are specific to this widget.
-      return <Shell element={element} className={`metric-widget live-metric viewer-${status}`}><Eye /><small>{text(element, 'label', 'بیننده زنده')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong><em>{caption}</em></Shell>
+      return <Shell element={element} className={`metric-widget live-metric viewer-${status}`}><Eye /><small>{text(element, 'label', 'Live viewers')}</small><strong key={String(live.viewer.count)} className="number-transition">{value}</strong>{caption && <em>{caption}</em>}</Shell>
     }
-    case 'sessionFollowers': return <Shell element={element} className="metric-widget live-metric"><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>{runtime ? 'follows this session' : 'follows this session · live'}</em></Shell>
-    case 'latestFollower': return <Shell element={element} className="supporter-widget"><UserRound /><span><small>{text(element, 'label')}</small><strong>{live.latestFollower?.username || text(element, 'emptyText', 'No follower yet')}</strong></span><em>{live.latestFollower ? 'latest follow' : 'updates on the next real follow'}</em></Shell>
+    case 'sessionFollowers': return <Shell element={element} className="metric-widget live-metric"><UserPlus /><small>{text(element, 'label')}</small><strong key={live.sessionFollowerCount} className="number-transition">{runtime ? live.sessionFollowerCount : num(element, 'startValue', 0)}</strong><em>{WIDGET_COPY.sessionFollows}</em></Shell>
+    case 'latestFollower': return <Shell element={element} className="supporter-widget"><UserRound /><span><small>{text(element, 'label')}</small><strong>{live.latestFollower?.username || text(element, 'emptyText', 'No follower yet')}</strong></span><em>{live.latestFollower ? WIDGET_COPY.latestFollow : WIDGET_COPY.awaitingFollow}</em></Shell>
     case 'supporter': if (runtime && text(element, 'dataSource', 'none') === 'none') return null; return <Shell element={element} className="supporter-widget"><UserRound /><span><small>{text(element, 'label')}</small><strong>{text(element, 'value')}</strong></span>{!runtime && <Radio className="offline-indicator" />}</Shell>
     default: return <div>{String(p.label ?? element.name)}</div>
   }

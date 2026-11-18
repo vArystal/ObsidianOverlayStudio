@@ -603,3 +603,13 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
 .publish-issue-close:hover { background: rgba(255, 255, 255, .08); }
 .publish-issue-close svg { width: 15px; height: 15px; }
 .published-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; margin-left: 2px; }
+
+/* CP48: a contained failure instead of a blank page. */
+.boundary-fallback {
+  position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 80;
+  display: grid; gap: 10px; max-width: 420px; padding: 18px 20px;
+  background: #141416; color: #f6f6f4; border: 1px solid #2a2a2e; border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55); font-size: 13px;
+}
+.boundary-fallback p { margin: 0; color: #a9adb3; font-size: 12px; }
+.boundary-fallback .secondary-button { min-height: 44px; }

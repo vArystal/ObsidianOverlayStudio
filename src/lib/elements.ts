@@ -73,7 +73,7 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
       return { ...item, x: 700, y: 100, width: 560, height: 280, // CP39: title, message, image, audio and routing belong to overlay.alerts.templates; the element carries layout only.
       props: { textColor: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214' }, animation: { ...createAnimation('pop'), exit: 'scale', idle: 'sparkle', holdDuration: 5500 } }
     case 'goal':
-      return { ...item, width: 580, height: 132, props: { title: 'هدف حمایت', target: 1000, current: 0, currency: '€', trackColor: '#232326', fillColor: '#e8e8e6', textColor: '#f6f6f4', dataSource: 'preview', borderRadius: 12, includePreviewOutput: false } }
+      return { ...item, width: 580, height: 132, props: { title: 'Support goal', target: 1000, current: 0, currency: '€', trackColor: '#232326', fillColor: '#e8e8e6', textColor: '#f6f6f4', dataSource: 'preview', borderRadius: 12, includePreviewOutput: false } }
     case 'shape':
       return { ...item, width: 420, height: 240, props: { shape: 'rectangle', fillColor: '#6d28a8', fillOpacity: 0.16, borderColor: '#e8e8e6', borderWidth: 2, borderRadius: 24 } }
     case 'container':
@@ -84,11 +84,11 @@ export function createElement(type: ElementType, index = 0): OverlayElement {
     case 'counter':
       return { ...item, width: 320, height: 138, props: { label: 'پیروزی‌ها', value: 12, color: '#f6f6f4', backgroundColor: '#121214', accentColor: '#e8e8e6' }, animation: { ...createAnimation('pop'), idle: 'glow' } }
     case 'countdown':
-      return { ...item, width: 390, height: 145, props: { label: 'شروع استریم تا', minutes: 10, color: '#f6f6f4', backgroundColor: '#121214', accentColor: '#e8e8e6' } }
+      return { ...item, width: 390, height: 145, props: { label: 'Stream starts in', minutes: 10, color: '#f6f6f4', backgroundColor: '#121214', accentColor: '#e8e8e6' } }
     case 'supporter':
-      return { ...item, width: 430, height: 108, props: { label: 'آخرین حامی', value: 'Donation provider not connected', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', dataSource: 'none' } }
+      return { ...item, width: 430, height: 108, props: { label: 'Latest supporter', value: '—', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', dataSource: 'none' } }
     case 'viewerCount':
-      return { ...item, width: 300, height: 126, props: { label: 'بیننده زنده', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', offlineText: 'آفلاین' }, animation: { ...createAnimation('fade'), idle: 'glow' } }
+      return { ...item, width: 300, height: 126, props: { label: 'Live viewers', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', offlineText: 'Offline' }, animation: { ...createAnimation('fade'), idle: 'glow' } }
     case 'sessionFollowers':
       return { ...item, width: 330, height: 126, props: { label: 'دنبال‌کننده این نشست', color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', startValue: 0 }, animation: createAnimation('pop') }
     case 'latestFollower':

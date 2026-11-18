@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, useSyncE
 import { Link, useParams } from 'react-router-dom'
 import { AlertTriangle, Check, ChevronLeft, Copy, Info, Layers3, PanelLeft, PanelRight, X } from 'lucide-react'
 import { AppShell } from '../components/AppShell'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Canvas } from '../components/editor/Canvas'
 import { CanvasControls } from '../components/editor/CanvasControls'
 import { EditorToolbar } from '../components/editor/EditorToolbar'
@@ -552,6 +553,7 @@ export function OverlayEditor() {
           <button onClick={() => setMobilePanel(mobilePanel === 'left' ? null : 'left')}><PanelLeft /> Elements & layers</button>
           <button onClick={() => setMobilePanel(mobilePanel === 'right' ? null : 'right')}><PanelRight /> Properties</button>
         </div>
+        <ErrorBoundary scope="canvas">
         <div className="editor-workspace">
           <ElementsPanel
             elements={overlay.elements} selectedId={selectedId} onAdd={addElement} onSelect={(value) => { setSelectedId(value); setPreview(false) }}
@@ -596,6 +598,7 @@ export function OverlayEditor() {
             onAttachLive={() => { const live = getPublicIntegrationConfig(); if (!live) { setNotice('Connect Kick from Integrations first'); return } commit((item) => ({ ...item, live })); setNotice(`Kick channel ${live.channelName} attached`) }}
           />
         </div>
+        </ErrorBoundary>
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
         {alertHealth.degraded && <div className="publish-issue degraded" role="status"><AlertTriangle aria-hidden="true" /><span>{alertHealth.message}</span></div>}
         {publishIssue && <div className="publish-issue" role="alert"><AlertTriangle aria-hidden="true" /><span>{publishIssue}</span></div>}
