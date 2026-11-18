@@ -24,7 +24,11 @@ export function OverlayRuntime() {
   // The design is the truth: a source larger than the composition renders 1:1 instead of being blown up to fill
   // it, because any scale above 1 has to invent pixels and stops the whole stage landing on whole device pixels.
   // `fit=fill` opts back into covering, and `fit=stretch` exists only for deliberately non-proportional sources.
-  const fit = params.get('fit') ?? 'contain'
+  // CP47: OBS sends its own user agent and its source is already sized to the composition, so it keeps the exact
+  // contain policy that preserves pixel sharpness. A browser window is rarely the composition's shape, and contain
+  // left black bands on both axes there, so a plain browser fills the window. `?fit=contain|cover|fill` overrides.
+  const obsAgent = typeof navigator !== 'undefined' && /OBS/i.test(navigator.userAgent)
+  const fit = params.get('fit') ?? (obsAgent ? 'contain' : 'cover')
   const contain = Math.min(viewport.width / overlay.width, viewport.height / overlay.height)
   const cover = Math.max(viewport.width / overlay.width, viewport.height / overlay.height)
   const scale = fit === 'stretch'

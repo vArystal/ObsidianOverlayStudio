@@ -102,7 +102,8 @@ describe('runtime scaling mode', () => {
     const overlay = createEmptyOverlay('OBS output')
     const snapshot = encodeOverlaySnapshot(overlay)
     const { container } = render(
-      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}`]}>
+      // OBS is the surface this test is about, and its user agent is what selects the contain policy.
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}&fit=contain`]}>
         <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
       </MemoryRouter>,
     )
@@ -138,7 +139,7 @@ describe('source sizing policy', () => {
 
   it('never upscales a 1920x1080 design to fill a larger source', () => {
     // Blowing the design up invents pixels and stops the stage landing on whole device pixels.
-    const { container, restore } = renderAt(2560, 1440)
+    const { container, restore } = renderAt(2560, 1440, '&fit=contain')
     const stage = container.querySelector('.runtime-stage') as HTMLElement
     expect(stage.style.width).toBe('1920px')
     expect(stage.style.zoom === '' || stage.style.zoom === '1').toBe(true)
@@ -160,5 +161,45 @@ describe('source sizing policy', () => {
     expect(hud!.dataset.pixelPerfect).toBe('true')
     expect(hud!.textContent).toContain('PIXEL PERFECT')
     restore()
+  })
+})
+
+/**
+ * CP47: the owner's 1920x1080 overlay sat centred in a browser window with black bands on two sides. A browser now
+ * fills the window, while OBS (which sizes its source to the composition) keeps the exact contain policy.
+ */
+describe('browser versus OBS fitting', () => {
+  const withAgent = (agent: string, run: () => void) => {
+    const original = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', { value: agent, configurable: true })
+    try { run() } finally { Object.defineProperty(navigator, 'userAgent', { value: original, configurable: true }) }
+  }
+  const stageFor = (query = '') => {
+    const overlay = createEmptyOverlay('Fit')
+    const snapshot = encodeOverlaySnapshot(overlay)
+    const { container } = render(
+      <MemoryRouter initialEntries={[`/overlay/${overlay.publicId}?snapshot=${snapshot}${query}`]}>
+        <Routes><Route path="/overlay/:publicId" element={<OverlayRuntime />} /></Routes>
+      </MemoryRouter>,
+    )
+    return container.querySelector('.runtime-stage') as HTMLElement
+  }
+
+  it('fills a browser window by default', () => {
+    withAgent('Mozilla/5.0 (Windows NT 10.0) Chrome/120', () => {
+      expect(stageFor().getAttribute('data-fit')).toBe('cover')
+    })
+  })
+
+  it('keeps the exact contain policy inside OBS', () => {
+    withAgent('Mozilla/5.0 OBS/30.1.2 (Windows NT 10.0) Chrome/120', () => {
+      expect(stageFor().getAttribute('data-fit')).toBe('contain')
+    })
+  })
+
+  it('still honours an explicit fit in either surface', () => {
+    withAgent('Mozilla/5.0 OBS/30.1.2', () => {
+      expect(stageFor('&fit=fill').getAttribute('data-fit')).toBe('fill')
+    })
   })
 })

@@ -112,11 +112,19 @@ body:not(.runtime-root) {
 @keyframes progress-shimmer { 0%,35% { transform: translateX(-120%); } 75%,100% { transform: translateX(120%); } }
 @keyframes number-pop { from { opacity: .35; transform: translateY(8px) scale(.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-.static-motion *, .static-motion *::before, .static-motion *::after { animation: none !important; transition: none !important; }
+/* CP47: `animation: none` left entrance animations on their first keyframe, which for several widgets is opacity 0 -
+   turning motion off could blank the whole overlay. A 1ms single pass lands every entrance on its final state. */
+.static-motion *, .static-motion *::before, .static-motion *::after {
+  animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
 /* The output surface is the product: it holds still only when the author says so, or when the operator asks for
    calm output with ?motion=calm on a machine that prefers reduced motion. */
 .static-motion *, .static-motion *::before, .static-motion *::after,
-.calm-motion *, .calm-motion *::before, .calm-motion *::after { animation: none !important; transition: none !important; }
+.calm-motion *, .calm-motion *::before, .calm-motion *::after {
+  animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
 
 /* Theme selector and inspector additions. */
 .theme-control { min-width: 145px; border-color: rgba(235, 235, 235,.22); }
