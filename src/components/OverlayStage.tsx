@@ -68,11 +68,13 @@ export function OverlayStage(props: OverlayStageProps) {
     () => overlay.elements.filter((element) => element.visible && (editor || element.includeInOutput)),
     [overlay.elements, editor],
   )
-  const scaleStyle: CSSProperties = props.scaleMode === 'zoom' && Math.abs(props.scale - 1) > 0.001
-    ? { zoom: props.scale }
-    : { transform: `scale(${props.scale})` }
-  // Offsets are layout, not transform: a translate inside a scaled transform is multiplied by that scale.
-  const offsetStyle: CSSProperties = props.offset ? { left: props.offset.x, top: props.offset.y } : {}
+  const zoomMode = props.scaleMode === 'zoom' && Math.abs(props.scale - 1) > 0.001
+  const scaleStyle: CSSProperties = zoomMode ? { zoom: props.scale } : { transform: `scale(${props.scale})` }
+  // Offsets are layout, not transform: a translate inside a scaled transform is multiplied by that scale. `zoom`
+  // multiplies layout lengths the same way, so a zoomed stage needs its offset divided back out.
+  const offsetStyle: CSSProperties = props.offset
+    ? { left: zoomMode ? props.offset.x / props.scale : props.offset.x, top: zoomMode ? props.offset.y / props.scale : props.offset.y }
+    : {}
 
   return (
     <div
