@@ -2,6 +2,8 @@ import { createServer } from 'node:http'
 import { readFile, mkdir } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 
 const ROOT = new URL('../../dist/', import.meta.url).pathname

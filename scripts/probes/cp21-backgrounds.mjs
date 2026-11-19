@@ -1,6 +1,8 @@
 // CP21 evidence: every backdrop at 1920x1080, the selection UI, editor-over-widgets, published runtime, and proof
 // that the animation actually advances rather than sitting still in a screenshot.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 const SITE = process.env.SITE || 'http://localhost:4451'
 const KINDS = ['aurora-flow', 'liquid-light', 'cinematic-particles', 'neon-grid', 'deep-space', 'ambient-gradient']

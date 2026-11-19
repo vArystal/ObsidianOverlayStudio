@@ -15,7 +15,7 @@ const faces = [...css.matchAll(/@font-face\s*{([^}]*)}/g)].map((match) => {
   const family = body.match(/font-family:\s*'([^']+)'/)?.[1]
   const weight = body.match(/font-weight:\s*(\d+)/)?.[1]
   const src = body.match(/url\('([^']+)'\)/)?.[1]
-  return { family, weight: Number(weight), src }
+  return { family, weight: Number(weight), src, body }
 })
 
 test('every declared family ships the weights it advertises', () => {
@@ -65,7 +65,9 @@ test('fonts are declared with swap so text is never invisible while loading', ()
 })
 
 test('Arabic coverage is declared through unicode-range, not a separate code path', () => {
-  const arabicFaces = faces.filter((face) => /U\+0600-06FF/.test(css.slice(css.indexOf('font-family: \'' + face.family))))
+  // Read the range from each face's own declaration block. Searching forward from the first family declaration
+  // would find the first Arabic range anywhere later in the file, which passes for every face.
+  const arabicFaces = faces.filter((face) => /unicode-range:[^;]*U\+0600-06FF/.test(face.body))
   assert.ok(faces.length > 0)
   const persianFamilies = new Set(faces.filter((face) => face.family === 'Vazirmatn' || face.family === 'Estedad' || face.family === 'Noto Sans Arabic' || face.family === 'Cairo').map((face) => face.family))
   assert.ok(persianFamilies.size >= 3, 'at least three Persian-capable families expected')

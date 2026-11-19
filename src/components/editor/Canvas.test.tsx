@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createElement, createEmptyOverlay } from '../../lib/elements'
-import type { OverlayElement } from '../../types'
+import { ELEMENT_LABELS, createElement, createEmptyOverlay } from '../../lib/elements'
+import type { ElementType, OverlayElement } from '../../types'
 import { Canvas } from './Canvas'
 
 class ResizeObserverStub {
@@ -81,7 +81,8 @@ describe('preview completeness', () => {
   // alert with the channel offline looked like the element did not exist.
   it('shows every configured layer, including editor-only and data-gated ones', () => {
     const overlay = createEmptyOverlay()
-    const types = ['text', 'image', 'shape', 'frame', 'webcam', 'capture', 'chat', 'alert', 'goal', 'counter', 'countdown', 'viewerCount', 'sessionFollowers', 'latestFollower', 'supporter'] as const
+    // Every registered type, so a widget added later cannot silently drop out of the preview contract.
+    const types = Object.keys(ELEMENT_LABELS) as ElementType[]
     types.forEach((type) => { const element = createElement(type); element.includeInOutput = false; overlay.elements.push(element) })
 
     const { container } = render(

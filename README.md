@@ -7,7 +7,7 @@ The canvas starts empty. No template or collection of widgets is inserted unless
 ## Highlights
 
 - Drag, eight-handle resize, layer order, visibility, locking, duplication, keyboard movement, alignment, snapping, undo/redo, logical resolutions, fit/zoom, and local persistence.
-- Four editable, non-destructive themes: **Royal Persian**, **Persian Turquoise**, **Imperial Night**, and **Minimal Esports**. Switching themes does not move elements or replace their content.
+- Four editable, non-destructive themes: **Obsidian**, **Nocturne**, **Aurora**, and **Monolith**. Switching themes does not move elements or replace their content; overlays saved with a retired theme id are migrated to the nearest preset on load.
 - Independently removable Persian decoration presets with outer/inner borders, ornamental corners, dividers, girih/eslimi patterns, gradients, shadows, glows, spacing, and radius controls.
 - Entrance, exit, and idle motion settings with static-output and `prefers-reduced-motion` support. Published overlays remain transparent.
 - A separate editor-free runtime route that renders only visible, output-enabled layers.
@@ -17,7 +17,7 @@ The canvas starts empty. No template or collection of widgets is inserted unless
 
 ## Prerequisites
 
-- Node.js 20 or newer
+- Node.js 22 or newer (the worker test suite uses `node:sqlite`)
 - npm
 - For real Kick data: a Kick developer application and a separately deployed, persistent, publicly reachable HTTPS backend
 
@@ -217,7 +217,7 @@ Editor chat messages and manual goals say **SAMPLE / PREVIEW ONLY**. Local integ
 ## Tests and verification
 
 ```bash
-npm test              # frontend Vitest + backend node:test
+npm test              # frontend Vitest + server/worker node:test + contract suite
 npm run test:frontend
 npm run test:server
 npm run build

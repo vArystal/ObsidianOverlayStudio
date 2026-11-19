@@ -78,6 +78,14 @@ export function createIntegrationStore({ filePath, encryptionKey, persist = true
       if (kept.length) state.alertTestFrames[key] = kept
       else delete state.alertTestFrames[key]
     }
+    // Acknowledgements are per event and were never pruned, so a long-running server kept every id forever.
+    // The Worker sweeps these after 7 days; use the same window here.
+    const ackCutoff = now - 7 * 24 * 60 * 60_000
+    for (const [key, acks] of Object.entries(state.alertAcks)) {
+      const kept = Object.fromEntries(Object.entries(acks ?? {}).filter(([, at]) => Date.parse(at) > ackCutoff))
+      if (Object.keys(kept).length) state.alertAcks[key] = kept
+      else delete state.alertAcks[key]
+    }
   }
 
   return {

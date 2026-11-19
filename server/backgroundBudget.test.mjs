@@ -24,7 +24,9 @@ function animatedProperties(sheet) {
 }
 
 test('background scenes animate only compositor-friendly properties', () => {
-  const allowed = new Set(['transform', 'opacity', 'translate', 'scale', 'background', 'animation', 'animation-delay'])
+  // Compositor-only properties. `background` and `filter` must not be here: animating either repaints the layer on
+  // every frame, which is the exact budget regression this guard exists to catch.
+  const allowed = new Set(['transform', 'opacity', 'translate', 'scale'])
   const offenders = [...animatedProperties(css)].filter((prop) => !allowed.has(prop))
   assert.deepEqual(offenders, [], `animated properties that force layout or paint: ${offenders.join(', ')}`)
   assert.ok(animatedProperties(css).size > 0, 'guard found no keyframes, so it is not testing anything')

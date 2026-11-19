@@ -56,16 +56,25 @@ export function Integrations() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function action(path: string, body?: object) {
+  async function action(path: string, body?: object): Promise<boolean> {
     setBusy(true); setError('')
-    try { await integrationRequest(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }); await refresh() }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Action failed') }
+    try { await integrationRequest(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined }); await refresh(); return true }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Action failed'); return false }
     finally { setBusy(false) }
   }
 
   async function disconnect() {
-    await action('/api/integrations/kick/disconnect')
-    clearIntegrationSession(); setStatus({ state: 'DISCONNECTED' })
+    // Only forget the local session once the server confirmed the revoke. Clearing it after a failed call hid
+    // a connection that was still live and left this browser unable to retry it. No refresh afterwards: the
+    // management token is gone by design, so a status call would only report a misleading 401.
+    setBusy(true); setError('')
+    try {
+      await integrationRequest('/api/integrations/kick/disconnect', { method: 'POST' })
+      clearIntegrationSession()
+      setStatus({ state: 'DISCONNECTED' })
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Disconnect failed')
+    } finally { setBusy(false) }
   }
 
   const connection = status?.connection

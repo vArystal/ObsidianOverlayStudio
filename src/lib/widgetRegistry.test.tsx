@@ -17,7 +17,12 @@ afterEach(cleanup)
 // sources the bundler sees.
 const sources = import.meta.glob('/src/components/**/*.tsx', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
 const RENDERERS = ['/src/components/widgets/index.tsx', '/src/components/ElementRenderer.tsx'].map((path) => sources[path] ?? '').join('\n')
-const readKeys = new Set((RENDERERS.match(/'([a-zA-Z][a-zA-Z0-9]*)'/g) ?? []).map((match: string) => match.slice(1, -1)))
+// Only positions that actually read a prop count: a prop helper's key argument, or a props.<key> access. The
+// previous scan accepted any quoted word in the file, so an unread key passed whenever some class name or tag
+// happened to equal it.
+const readKeys = new Set<string>()
+for (const match of RENDERERS.matchAll(/\b(?:str|num|bool|text)\(\s*[^,]+,\s*'([a-zA-Z]\w*)'/g)) readKeys.add(match[1])
+for (const match of RENDERERS.matchAll(/props(?:\.([a-zA-Z]\w*)|\[\s*'([a-zA-Z]\w*)'\s*\])/g)) readKeys.add(match[1] ?? match[2])
 
 describe('widget registry truth', () => {
   it('renders a non-empty inspector section for every declared control group', () => {

@@ -510,11 +510,17 @@ test('cron refreshes viewer count from the official channels endpoint', async ()
   const keys = await keypair()
   const { env, sqlite } = makeEnv()
   await connect(env, keys)
-  globalThis.fetch = async (url) => {
-    assert.match(String(url), /\/public\/v1\/channels\?broadcaster_user_id=42/)
-    return Response.json({ data: [{ slug: 'varystal', active_subscribers_count: 13, stream: { is_live: true, viewer_count: 201 } }] })
+  const originalFetch = globalThis.fetch
+  try {
+    globalThis.fetch = async (url) => {
+      assert.match(String(url), /\/public\/v1\/channels\?broadcaster_user_id=42/)
+      return Response.json({ data: [{ slug: 'varystal', active_subscribers_count: 13, stream: { is_live: true, viewer_count: 201 } }] })
+    }
+    await worker.scheduled({}, env)
+  } finally {
+    // A leaked fetch stub would silently answer every later test with this channel payload.
+    globalThis.fetch = originalFetch
   }
-  await worker.scheduled({}, env)
   const row = sqlite.prepare('SELECT viewer, active_subscribers FROM connections').get()
   assert.equal(JSON.parse(row.viewer).count, 201)
   assert.equal(row.active_subscribers, 13)

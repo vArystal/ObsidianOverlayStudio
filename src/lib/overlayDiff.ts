@@ -30,7 +30,7 @@ const sameValue = (a: unknown, b: unknown, depth = 0): boolean => {
 const sameElement = (a: OverlayElement, b: OverlayElement): boolean =>
   a === b || (a.id === b.id && a.type === b.type && a.name === b.name && a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height &&
     a.rotation === b.rotation && a.opacity === b.opacity && a.visible === b.visible && a.locked === b.locked &&
-    a.includeInOutput === b.includeInOutput &&
+    a.includeInOutput === b.includeInOutput && a.maintainAspectRatio === b.maintainAspectRatio &&
     // Identity first, then structure: a cloned document shares no nested references, and a compare that only trusted
     // pointers would call every undo step a change.
     sameValue(a.decoration, b.decoration) && sameValue(a.motion, b.motion) &&
@@ -39,7 +39,9 @@ const sameElement = (a: OverlayElement, b: OverlayElement): boolean =>
 /** True when the two documents would render and save identically. */
 export function sameOverlay(a: Overlay, b: Overlay): boolean {
   if (a === b) return true
-  if (a.id !== b.id || a.publicId !== b.publicId || a.name !== b.name) return false
+  // publishedAt is part of the saved document: unpublishing changes nothing else, so leaving it out made
+  // the editor's commit drop the unpublish and keep showing a Published badge over a revoked output.
+  if (a.id !== b.id || a.publicId !== b.publicId || a.name !== b.name || a.publishedAt !== b.publishedAt) return false
   if (a.width !== b.width || a.height !== b.height || a.staticMotion !== b.staticMotion || a.live !== b.live) return false
   if (!sameValue(a.background, b.background) || !sameValue(a.settings, b.settings) || !sameValue(a.theme, b.theme)) return false
   if (a.alerts !== b.alerts && !sameValue(a.alerts, b.alerts)) return false

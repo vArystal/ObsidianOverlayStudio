@@ -24,6 +24,10 @@ export function MotionStudio({ element, onChange }: MotionStudioProps) {
   const commit = (next: ElementMotion | undefined) => { onChange(next); setMotionPreviewTime(null) }
   const scrub = (next: number) => { setPlaying(false); setTime(next); setMotionPreviewTime(next) }
 
+  // The scrub time is global to the canvas, so leaving the studio without clearing it froze every animated
+  // layer at the last playhead position until the next unrelated edit.
+  useEffect(() => () => setMotionPreviewTime(null), [])
+
   // Playback is a plain rAF loop over the sampled timeline, the same sampler the runtime uses.
   useEffect(() => {
     if (!playing) return

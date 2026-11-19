@@ -288,7 +288,9 @@ export async function createApp({ config, fetchImpl = fetch, persist = true } = 
         try { body = JSON.parse((await readBody(request)).toString('utf8')) } catch { return sendJson(response, 400, { error: 'malformed_json' }) }
         const milestones = Array.isArray(body?.milestones) ? body.milestones.slice(0, 6).map((item) => ({
           metric: item?.metric === 'subscribers' ? 'subscribers' : item?.metric === 'followers' ? 'followers' : null,
-          target: Math.min(1_000_000, Math.max(1, Number(item?.target) || 0)),
+          // Missing or non-numeric targets become 0 and are dropped by the filter below; forcing them to 1
+          // would silently create a milestone nobody configured.
+          target: Math.max(0, Math.min(1_000_000, Number(item?.target) || 0)),
           enabled: Boolean(item?.enabled),
         })).filter((item) => item.metric && item.target > 0) : []
         await store.saveAlertSettings(runtimeKey, { milestones })

@@ -1,6 +1,8 @@
 // CP17: the botanical tuning is real data. Does a choice reach the CSS variables, the geometry budget,
 // storage, a reload, and the published runtime?
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 
 const PORT = Number(process.env.PORT || 4341)

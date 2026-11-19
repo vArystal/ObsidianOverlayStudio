@@ -87,6 +87,9 @@ export function MotionHost({ element, reducedMotion = false, timeOverride = null
   useEffect(() => {
     const node = ref.current
     if (!node || !motion || !motion.clips.length) return
+    // The static effects (issued by `effectsStyle`) also paint `filter`. Writing the motion filter without
+    // re-applying it erased a configured static blur on the first frame, until the next React render put it back.
+    const staticFilter = typeof staticEffects.filter === 'string' ? staticEffects.filter : ''
     const apply = (timeMs: number) => {
       // CP40: the sampler is told which triggers may fire, so a clip waiting on an event nobody emits cannot play.
       const frameValue = sampleMotion(motion, timeMs, { reducedMotion, triggers: IMPLEMENTED_TRIGGERS })
@@ -94,7 +97,7 @@ export function MotionHost({ element, reducedMotion = false, timeOverride = null
       node.style.transform = String(style.transform ?? '')
       node.style.opacity = style.opacity === undefined ? '' : String(style.opacity)
       const blur = String(style.filter ?? '')
-      node.style.filter = blur || ''
+      node.style.filter = [staticFilter, blur].filter(Boolean).join(' ')
     }
     // Reduced motion renders the element at rest. The sampler drops every clip in that mode, so this writes the
     // element's own styles back rather than a paused keyframe the author never chose.
@@ -138,7 +141,7 @@ export function MotionHost({ element, reducedMotion = false, timeOverride = null
     if (reducedMotion) { applyStill(); return offPreview }
     startLoop()
     return () => { stopLoop(); offPreview() }
-  }, [motion, reducedMotion, playback, span, timeOverride, restartKey])
+  }, [motion, reducedMotion, playback, span, timeOverride, restartKey, staticEffects])
 
   if (!motion) return <>{children}</>
   return (

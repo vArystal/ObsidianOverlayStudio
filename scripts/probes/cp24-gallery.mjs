@@ -5,11 +5,13 @@ import pw from '/tmp/node_modules/playwright/index.js'
 import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 
 const PORT = Number(process.env.PORT || 4345)
 const SITE = process.env.SITE ? process.env.SITE.replace(/\/$/, '') : ''
 const ORIGIN = SITE || `http://localhost:${PORT}`
-const root = '/app/conversations/6ae1eb9cc19da39c608de5ec/overlay-repo/dist/'
+const root = new URL('../../dist/', import.meta.url).pathname
 const types = { '.js': 'text/javascript', '.css': 'text/css', '.html': 'text/html', '.svg': 'image/svg+xml', '.woff2': 'font/woff2' }
 const server = createServer((req, res) => {
   const path = decodeURIComponent((req.url || '/').split('?')[0])

@@ -78,8 +78,8 @@ describe('item 1: concurrent writes', () => {
     assert.equal(reloaded.sessionFollowerCount, 10)
     assert.equal(Object.keys((await reopened._state()).publications).length, 5)
     // And the file itself is valid JSON, not a half-written temp file.
-    assert.doesNotThrow(() => JSON.parse(JSON.parse(JSON.stringify(JSON.stringify({})))))
-    await readFile(filePath, 'utf8').then((raw) => JSON.parse(raw))
+    const raw = await readFile(filePath, 'utf8')
+    assert.doesNotThrow(() => JSON.parse(raw), 'the store file must be complete JSON, not a partial write')
   })
 })
 

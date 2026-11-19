@@ -1,5 +1,7 @@
 // Proves the monochrome presets are actually different designs, and that Thorn & Rose draws no rectangle.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 const ORIGIN = process.env.SITE || 'http://localhost:4423'
 const b = await chromium.launch({ args: ['--no-sandbox'] })

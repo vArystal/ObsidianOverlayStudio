@@ -10,8 +10,13 @@ export const KICK_EVENT_TYPES = [
   'kicks.gifted',
 ]
 
+const numeric = (value, fallback) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
 export function loadConfig(env = process.env) {
-  const port = Number(env.PORT || 8787)
+  const port = numeric(env.PORT, 8787)
   const allowedOrigins = String(env.APP_ORIGIN || 'http://localhost:5173').split(',').map((value) => value.trim()).filter(Boolean)
   const config = {
     port,
@@ -22,7 +27,8 @@ export function loadConfig(env = process.env) {
     kickRedirectUri: env.KICK_REDIRECT_URI || `http://localhost:${port}/api/auth/kick/callback`,
     tokenEncryptionKey: env.TOKEN_ENCRYPTION_KEY || '',
     dataFile: env.DATA_FILE || './data/integrations.json',
-    viewerPollMs: Math.max(15_000, Number(env.VIEWER_POLL_INTERVAL_MS || 30_000)),
+    // A malformed interval used to become NaN, and setInterval(NaN) polls in a tight loop against Kick.
+    viewerPollMs: Math.max(15_000, numeric(env.VIEWER_POLL_INTERVAL_MS, 30_000)),
     publicApiUrl: env.PUBLIC_API_URL || `http://localhost:${port}`,
     nodeEnv: env.NODE_ENV || 'development',
   }

@@ -3,7 +3,7 @@
 // app-generated: it proves the stream -> renderer path without pretending an organic Kick event arrived.
 import pw from '/tmp/node_modules/playwright/index.js'
 const { chromium } = pw
-const SITE = process.env.SITE || 'https://varystal.github.io/jubilant-octo-lamp'
+const SITE = process.env.SITE || 'https://varystal.github.io/ObsidianOverlayStudio'
 const results = {}
 const fail = []
 const step = (name, ok, detail) => { results[name] = { ok, ...(detail === undefined ? {} : { detail }) }; if (!ok) fail.push(name) }

@@ -160,8 +160,7 @@
   transition: background var(--cp-fast) var(--cp-ease);
 }
 .layer-row:hover { background: var(--cp-ink-3); }
-.layer-row[aria-selected='true'],
-.layer-row.is-selected {
+.layer-row.selected {
   background: var(--cp-ink-4);
   box-shadow: inset 2px 0 0 var(--cp-paper-0);
 }

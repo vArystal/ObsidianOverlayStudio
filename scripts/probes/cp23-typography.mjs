@@ -2,6 +2,8 @@
 // parity, accessibility and frame cost. Everything here runs against a real browser and a real build.
 import pw from '/tmp/node_modules/playwright/index.js'
 import { readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const SITE = process.env.SITE || 'http://localhost:4455'
 const AXE = readFileSync('/tmp/axe.min.js', 'utf8')
 

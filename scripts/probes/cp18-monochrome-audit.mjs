@@ -1,5 +1,7 @@
 // Monochrome audit: proves the chrome carries no purple, no pure black, and keeps text legible.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 const ORIGIN = process.env.SITE || 'http://localhost:4421'
 const browser = await chromium.launch({ args: ['--no-sandbox'] })

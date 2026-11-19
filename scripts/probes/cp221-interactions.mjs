@@ -1,5 +1,7 @@
 // CP22.1: real pointer interaction evidence for selection, eight handles, and layer-row delete.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const SITE = process.env.SITE || 'http://localhost:4455'
 const b = await pw.chromium.launch()
 const page = await b.newPage({ viewport: { width: 1680, height: 1000 } })

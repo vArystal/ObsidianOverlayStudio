@@ -1,8 +1,8 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createElement } from '../lib/elements'
+import { ELEMENT_LABELS, createElement } from '../lib/elements'
 import { ElementRenderer } from './ElementRenderer'
-import type { OverlayElement } from '../types'
+import type { ElementType, OverlayElement } from '../types'
 import { LiveDataContext } from './LiveDataProvider'
 
 afterEach(cleanup)
@@ -97,7 +97,9 @@ describe('chat metadata contract', () => {
 describe('countdown target time', () => {
   it('counts to an absolute target so a reload does not restart it', () => {
     const countdown = createElement('countdown')
-    countdown.props.targetAt = new Date(Date.now() + 2 * 3600_000).toISOString().slice(0, 16)
+    // Keep the UTC marker: a bare `2026-01-01T12:00` string is parsed as local time, so in a positive-offset
+    // zone the "two hours ahead" target lands in the past and the test would fail for the wrong reason.
+    countdown.props.targetAt = `${new Date(Date.now() + 2 * 3600_000).toISOString().slice(0, 16)}Z`
     const { container } = render(<ElementRenderer element={countdown} runtime />)
     const text = container.querySelector('.countdown-widget strong')?.textContent ?? ''
     expect(text).toMatch(/^1:59:\d{2}$|^2:00:00$/)
@@ -161,7 +163,8 @@ describe('viewer metric honesty', () => {
 })
 
 describe('element capability sweep', () => {
-  const allTypes = ['text', 'image', 'shape', 'frame', 'webcam', 'capture', 'chat', 'alert', 'goal', 'counter', 'countdown', 'supporter', 'viewerCount', 'sessionFollowers', 'latestFollower'] as const
+  // Every registered type, not a hand-kept list: a new widget must be covered the day it is added.
+  const allTypes = Object.keys(ELEMENT_LABELS) as ElementType[]
 
   it('renders every element type in the editor without throwing', () => {
     for (const type of allTypes) {

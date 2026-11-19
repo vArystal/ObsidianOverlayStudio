@@ -1,6 +1,8 @@
 // CP21 proof, defensive version: every measurement has a wall-clock cap so a throttled headless page can never
 // hang the probe. Measures (1) that the live layer actually advances, (2) rAF cadence with a backdrop running.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 
 const SITE = process.env.SITE ?? 'http://localhost:4455'

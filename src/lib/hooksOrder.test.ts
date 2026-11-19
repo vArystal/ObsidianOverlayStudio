@@ -17,7 +17,10 @@ export function findHookOrderViolations(source: string, file = 'fixture.tsx'): V
   const violations: Violation[] = []
   const starts: { index: number; name: string; indent: number }[] = []
   lines.forEach((line, index) => {
+    // Plain declarations plus `const Name = memo(function Name(...)`, which is how a memoised component is written
+    // and which the original `function`-only pattern skipped entirely.
     const match = line.match(/^\s*(?:export\s+)?(?:default\s+)?function\s+(\w+)\s*\(/)
+      ?? line.match(/^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:memo\()?function\s+\w+\s*\(/)
     if (match) starts.push({ index, name: match[1], indent: indentOf(line) })
   })
   // A component may also be `const Name = memo(() => ...)`. Rather than model that, every top-level declaration
@@ -63,6 +66,19 @@ describe('hooks order guard', () => {
     const violations = findHookOrderViolations(broken)
     expect(violations).toHaveLength(1)
     expect(violations[0].component).toBe('DecoratedWidget')
+  })
+
+  it('flags an early return before a hook inside a memoised component', () => {
+    const broken = [
+      'export const Layer = memo(function Layer({ enabled }) {',
+      '  if (!enabled) return null',
+      '  const live = useLiveData()',
+      '  return <div>{live}</div>',
+      '})',
+    ].join('\n')
+    const violations = findHookOrderViolations(broken)
+    expect(violations).toHaveLength(1)
+    expect(violations[0].component).toBe('Layer')
   })
 
   it('accepts hooks that run before the first early return', () => {

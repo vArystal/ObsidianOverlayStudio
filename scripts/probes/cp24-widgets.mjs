@@ -5,6 +5,8 @@ import pw from '/tmp/node_modules/playwright/index.js'
 import { createServer } from 'node:http'
 import { readFileSync, existsSync } from 'node:fs'
 import { extname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 
 const PORT = Number(process.env.PORT || 4341)
 const SITE = process.env.SITE ? process.env.SITE.replace(/\/$/, '') : ''

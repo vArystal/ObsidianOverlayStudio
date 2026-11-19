@@ -2,13 +2,15 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 /**
  * CP41 — no native browser dialogs. window.prompt/confirm/alert ignore the studio's type scale, block the event loop
  * and cannot be styled or validated, so the product must use its own surfaces. Comments are stripped first, because
  * the components that replaced them say so in prose.
  */
-const ROOT = new URL('..', import.meta.url).pathname
+// fileURLToPath, not URL.pathname: on Windows the pathname is `/C:/...`, and join() turns that into `C:\C:\...`.
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(join(ROOT, dir), { withFileTypes: true })) {

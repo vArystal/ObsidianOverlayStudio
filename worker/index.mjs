@@ -606,49 +606,56 @@ async function handleWebhook(request, env) {
     return json(request, env, 400, { error: 'missing_broadcaster' })
   }
 
-  const connection = await one(env, 'SELECT * FROM connections WHERE account_user_id = ?', Number(broadcasterId))
-  if (!connection) return json(request, env, 202, { accepted: true, reason: 'unknown_broadcaster' })
+  // The claim was already taken above. If anything after it fails, the Worker answers 500 and Kick retries; the
+  // retry must not be swallowed as a duplicate, so the claim is released before the error is re-thrown.
+  try {
+    const connection = await one(env, 'SELECT * FROM connections WHERE account_user_id = ?', Number(broadcasterId))
+    if (!connection) return json(request, env, 202, { accepted: true, reason: 'unknown_broadcaster' })
 
-  const event = normalizeEvent({ id: messageId, type: eventType, payload, receivedAt: now })
-  const keys = await runtimeKeysFor(env, connection.id)
-  for (const key of keys) {
-    await run(env, 'INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)',
-      connection.id, key, messageId, eventType, JSON.stringify(event), now)
-  }
+    const event = normalizeEvent({ id: messageId, type: eventType, payload, receivedAt: now })
+    const keys = await runtimeKeysFor(env, connection.id)
+    for (const key of keys) {
+      await run(env, 'INSERT INTO events (connection_id, runtime_key, message_id, type, payload, received_at) VALUES (?, ?, ?, ?, ?, ?)',
+        connection.id, key, messageId, eventType, JSON.stringify(event), now)
+    }
 
-  const counts = (() => { try { return JSON.parse(connection.event_counts || '{}') } catch { return {} } })()
-  counts[eventType] = Number(counts[eventType] || 0) + 1
-  const patch = { last_event_at: now, last_event_type: eventType, event_counts: JSON.stringify(counts) }
-  if (eventType === 'chat.message.sent') patch.last_chat_user = payload.sender?.username ?? null
-  if (eventType === 'channel.followed') {
-    patch.last_follower = JSON.stringify(person(payload.follower))
-    patch.session_follower_count = Number(connection.session_follower_count || 0) + 1
-  }
-  if (eventType === 'livestream.status.updated') {
-    patch.viewer = JSON.stringify({ status: payload.is_live ? 'live' : 'offline', count: payload.is_live ? JSON.parse(connection.viewer || '{}').count ?? null : null, updatedAt: now })
-    const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
-    patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
-      title: typeof payload.title === 'string' ? payload.title : null,
-      isLive: typeof payload.is_live === 'boolean' ? payload.is_live : null,
-      startedAt: typeof payload.started_at === 'string' ? payload.started_at : null,
-    }, now))
-  }
-  if (eventType === 'livestream.metadata.updated') {
-    const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
-    const metadata = payload.metadata ?? {}
-    patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
-      title: typeof metadata.title === 'string' ? metadata.title : null,
-      category: typeof metadata.category?.name === 'string' ? metadata.category.name : null,
-    }, now))
-  }
-  const fields = Object.keys(patch)
-  await run(env, `UPDATE connections SET ${fields.map((f) => `${f} = ?`).join(', ')}, updated_at = ? WHERE id = ?`,
-    ...fields.map((f) => patch[f]), now, connection.id)
+    const counts = (() => { try { return JSON.parse(connection.event_counts || '{}') } catch { return {} } })()
+    counts[eventType] = Number(counts[eventType] || 0) + 1
+    const patch = { last_event_at: now, last_event_type: eventType, event_counts: JSON.stringify(counts) }
+    if (eventType === 'chat.message.sent') patch.last_chat_user = payload.sender?.username ?? null
+    if (eventType === 'channel.followed') {
+      patch.last_follower = JSON.stringify(person(payload.follower))
+      patch.session_follower_count = Number(connection.session_follower_count || 0) + 1
+    }
+    if (eventType === 'livestream.status.updated') {
+      patch.viewer = JSON.stringify({ status: payload.is_live ? 'live' : 'offline', count: payload.is_live ? JSON.parse(connection.viewer || '{}').count ?? null : null, updatedAt: now })
+      const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
+      patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
+        title: typeof payload.title === 'string' ? payload.title : null,
+        isLive: typeof payload.is_live === 'boolean' ? payload.is_live : null,
+        startedAt: typeof payload.started_at === 'string' ? payload.started_at : null,
+      }, now))
+    }
+    if (eventType === 'livestream.metadata.updated') {
+      const previous = (() => { try { return JSON.parse(connection.stream_info || 'null') } catch { return null } })()
+      const metadata = payload.metadata ?? {}
+      patch.stream_info = JSON.stringify(mergeStreamInfo(previous, {
+        title: typeof metadata.title === 'string' ? metadata.title : null,
+        category: typeof metadata.category?.name === 'string' ? metadata.category.name : null,
+      }, now))
+    }
+    const fields = Object.keys(patch)
+    await run(env, `UPDATE connections SET ${fields.map((f) => `${f} = ?`).join(', ')}, updated_at = ? WHERE id = ?`,
+      ...fields.map((f) => patch[f]), now, connection.id)
 
-  // A crossed milestone becomes a real queued alert derived from the durable counters, never from a guess.
-  await emitMilestones(env, connection, keys, counts, now).catch(() => null)
+    // A crossed milestone becomes a real queued alert derived from the durable counters, never from a guess.
+    await emitMilestones(env, connection, keys, counts, now).catch(() => null)
 
-  return noContent(request, env)
+    return noContent(request, env)
+  } catch (error) {
+    await run(env, 'DELETE FROM processed WHERE message_id = ?', messageId).catch(() => null)
+    throw error
+  }
 }
 
 let publicKeyCache = { pem: null, at: 0 }

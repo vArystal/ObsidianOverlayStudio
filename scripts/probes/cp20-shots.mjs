@@ -1,5 +1,7 @@
 // CP20 visual evidence: every required surface, the four themes, and an audit that proves the palette rules.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const { chromium } = pw
 const ORIGIN = process.env.SITE ?? 'http://localhost:4441'
 const THEMES = {

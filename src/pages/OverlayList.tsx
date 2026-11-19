@@ -86,7 +86,9 @@ export function OverlayList() {
     setPendingDelete(null)
     // Revoke the backend publication so the old OBS URL stops resolving. A failure is surfaced, not swallowed:
     // the overlay is already gone locally, but the streamer needs to know the key may still answer.
-    void deletePublication(target.id).then((revoked) => { if (!revoked.ok) setError(`Overlay deleted, but its published output could not be revoked: ${revoked.error}. Paste the output URL in OBS to replace it.`) })
+    // Publications are keyed by the stable publicId (what Publish registers), not the local overlay id, which the
+    // server has never seen.
+    void deletePublication(target.publicId).then((revoked) => { if (!revoked.ok) setError(`Overlay deleted, but its published output could not be revoked: ${revoked.error}. Paste the output URL in OBS to replace it.`) })
   }
 
   return (

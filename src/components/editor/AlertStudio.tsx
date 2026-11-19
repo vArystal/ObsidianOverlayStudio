@@ -82,7 +82,12 @@ export function AlertStudio({ settings, onChange, onAudioFile, onImageFile, onTe
   }
 
   const fireTest = (count = 1) => {
-    const events = Array.from({ length: count }, (_, index) => testAlertEvent(kind, { username: testName || 'Nova' }, `test_${kind}_${Date.now()}_${index}`))
+    const events = Array.from({ length: count }, (_, index) => {
+      const event = testAlertEvent(kind, { username: testName || 'Nova' }, `test_${kind}_${Date.now()}_${index}`)
+      // Carried on the test frame itself. Writing it into the template made a test preview permanently edit
+      // what would go on air, which is the opposite of what "test mode" promises.
+      return testMessage ? { ...event, data: { ...event.data, messageOverride: testMessage } } : event
+    })
     onTestEvents(events)
     setAudioStatus((status) => status.state === 'idle' ? { state: 'played', message: `Queued ${count} test alert${count === 1 ? '' : 's'} locally` } : status)
   }
@@ -235,10 +240,7 @@ export function AlertStudio({ settings, onChange, onAudioFile, onImageFile, onTe
         <p className="alert-hint">Test alerts stay in this browser. They are never written to the production event table, never acknowledged and never counted.</p>
         <Row label="Username"><input value={testName} maxLength={40} onChange={(event) => setTestName(event.target.value)} /></Row>
         <Row label="Message override" hint="optional">
-          <input value={testMessage} maxLength={120} onChange={(event) => {
-            setTestMessage(event.target.value)
-            if (event.target.value) patchTemplate({ message: event.target.value })
-          }} />
+          <input value={testMessage} maxLength={120} onChange={(event) => setTestMessage(event.target.value)} />
         </Row>
         <div className="alert-row">
           <button type="button" className="primary-button" data-alert-test={kind} onClick={() => fireTest(1)}><Zap size={14} /> Test this alert</button>

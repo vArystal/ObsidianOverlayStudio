@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 /**
  * CP40 — the guard against dead controls.
@@ -11,7 +12,8 @@ import { test } from 'node:test'
  * appears nowhere outside the inspector code: such a control cannot do anything, and the phase that shipped it
  * shipped a promise instead of a feature.
  */
-const ROOT = new URL('..', import.meta.url).pathname
+// fileURLToPath, not URL.pathname: on Windows the pathname is `/C:/...`, and join() turns that into `C:\C:\...`.
+const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const INSPECTORS = [
   'src/components/editor/PropertiesPanel.tsx',
   'src/components/editor/WidgetSettings.tsx',

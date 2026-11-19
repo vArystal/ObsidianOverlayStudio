@@ -344,9 +344,13 @@ export function renderAlertCopy(settings: AlertSettings, event: LiveOverlayEvent
   const template = kind ? settings.templates[kind] : settings.templates.follow
   const payload = alertPayload(event)
   const headline = fillTemplate(template.headline, payload)
-  const message = fillTemplate(template.message, payload)
+  // A studio test may carry its own message. It is honoured only for a frame explicitly marked `test`, so a real
+  // delivery can never be rewritten by an extra data field, and the saved template is never mutated by a test.
+  const override = event.test && typeof event.data?.messageOverride === 'string' ? event.data.messageOverride : ''
+  const source = override || template.message
+  const message = fillTemplate(source, payload)
   // With {username} in the message the name is already on screen; otherwise it gets its own line.
-  const inlineName = /\{username\}/.test(template.message)
+  const inlineName = /\{username\}/.test(source)
   return { headline, message, username: payload.username, hasUsername: Boolean(payload.username) && !inlineName }
 }
 

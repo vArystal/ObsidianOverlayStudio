@@ -2,6 +2,8 @@
 // It cannot mint a management token, so it never claims a live Kick delivery; it proves the studio renders,
 // the template shows as a design state, and the published stage stays empty until an event exists.
 import pw from '/tmp/node_modules/playwright/index.js'
+import { mkdirSync } from 'node:fs'
+mkdirSync('artifacts', { recursive: true })
 const SITE = (process.env.SITE || 'https://varystal.github.io/ObsidianOverlayStudio').replace(/\/$/, '')
 const browser = await pw.chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } })
@@ -25,7 +27,7 @@ try {
   if (await testButton.count()) { await testButton.first().click(); await page.waitForTimeout(900) }
   out.checks.afterTest = await page.evaluate(() => ({
     text: document.querySelector('.alert-stage')?.textContent?.slice(0, 140) ?? null,
-    badge: Boolean(document.querySelector('.alert-test-note')),
+    badge: Boolean(document.querySelector('.alert-preview-note')),
   }))
   await page.screenshot({ path: 'artifacts/cp25-alert-test.png' })
   const overlay = await page.evaluate(() => JSON.parse(localStorage.getItem('obsidian-overlays-v1') || '[]')[0])

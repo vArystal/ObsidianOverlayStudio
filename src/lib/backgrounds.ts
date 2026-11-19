@@ -111,7 +111,8 @@ export function normalizeBackground(input: unknown): OverlayBackground {
     opacity: clamp(raw.opacity, 0, 1, d.opacity),
     speed: clamp(raw.speed, 0.2, 2, d.speed),
     intensity: clamp(raw.intensity, 0, 1, d.intensity),
-    blur: clamp(raw.blur, 0, 14, d.blur),
+    // The inspector offers 0–80px; clamping at 14 made every value above it silently snap back.
+    blur: clamp(raw.blur, 0, 80, d.blur),
     density: clamp(raw.density, 0, 1, d.density),
     scale: clamp(raw.scale, 0.6, 1.6, d.scale),
   }

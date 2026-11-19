@@ -410,7 +410,16 @@ export function OverlayEditor() {
 
   function setCanvasSize(width: number, height: number) {
     if (width < 320 || height < 240 || width > 7680 || height > 4320) return
-    commit((current) => ({ ...current, width: Math.round(width), height: Math.round(height) }))
+    const nextWidth = Math.round(width)
+    const nextHeight = Math.round(height)
+    // Shrinking from the composition fields has to clamp layers the same way the Custom-size dialog does;
+    // otherwise a layer keeps coordinates outside the stage and becomes invisible and unreachable.
+    commit((current) => ({
+      ...current,
+      width: nextWidth,
+      height: nextHeight,
+      elements: current.elements.map((element) => clampElement(element, nextWidth, nextHeight)),
+    }))
     setZoom(null)
   }
 
@@ -600,15 +609,19 @@ export function OverlayEditor() {
         </div>
         </ErrorBoundary>
         {mobilePanel && <button className="mobile-panel-scrim" aria-label="Close panel" onClick={() => setMobilePanel(null)} />}
-        {alertHealth.degraded && <div className="publish-issue degraded" role="status"><AlertTriangle aria-hidden="true" /><span>{alertHealth.message}</span></div>}
-        {publishIssue && <div className="publish-issue" role="alert"><AlertTriangle aria-hidden="true" /><span>{publishIssue}</span></div>}
-        {publishStripVisible && (
-          <div className="publish-issue actions">
-            <span>{overlay.live?.runtimeKey ? 'This overlay has a live runtime attached.' : 'This overlay is published as a snapshot.'}</span>
-            <div className="publish-issue-actions">
-              <button type="button" className="secondary-button" onClick={() => setUnpublishOpen(true)}>Unpublish</button>
-              <button type="button" className="publish-issue-close" aria-label="Dismiss published notice" onClick={dismissPublishStrip}><X aria-hidden="true" /></button>
-            </div>
+        {(alertHealth.degraded || publishIssue || publishStripVisible) && (
+          <div className="publish-notices">
+            {alertHealth.degraded && <div className="publish-issue degraded" role="status"><AlertTriangle aria-hidden="true" /><span>{alertHealth.message}</span></div>}
+            {publishIssue && <div className="publish-issue" role="alert"><AlertTriangle aria-hidden="true" /><span>{publishIssue}</span></div>}
+            {publishStripVisible && (
+              <div className="publish-issue actions">
+                <span>{overlay.live?.runtimeKey ? 'This overlay has a live runtime attached.' : 'This overlay is published as a snapshot.'}</span>
+                <div className="publish-issue-actions">
+                  <button type="button" className="secondary-button" onClick={() => setUnpublishOpen(true)}>Unpublish</button>
+                  <button type="button" className="publish-issue-close" aria-label="Dismiss published notice" onClick={dismissPublishStrip}><X aria-hidden="true" /></button>
+                </div>
+              </div>
+            )}
           </div>
         )}
         <ConfirmDialog
