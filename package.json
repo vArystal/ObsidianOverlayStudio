@@ -18,7 +18,8 @@
     "test:contract": "node tests/contract/run.mjs",
     "preview:dist": "vite preview --host 0.0.0.0",
     "build:pages": "node scripts/build-pages.mjs",
-    "deploy:pages": "node scripts/build-pages.mjs && wrangler pages deploy worker/pages --project-name=obsidian-overlay-api --branch=main --commit-dirty=true"
+    "deploy:pages": "node scripts/build-pages.mjs && wrangler pages deploy worker/pages --project-name=obsidian-overlay-api --branch=main --commit-dirty=true",
+    "deploy:vercel": "npx vercel deploy --prod --yes"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

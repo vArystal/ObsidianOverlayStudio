@@ -18,3 +18,5 @@ worker/.wrangler/
 
 # CP41: probe screenshots live on the assets-screenshots branch; probes write here at runtime.
 artifacts/
+
+.vercel
