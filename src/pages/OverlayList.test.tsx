@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { createEmptyOverlay } from '../lib/elements'
-import { getOverlay, saveOverlay } from '../lib/storage'
+import { getOverlay, loadOverlays, saveOverlay } from '../lib/storage'
 import { OverlayList } from './OverlayList'
 
 beforeEach(() => { localStorage.clear() })
@@ -16,6 +16,21 @@ describe('overlay library accessibility', () => {
     saveOverlay(overlay)
     render(<MemoryRouter><OverlayList /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Edit Royal starting soon' })).toBeTruthy()
+  })
+})
+
+describe('template gallery', () => {
+  // CP51: the gallery exists so a palette is one click from the library, so the card has to produce a real,
+  // saved overlay in that theme — not a link that only looks themed.
+  it('creates and saves a Rose & Thorn overlay from its template card', () => {
+    render(<MemoryRouter><OverlayList /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Start from Rose & Thorn' }))
+    const created = loadOverlays().find((overlay) => overlay.name === 'Rose & Thorn')
+    expect(created).toBeTruthy()
+    expect(created!.theme.id).toBe('rose-thorn')
+    expect(created!.background.enabled).toBe(true)
+    expect(created!.background.kind).toBe('rose-vines')
+    expect(created!.elements).toHaveLength(1)
   })
 })
 

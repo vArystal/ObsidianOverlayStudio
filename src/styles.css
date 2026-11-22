@@ -105,6 +105,19 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .empty-library-icon svg { width: 26px; height: 26px; }
 .empty-library h2 { font-size: 18px; margin: 20px 0 6px; }
 .empty-library p { color: var(--muted); font-size: 13px; margin: 0 0 22px; }
+/* CP51: template gallery. One card per theme preset, so a palette is one click away instead of a theme hunt
+   inside the editor. The swatch is built from the preset's own colours, never a screenshot. */
+.template-gallery { margin-top: 34px; }
+.template-gallery-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+.template-gallery-head h2 { font-size: 12px; margin: 0; }
+.template-gallery-head span { color: #8f8f8f; font-size: 11px; }
+.template-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.template-card { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 8px; border: 1px solid #272727; border-radius: 10px; background: #151515; text-align: left; cursor: pointer; transition: transform .16s ease, border-color .16s ease; }
+.template-card:hover { transform: translateY(-2px); border-color: #3d3d3d; }
+.template-card:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
+.template-swatch { display: block; height: 56px; border: 1px solid; border-radius: 7px; }
+.template-card strong { font-size: 11px; color: #eaeaea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.template-card small { font-size: 9px; line-height: 1.4; color: #8f8f8f; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .storage-note { margin-top: 18px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; border: 1px solid #272727; border-radius: 8px; font-size: 10px; color: #919191; }
 .storage-note strong { color: #9e9e9e; }
 
@@ -436,6 +449,7 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
   .is-previewing .editor-panel { display: none; }
   .library-page { padding: 45px 20px; }
   .library-hero { align-items: flex-start; }
+  .template-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 650px) {
@@ -446,6 +460,7 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
   .library-toolbar > span { display: none; }
   .search-box { width: 100%; }
   .overlay-grid { grid-template-columns: 1fr; }
+  .template-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .storage-note { align-items: flex-start; flex-direction: column; }
   .toolbar-button { font-size: 0; gap: 0; }
   .toolbar-button svg { width: 17px; }

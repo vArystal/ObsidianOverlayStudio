@@ -22,6 +22,8 @@ import { EyeOff } from 'lucide-react'
 import { snapshotBudget } from '../lib/images'
 import { getPublicIntegrationConfig } from '../lib/integration'
 import { buildHashUrl } from '../lib/urls'
+import { OVERLAY_TEMPLATES, buildTemplate, templateSwatch } from '../lib/templates'
+import type { OverlayTemplate } from '../lib/templates'
 import type { Overlay } from '../types'
 
 export function OverlayList() {
@@ -41,6 +43,16 @@ export function OverlayList() {
 
   function createOverlay() {
     const overlay = createEmptyOverlay(`Overlay ${overlays.length + 1}`)
+    overlay.live = getPublicIntegrationConfig()
+    const result = saveOverlay(overlay)
+    if (!result.ok || !result.value) return setError(result.error ?? 'Could not create overlay')
+    setOverlays((items) => [...items, result.value!])
+    navigate(`/overlays/editor/${overlay.id}`)
+  }
+
+  /** CP51: a template is saved exactly like an empty overlay, so the next push of "undo" and rename behave the same. */
+  function createFromTemplate(template: OverlayTemplate) {
+    const overlay = buildTemplate(template)
     overlay.live = getPublicIntegrationConfig()
     const result = saveOverlay(overlay)
     if (!result.ok || !result.value) return setError(result.error ?? 'Could not create overlay')
@@ -101,6 +113,30 @@ export function OverlayList() {
             <p>Build precise, transparent layouts for OBS — one element at a time.</p>
           </div>
           <button className="primary-button" onClick={createOverlay}><Plus size={18} /> New empty overlay</button>
+        </section>
+
+        {/* CP51: the template gallery exists so a palette is one click away, not a theme hunt inside the editor. */}
+        <section className="template-gallery" aria-label="Start from a template">
+          <div className="template-gallery-head">
+            <h2>Start from a template</h2>
+            <span>A themed scene you can edit like any other overlay.</span>
+          </div>
+          <div className="template-row">
+            {OVERLAY_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                className="template-card"
+                aria-label={`Start from ${template.name}`}
+                title={template.blurb}
+                onClick={() => createFromTemplate(template)}
+              >
+                <span className="template-swatch" aria-hidden="true" style={templateSwatch(template)} />
+                <strong>{template.name}</strong>
+                <small>{template.blurb}</small>
+              </button>
+            ))}
+          </div>
         </section>
 
         <div className="library-stats" aria-label="Workspace summary">
