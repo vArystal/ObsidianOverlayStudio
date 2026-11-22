@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { createEmptyOverlay } from '../lib/elements'
 import { getOverlay, loadOverlays, saveOverlay } from '../lib/storage'
+import { THEMES } from '../lib/themes'
 import { OverlayList } from './OverlayList'
 
 beforeEach(() => { localStorage.clear() })
@@ -30,7 +31,17 @@ describe('template gallery', () => {
     expect(created!.theme.id).toBe('rose-thorn')
     expect(created!.background.enabled).toBe(true)
     expect(created!.background.kind).toBe('rose-vines')
-    expect(created!.elements).toHaveLength(1)
+    // Title, panel and chat: the scene has to show the palette, not just declare it.
+    expect(created!.elements.map((element) => element.type)).toEqual(['text', 'container', 'chat'])
+    const [title, panel, chat] = created!.elements
+    // Containers and chat hold their own colours, so the template must copy the palette into them; leaving the
+    // defaults would give every template the same grey widgets.
+    const { palette } = THEMES['rose-thorn']
+    expect(title.props.color).toBe(palette.text.primary)
+    expect(panel.props.fillColor).toBe(palette.surface.raised)
+    expect(panel.props.borderColor).toBe(palette.accent.base)
+    expect(chat.props.textColor).toBe(palette.text.primary)
+    expect(chat.props.backgroundColor).toBe(palette.surface.base)
   })
 })
 
