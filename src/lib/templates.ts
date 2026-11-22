@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { BackgroundKind, Overlay, OverlayTheme, ThemeId } from '../types'
 import { createElement, createEmptyOverlay } from './elements'
-import { normalizeBackground } from './backgrounds'
+import { normalizeBackground, themeBackground } from './backgrounds'
 import { THEMES } from './themes'
 
 /**
@@ -164,7 +164,8 @@ export function buildTemplate(template: OverlayTemplate): Overlay {
   const overlay = createEmptyOverlay(template.name)
   const theme = THEMES[template.themeId]
   overlay.theme = structuredClone(theme)
-  overlay.background = normalizeBackground({ enabled: true, kind: template.background })
+  // The scene takes the template's palette, so "Rose & Thorn" opens on a rose briar rather than a preset's own blue.
+  overlay.background = themeBackground(normalizeBackground({ enabled: true, kind: template.background }), theme)
   const title = createElement('text', 0)
   title.name = 'Title'
   title.x = 96

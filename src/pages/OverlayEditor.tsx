@@ -10,6 +10,7 @@ import { ElementsPanel } from '../components/editor/ElementsPanel'
 import { BackgroundSection } from '../components/editor/BackgroundSection'
 import { PropertiesPanel } from '../components/editor/PropertiesPanel'
 import { clampElement } from '../lib/geometry'
+import { normalizeBackground, themeBackground } from '../lib/backgrounds'
 import { EMPTY_HISTORY, pushHistory, redoHistory, undoHistory, type HistoryState } from '../lib/history'
 import { sameOverlay } from '../lib/overlayDiff'
 import { createElement, duplicateElement } from '../lib/elements'
@@ -601,7 +602,12 @@ export function OverlayEditor() {
             onDuplicate={() => selectedId && duplicate(selectedId)} onDelete={() => selectedId && deleteElement(selectedId)}
             onUpload={upload} onTest={testWidget} onCanvasSize={setCanvasSize}
             onMotion={(motion) => selected && commit((item) => ({ ...item, elements: item.elements.map((entry) => entry.id === selected.id ? { ...entry, motion } : entry) }))}
-            onTheme={(themeId) => commit((item) => ({ ...item, theme: structuredClone(getTheme(themeId)) }))}
+            onTheme={(themeId) => commit((item) => {
+              const theme = structuredClone(getTheme(themeId))
+              // CP53: the scene is part of the style, so choosing a theme recolours it instead of leaving a
+              // blue-grey aurora behind a rose overlay. Hand-picked colours still win until a theme is chosen.
+              return { ...item, theme, background: themeBackground(normalizeBackground(item.background), theme) }
+            })}
             onStaticMotion={(staticMotion) => commit((item) => ({ ...item, staticMotion }))}
             onBackground={(background) => commit((item) => ({ ...item, background }))}
             onAlerts={(alerts) => commit((item) => ({ ...item, alerts }))}

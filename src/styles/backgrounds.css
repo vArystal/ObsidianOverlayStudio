@@ -219,8 +219,8 @@
    Four very large, very soft fields turning at different rates. The softness is in the gradient stops, so the
    scene reads as smoke even with Blur at 0. */
 .bg-smoke-drift .band-a {
-  background: radial-gradient(58% 52% at 38% 62%, color-mix(in srgb, var(--bg-accent, #8f9aa6) 24%, transparent) 0%, transparent 74%);
-  opacity: calc(.28 + var(--bg-intensity, .5) * .38);
+  background: radial-gradient(58% 52% at 38% 62%, color-mix(in srgb, var(--bg-accent, #8f9aa6) 34%, transparent) 0%, transparent 74%);
+  opacity: calc(.34 + var(--bg-intensity, .5) * .38);
   animation: bg-smoke-a var(--bg-duration-slow, 58s) ease-in-out infinite alternate;
 }
 .bg-smoke-drift .band-b {
@@ -243,14 +243,14 @@
    One repeating conic fan from a point above the frame plus a warm wash behind it. The fan only rotates a few
    degrees, which is what keeps it from looking like a spinning wheel. */
 .bg-light-rays .band-a {
-  background: radial-gradient(64% 56% at 50% 0%, color-mix(in srgb, var(--bg-accent, #ffe6bf) 26%, transparent) 0%, transparent 70%);
-  opacity: calc(.3 + var(--bg-intensity, .5) * .45);
+  background: radial-gradient(64% 56% at 50% 0%, color-mix(in srgb, var(--bg-accent, #ffe6bf) 38%, transparent) 0%, transparent 70%);
+  opacity: calc(.36 + var(--bg-intensity, .5) * .45);
   animation: bg-breathe-c var(--bg-duration-slow, 58s) ease-in-out infinite alternate;
 }
 .bg-light-rays .band-rays {
   position: absolute;
   inset: -30% -20% -10% -20%;
-  background: repeating-conic-gradient(from 196deg at 50% 0%, color-mix(in srgb, var(--bg-accent, #ffe6bf) 30%, transparent) 0 2.4deg, transparent 2.4deg 9deg);
+  background: repeating-conic-gradient(from 196deg at 50% 0%, color-mix(in srgb, var(--bg-accent, #ffe6bf) 42%, transparent) 0 2.4deg, transparent 2.4deg 9deg);
   -webkit-mask-image: radial-gradient(60% 90% at 50% 0%, #000 6%, transparent 74%);
   mask-image: radial-gradient(60% 90% at 50% 0%, #000 6%, transparent 74%);
   transform-origin: 50% 0%;
@@ -289,35 +289,38 @@
   animation: bg-storm-roll var(--bg-duration, 24s) ease-in-out infinite alternate-reverse;
 }
 .bg-storm-clouds .band-c {
-  background: linear-gradient(188deg, color-mix(in srgb, var(--bg-accent, #cfe0ff) 26%, transparent) 0%, transparent 58%);
+  background: linear-gradient(188deg, color-mix(in srgb, var(--bg-accent, #c6ddff) 34%, transparent) 0%, transparent 58%);
   opacity: 0;
-  animation: bg-flash var(--bg-duration-slow, 58s) linear infinite;
+  /* Half the slow cycle, so a strike lands every ~13s instead of once a minute. */
+  animation: bg-flash calc(var(--bg-duration-slow, 26s) * .5) linear infinite;
 }
 
 /* ---------------------------------------------------------------- motion
    Transform and opacity only. translate3d keeps each actor on its own compositor layer. */
-@keyframes bg-drift-a { from { transform: translate3d(-3%, -2%, 0) scale(1); } to { transform: translate3d(6%, 4%, 0) scale(1.12); } }
-@keyframes bg-drift-b { from { transform: translate3d(4%, 3%, 0) rotate(-2deg); } to { transform: translate3d(-5%, -4%, 0) rotate(3deg); } }
-@keyframes bg-drift-c { from { transform: translate3d(-6%, 0, 0) rotate(0.5deg) scale(1.04); } to { transform: translate3d(7%, -5%, 0) rotate(-1.5deg) scale(1.16); } }
-@keyframes bg-fold-a { from { transform: translate3d(-4%, 2%, 0) scale(1.05) rotate(-4deg); } to { transform: translate3d(8%, -6%, 0) scale(1.2) rotate(6deg); } }
-@keyframes bg-fold-b { from { transform: translate3d(6%, -3%, 0) scale(1.1); } to { transform: translate3d(-7%, 5%, 0) scale(.94); } }
-@keyframes bg-fold-c { from { transform: translate3d(0, 4%, 0) scale(.9); } to { transform: translate3d(-6%, -6%, 0) scale(1.24); } }
-@keyframes bg-fold-d { from { transform: rotate(0deg) scale(1.1); } to { transform: rotate(210deg) scale(1.3); } }
+/* CP53: amplitudes were doubled. A 3% drift over a 58s cycle is two pixels a second on a 1920 canvas, which is
+   indistinguishable from a wallpaper; the same numbers over 26s and 8% read as weather. */
+@keyframes bg-drift-a { from { transform: translate3d(-6%, -4%, 0) scale(1); } to { transform: translate3d(9%, 7%, 0) scale(1.2); } }
+@keyframes bg-drift-b { from { transform: translate3d(8%, 5%, 0) rotate(-4deg); } to { transform: translate3d(-9%, -7%, 0) rotate(5deg); } }
+@keyframes bg-drift-c { from { transform: translate3d(-9%, 0, 0) rotate(1deg) scale(1.06); } to { transform: translate3d(10%, -8%, 0) rotate(-3deg) scale(1.24); } }
+@keyframes bg-fold-a { from { transform: translate3d(-7%, 4%, 0) scale(1.05) rotate(-7deg); } to { transform: translate3d(11%, -9%, 0) scale(1.3) rotate(9deg); } }
+@keyframes bg-fold-b { from { transform: translate3d(9%, -5%, 0) scale(1.18); } to { transform: translate3d(-10%, 8%, 0) scale(.9); } }
+@keyframes bg-fold-c { from { transform: translate3d(0, 7%, 0) scale(.84); } to { transform: translate3d(-9%, -9%, 0) scale(1.34); } }
+@keyframes bg-fold-d { from { transform: rotate(0deg) scale(1.1); } to { transform: rotate(300deg) scale(1.4); } }
 @keyframes bg-mote-rise { from { transform: translate3d(0, 12vh, 0); } to { transform: translate3d(2vw, -110vh, 0); } }
 @keyframes bg-grid-run { from { transform: perspective(520px) rotateX(66deg) scale(var(--bg-scale, 1)) translate3d(0, 0, 0); } to { transform: perspective(520px) rotateX(66deg) scale(var(--bg-scale, 1)) translate3d(0, 72px, 0); } }
 @keyframes bg-pulse { from { transform: scale(.96); opacity: .2; } to { transform: scale(1.06); opacity: .48; } }
 @keyframes bg-parallax { from { transform: translate3d(-2%, 0, 0); } to { transform: translate3d(2%, -3%, 0); } }
 @keyframes bg-twinkle { 0%, 100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
-@keyframes bg-breathe-a { from { transform: translate3d(-2%, 0, 0) scale(1); } to { transform: translate3d(3%, -2%, 0) scale(1.1); } }
-@keyframes bg-breathe-b { from { transform: translate3d(2%, 2%, 0) scale(1.06); } to { transform: translate3d(-3%, -2%, 0) scale(.96); } }
-@keyframes bg-breathe-c { from { opacity: .6; } to { opacity: .95; } }
-@keyframes bg-stem-sway { from { transform: translate3d(-2%, 1%, 0) rotate(-1.5deg) scale(1.02); } to { transform: translate3d(3%, -2%, 0) rotate(1.5deg) scale(1.1); } }
-@keyframes bg-rose-bloom { from { transform: translate3d(-3%, 2%, 0) scale(.94); opacity: .32; } to { transform: translate3d(4%, -3%, 0) scale(1.18); opacity: .8; } }
-@keyframes bg-smoke-a { from { transform: translate3d(-5%, 3%, 0) scale(1.06) rotate(-3deg); } to { transform: translate3d(6%, -4%, 0) scale(1.24) rotate(4deg); } }
-@keyframes bg-smoke-b { from { transform: translate3d(4%, -2%, 0) scale(1.12) rotate(2deg); } to { transform: translate3d(-6%, 5%, 0) scale(.96) rotate(-4deg); } }
-@keyframes bg-rays-sweep { from { transform: rotate(-4deg) scale(1); opacity: .28; } to { transform: rotate(4deg) scale(1.08); opacity: .62; } }
-@keyframes bg-bokeh-float { from { transform: translate3d(-1.5vw, 2vh, 0) scale(.92); } to { transform: translate3d(2vw, -3vh, 0) scale(1.14); } }
-@keyframes bg-storm-roll { from { transform: translate3d(-4%, 0, 0) scale(1.04); } to { transform: translate3d(4%, -3%, 0) scale(1.16); } }
+@keyframes bg-breathe-a { from { transform: translate3d(-4%, 0, 0) scale(1); } to { transform: translate3d(6%, -4%, 0) scale(1.16); } }
+@keyframes bg-breathe-b { from { transform: translate3d(4%, 4%, 0) scale(1.1); } to { transform: translate3d(-6%, -4%, 0) scale(.92); } }
+@keyframes bg-breathe-c { from { opacity: .55; } to { opacity: 1; } }
+@keyframes bg-stem-sway { from { transform: translate3d(-4%, 2%, 0) rotate(-3.5deg) scale(1.02); } to { transform: translate3d(5%, -4%, 0) rotate(3.5deg) scale(1.14); } }
+@keyframes bg-rose-bloom { from { transform: translate3d(-5%, 4%, 0) scale(.86); opacity: .25; } to { transform: translate3d(7%, -5%, 0) scale(1.3); opacity: .95; } }
+@keyframes bg-smoke-a { from { transform: translate3d(-8%, 5%, 0) scale(1.06) rotate(-7deg); } to { transform: translate3d(9%, -7%, 0) scale(1.38) rotate(7deg); } }
+@keyframes bg-smoke-b { from { transform: translate3d(7%, -4%, 0) scale(1.2) rotate(5deg); } to { transform: translate3d(-9%, 8%, 0) scale(.9) rotate(-7deg); } }
+@keyframes bg-rays-sweep { from { transform: rotate(-12deg) scale(1); opacity: .18; } to { transform: rotate(12deg) scale(1.14); opacity: .85; } }
+@keyframes bg-bokeh-float { from { transform: translate3d(-3vw, 4vh, 0) scale(.88); } to { transform: translate3d(3.5vw, -6vh, 0) scale(1.22); } }
+@keyframes bg-storm-roll { from { transform: translate3d(-7%, 0, 0) scale(1.04); } to { transform: translate3d(7%, -6%, 0) scale(1.24); } }
 @keyframes bg-flash {
   0%, 88%, 100% { opacity: 0; }
   89% { opacity: .55; }

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { createElement as h } from 'react'
 import {
-  BACKGROUND_PRESETS, DEFAULT_BACKGROUND, backgroundCssVars, isAnimated, normalizeBackground, presetFor,
+  BACKGROUND_PRESETS, DEFAULT_BACKGROUND, backgroundCssVars, isAnimated, normalizeBackground, presetFor, themeBackground,
 } from './backgrounds'
 import { BackgroundLayer } from '../components/BackgroundLayer'
 import { createEmptyOverlay, createElement } from './elements'
@@ -123,6 +123,35 @@ describe('CP21 background engine', () => {
     const grid = presetFor('neon-grid')!
     expect(grid.controls).not.toContain('density')
     expect(grid.controls).toContain('scale')
+  })
+})
+
+/**
+ * CP53: the scenes moved too slowly to read as motion, and they kept their own palette when the overlay changed
+ * style. Both are assertions about the contract, not about taste: a cycle longer than the time someone watches a
+ * preview is a still image, and a themed overlay must not sit on another theme's colours.
+ */
+describe('CP53 backdrop motion and style', () => {
+  it('keeps every cycle short enough to read as movement', () => {
+    for (const preset of BACKGROUND_PRESETS) {
+      const vars = backgroundCssVars(normalizeBackground({ ...preset.defaults, kind: preset.kind, enabled: true }))
+      expect(parseFloat(vars['--bg-duration']), `${preset.kind} base cycle`).toBeLessThanOrEqual(20)
+      expect(parseFloat(vars['--bg-duration-slow']), `${preset.kind} slow cycle`).toBeLessThanOrEqual(45)
+      expect(parseFloat(vars['--bg-duration-fast']), `${preset.kind} fast cycle`).toBeLessThanOrEqual(12)
+    }
+  })
+
+  it('takes the three scene colours from the style, keeping the scene and its motion', () => {
+    const bg = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind: 'rose-vines', speed: 1.3, paused: true })
+    const theme = THEMES['rose-thorn']
+    const themed = themeBackground(bg, theme)
+    expect(themed.kind).toBe('rose-vines')
+    expect(themed.speed).toBe(1.3)
+    expect(themed.paused).toBe(true)
+    expect(themed.primary).toBe(theme.palette.surface.sunken)
+    expect(themed.secondary).toBe(theme.palette.surface.raised)
+    expect(themed.accent).toBe(theme.palette.accent.base)
+    expect(themed.accent).not.toBe(bg.accent)
   })
 })
 

@@ -1,4 +1,4 @@
-import type { BackgroundKind, OverlayBackground } from '../types'
+import type { BackgroundKind, OverlayBackground, OverlayTheme } from '../types'
 
 /** Which controls a given backdrop actually responds to. Hiding the rest avoids dead knobs. */
 export type BackgroundControl = 'primary' | 'secondary' | 'accent' | 'opacity' | 'speed' | 'intensity' | 'blur' | 'density' | 'scale'
@@ -63,7 +63,7 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     label: 'Deep Space',
     blurb: 'Star field, distant light and parallax depth',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'density', 'blur'],
-    defaults: { ...base, primary: '#05060a', secondary: '#0a0f1a', accent: '#dfe6f2', opacity: 0.95, speed: 0.5, intensity: 0.4, density: 0.6 },
+    defaults: { ...base, primary: '#05060a', secondary: '#0a0f1a', accent: '#dfe6f2', opacity: 0.95, speed: 0.75, intensity: 0.4, density: 0.6 },
   },
   {
     kind: 'ambient-gradient',
@@ -75,37 +75,37 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   {
     kind: 'rose-vines',
     label: 'Rose Vines',
-    blurb: 'Briar stems climbing through rose light',
+    blurb: 'Thorned briar swaying through hot rose light',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#150a10', secondary: '#241016', accent: '#d9647f', opacity: 0.9, speed: 0.85, intensity: 0.55, blur: 6, scale: 1.1 },
+    defaults: { ...base, primary: '#1a0810', secondary: '#33101d', accent: '#ff7597', opacity: 0.94, speed: 1, intensity: 0.65, blur: 3, scale: 1.12 },
   },
   {
     kind: 'smoke-drift',
     label: 'Smoke Drift',
-    blurb: 'Charcoal smoke folding through the frame',
+    blurb: 'Cold charcoal smoke rolling across the frame',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#0b0d10', secondary: '#1b2026', accent: '#8f9aa6', opacity: 0.8, speed: 0.55, intensity: 0.5, blur: 24, scale: 1.05 },
+    defaults: { ...base, primary: '#080c12', secondary: '#26333f', accent: '#a7c2d6', opacity: 0.86, speed: 0.8, intensity: 0.6, blur: 14, scale: 1.08 },
   },
   {
     kind: 'light-rays',
     label: 'Light Rays',
-    blurb: 'A soft fan of light opening from above',
+    blurb: 'A warm fan of light sweeping from above',
     controls: ['primary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#0a0b0e', accent: '#ffe6bf', opacity: 0.55, speed: 0.4, intensity: 0.5, blur: 12, scale: 1 },
+    defaults: { ...base, primary: '#0c0804', accent: '#ffd489', opacity: 0.66, speed: 0.75, intensity: 0.62, blur: 6, scale: 1.04 },
   },
   {
     kind: 'bokeh-lights',
     label: 'Bokeh Lights',
-    blurb: 'Out-of-focus points of light with real depth',
+    blurb: 'Warm out-of-focus lights drifting at three depths',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'density', 'blur'],
-    defaults: { ...base, primary: '#0a0a0c', secondary: '#1a1418', accent: '#f0c9b4', opacity: 0.88, speed: 0.6, intensity: 0.45, density: 0.5, blur: 0 },
+    defaults: { ...base, primary: '#0c0910', secondary: '#2d1a25', accent: '#ffc79f', opacity: 0.92, speed: 0.9, intensity: 0.55, density: 0.55, blur: 0 },
   },
   {
     kind: 'storm-clouds',
     label: 'Storm Clouds',
-    blurb: 'Layered cloud with a slow lightning bloom',
+    blurb: 'Heavy cloud banks with a lightning bloom',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
-    defaults: { ...base, primary: '#0a0c10', secondary: '#1c222b', accent: '#cfe0ff', opacity: 0.95, speed: 0.5, intensity: 0.45, blur: 18, scale: 1.15 },
+    defaults: { ...base, primary: '#070b13', secondary: '#1e2c3f', accent: '#c6ddff', opacity: 0.96, speed: 0.85, intensity: 0.55, blur: 10, scale: 1.14 },
   },
 ]
 
@@ -164,14 +164,32 @@ export function backgroundCssVars(background: OverlayBackground): Record<string,
     '--bg-accent': background.accent,
     '--bg-opacity': String(background.opacity),
     // Slower speed means longer durations, so the multiplier is inverted once here rather than in six places.
-    '--bg-duration': `${(24 / Math.max(0.2, background.speed)).toFixed(2)}s`,
-    '--bg-duration-slow': `${(58 / Math.max(0.2, background.speed)).toFixed(2)}s`,
-    '--bg-duration-fast': `${(11 / Math.max(0.2, background.speed)).toFixed(2)}s`,
+    // CP53: 24/58/11s cycles read as a still image while someone is working, so the same scenes now breathe on
+    // 12/26/6s. Nothing per-frame changed: these are still compositor-only transform and opacity animations.
+    '--bg-duration': `${(12 / Math.max(0.2, background.speed)).toFixed(2)}s`,
+    '--bg-duration-slow': `${(26 / Math.max(0.2, background.speed)).toFixed(2)}s`,
+    '--bg-duration-fast': `${(6 / Math.max(0.2, background.speed)).toFixed(2)}s`,
     '--bg-intensity': String(background.intensity),
     '--bg-blur': `${background.blur}px`,
     '--bg-density': String(background.density),
     '--bg-scale': String(background.scale),
   }
+}
+
+/**
+ * CP53: the backdrop used to keep whichever palette its scene shipped with, so switching the overlay to Rose & Thorn
+ * left a blue-grey aurora behind it. The three scene colours now come from the theme the overlay is already using:
+ * deep surface for the ground, raised surface for the mass, accent for the light. A scene keeps its own construction
+ * and motion, so the five still look like five effects — they just belong to the style around them. Picking a colour
+ * by hand still wins, because this only runs when a theme is chosen.
+ */
+export function themeBackground(background: OverlayBackground, theme: OverlayTheme): OverlayBackground {
+  return normalizeBackground({
+    ...background,
+    primary: theme.palette.surface.sunken,
+    secondary: theme.palette.surface.raised,
+    accent: theme.palette.accent.base,
+  })
 }
 
 export function isAnimated(background: OverlayBackground, reducedMotion: boolean) {
