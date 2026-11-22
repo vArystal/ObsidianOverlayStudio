@@ -2,7 +2,7 @@ const DEDICATED_INSPECTOR = ['text', 'image', 'shape', 'container', 'frame', 'ca
 
 import { describe, expect, it } from 'vitest'
 import { ELEMENT_LABELS, createElement, duplicateElement } from './elements'
-import { WIDGETS, WIDGET_GROUPS, availabilityLabel, createWidgetProps, resetWidgetProps, searchWidgets, widgetFor } from './widgets'
+import { WIDGETS, WIDGET_GROUPS, availabilityLabel, createWidgetProps, resetWidgetProps, scaleWidgetText, searchWidgets, widgetFor } from './widgets'
 import type { ElementType } from '../types'
 
 describe('widget registry', () => {
@@ -66,6 +66,23 @@ describe('widget registry', () => {
       expect(element.name).toBe(widget.label)
       expect(element.id.startsWith(widget.type)).toBe(true)
     }
+  })
+
+  it('scales a widget’s type with its box and keeps the factor anchored to the gesture start', () => {
+    const clock = createElement('clock')
+    const doubled = scaleWidgetText(clock, { ...clock, width: clock.width * 2, height: clock.height * 2 })
+    expect(doubled.props.fontSize).toBe(44)
+    // Widening only is the case that used to look broken: the type still grows, but gently.
+    const wider = scaleWidgetText(clock, { ...clock, width: clock.width * 4 })
+    expect(Number(wider.props.fontSize)).toBe(44)
+    // Frames and text boxes re-flow instead of growing their caption.
+    const text = createElement('text')
+    const grown = scaleWidgetText(text, { ...text, width: text.width * 3, height: text.height * 3 })
+    expect(grown.props).toBe(text.props)
+    // A hand-set size can never be driven past what the typography studio can present again.
+    const huge = createElement('clock')
+    huge.props.fontSize = 300
+    expect(scaleWidgetText(huge, { ...huge, width: huge.width * 10, height: huge.height * 10 }).props.fontSize).toBe(400)
   })
 
   it('resets a widget to its defaults while keeping geometry and identity', () => {

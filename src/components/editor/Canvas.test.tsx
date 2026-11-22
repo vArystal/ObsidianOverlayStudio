@@ -21,9 +21,9 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-function setup() {
+function setup(type: ElementType = 'shape') {
   const overlay = createEmptyOverlay()
-  const element = createElement('shape')
+  const element = createElement(type)
   overlay.elements.push(element)
   const onLiveElement = vi.fn<(element: OverlayElement) => void>()
   const onInteractionStart = vi.fn()
@@ -72,6 +72,29 @@ describe('canvas pointer interactions', () => {
       width: result.element.width + 60,
       height: result.element.height + 40,
     })
+  })
+
+  // CP52: resizing only moved the box, so a widget dragged to twice its size still showed its original type size.
+  it('scales a widget’s type with the box, and leaves a shape’s props alone', () => {
+    const widget = setup('clock')
+    const handle = widget.container.querySelector('.handle-se') as HTMLElement
+    const stage = widget.container.querySelector('.canvas-stage') as HTMLElement
+    fireEvent.pointerDown(handle, { pointerId: 3, button: 0, clientX: 200, clientY: 200 })
+    fireEvent.pointerMove(stage, { pointerId: 3, clientX: 520, clientY: 308 })
+    fireEvent.pointerUp(stage, { pointerId: 3 })
+
+    const resized = widget.onLiveElement.mock.lastCall?.[0]
+    expect(resized?.width).toBe(widget.element.width + 320)
+    expect(resized?.height).toBe(widget.element.height + 108)
+    expect(Number(resized?.props.fontSize)).toBeGreaterThan(Number(widget.element.props.fontSize))
+
+    const shape = setup('shape')
+    const shapeHandle = shape.container.querySelector('.handle-se') as HTMLElement
+    const shapeStage = shape.container.querySelector('.canvas-stage') as HTMLElement
+    fireEvent.pointerDown(shapeHandle, { pointerId: 4, button: 0, clientX: 200, clientY: 200 })
+    fireEvent.pointerMove(shapeStage, { pointerId: 4, clientX: 320, clientY: 300 })
+    fireEvent.pointerUp(shapeStage, { pointerId: 4 })
+    expect(shape.onLiveElement.mock.lastCall?.[0]).toMatchObject({ props: shape.element.props })
   })
 })
 

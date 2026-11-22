@@ -6,7 +6,7 @@
  * (src/components/widgets) serves the editor canvas and the OBS runtime, and duplicating its logic per widget
  * would be the drift this checkpoint is meant to prevent.
  */
-import type { ElementType } from '../types'
+import type { ElementType, OverlayElement } from '../types'
 
 export type WidgetGroup = 'Stream' | 'Community' | 'Alerts' | 'Goals' | 'Content' | 'Planning'
 
@@ -228,6 +228,32 @@ export const WIDGETS: WidgetDefinition[] = [
     note: 'No donation provider is connected to this project, so this widget is excluded from OBS output.', defaults: { label: 'Latest supporter', value: '—', dataSource: 'none', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderWidth: 1, borderColor: '#2a2a2e', borderOpacity: 1, radius: 16, padding: 18, shadow: true, fontFamily: 'inter', fontSize: 22, fontWeight: 600, textAlign: 'left' },
   },
 ]
+
+/**
+ * Widgets whose type is part of the design, so the box and the text resize together. Text boxes and image frames are
+ * excluded on purpose: a text box is resized to re-flow, and an image frame must not resize a caption.
+ */
+const TEXT_SCALED_TYPES = new Set<ElementType>([
+  ...WIDGETS.filter((widget) => typeof widget.defaults.fontSize === 'number').map((widget) => widget.type),
+  // The chat frame is edited by its own studio rather than the registry, but its type is sized the same way.
+  'chat',
+])
+
+/**
+ * Resizing a widget used to move the box around the text, so a widget dragged to fill a corner kept the type size it
+ * was added at. The font follows the square root of the area change: a corner drag stays proportional, while a
+ * single-edge drag grows the type gently instead of pushing digits out of the box. The factor always comes from the
+ * element as it was when the gesture started, so a slow drag cannot accumulate rounding drift.
+ */
+export function scaleWidgetText(start: OverlayElement, next: OverlayElement): OverlayElement {
+  if (!TEXT_SCALED_TYPES.has(start.type) || start.width <= 0 || start.height <= 0) return next
+  const base = Number(start.props.fontSize)
+  if (!Number.isFinite(base) || base <= 0) return next
+  const factor = Math.sqrt((next.width * next.height) / (start.width * start.height))
+  const fontSize = Math.round(Math.min(400, Math.max(4, base * factor)))
+  if (fontSize === Number(next.props.fontSize)) return next
+  return { ...next, props: { ...next.props, fontSize } }
+}
 
 export const WIDGET_GROUPS: WidgetGroup[] = ['Stream', 'Community', 'Alerts', 'Goals', 'Content', 'Planning']
 

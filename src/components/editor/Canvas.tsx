@@ -6,6 +6,7 @@ import { MotionHost } from '../MotionHost'
 import type { LiveOverlayEvent } from '../../types'
 import { themeCssVars } from '../../lib/themes'
 import { clampElement, resizeWithAspect, roundGeometry, snapPosition } from '../../lib/geometry'
+import { scaleWidgetText } from '../../lib/widgets'
 import type { Guide, Overlay, OverlayElement } from '../../types'
 
 type ResizeDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw'
@@ -109,14 +110,15 @@ export function Canvas(props: CanvasProps) {
     if (direction.includes('w')) { width -= dx; x += dx }
     if (direction.includes('n')) { height -= dy; y += dy }
 
-    // CP41: clamp-then-ratio lives in geometry so the pointer path and the tests share one rule.
-    props.onLiveElement(resizeWithAspect(
+    // CP41: clamp-then-ratio lives in geometry so the pointer path and the tests share one rule. CP52: a widget's
+    // type is part of its design, so the box and the text are resized together.
+    props.onLiveElement(scaleWidgetText(session.element, resizeWithAspect(
       session.element,
       direction,
       { x: roundGeometry(x), y: roundGeometry(y), width: roundGeometry(width), height: roundGeometry(height) },
       props.overlay.width,
       props.overlay.height,
-    ))
+    )))
   }
 
   function endPointer(event: ReactPointerEvent) {

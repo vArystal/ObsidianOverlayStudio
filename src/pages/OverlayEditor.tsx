@@ -13,6 +13,7 @@ import { clampElement } from '../lib/geometry'
 import { EMPTY_HISTORY, pushHistory, redoHistory, undoHistory, type HistoryState } from '../lib/history'
 import { sameOverlay } from '../lib/overlayDiff'
 import { createElement, duplicateElement } from '../lib/elements'
+import { scaleWidgetText } from '../lib/widgets'
 import { encodeOverlaySnapshot, getOverlay, saveOverlay } from '../lib/storage'
 import { LAYER_MAX_EDGE, LAYER_TARGET_BYTES, optimizeImage, snapshotBudget } from '../lib/images'
 import { deletePublication, getPublicIntegrationConfig, integrationRequest } from '../lib/integration'
@@ -169,9 +170,12 @@ export function OverlayEditor() {
   const patchElementById = useCallback((elementId: string, patch: Partial<OverlayElement>) => {
     commit((current) => ({
       ...current,
-      elements: current.elements.map((element) => element.id === elementId
-        ? clampElement({ ...element, ...patch }, current.width, current.height)
-        : element),
+      elements: current.elements.map((element) => {
+        if (element.id !== elementId) return element
+        const patched = clampElement({ ...element, ...patch }, current.width, current.height)
+        // A width or height edit is a resize, so it scales a widget's type the same way the canvas handles do.
+        return patch.width !== undefined || patch.height !== undefined ? scaleWidgetText(element, patched) : patched
+      }),
     }))
   }, [commit])
 
