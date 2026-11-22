@@ -63,7 +63,7 @@ export function BackgroundSection({ background, onChange }: BackgroundSectionPro
               onClick={() => onChange(normalizeBackground({ ...bg, kind: option.kind as BackgroundKind, ...option.defaults, enabled: true }))}
               title={option.blurb}
             >
-              {/* CP49: a static swatch instead of a live scene. Six mounted scenes inside the rail froze slower
+              {/* CP49: a static swatch instead of a live scene. Mounting every scene inside the rail froze slower
                   laptops; the swatch still shows each preset's own colours, so the choice is not a guess. */}
               <span
                 className="bg-thumb-stage bg-swatch"

@@ -10,13 +10,24 @@ import { decodeOverlaySnapshot, encodeOverlaySnapshot, normalizeOverlay } from '
 import { THEMES, THEME_ORDER, getTheme } from './themes'
 
 describe('CP21 background engine', () => {
-  it('ships six effects with distinct construction, not six gradients', () => {
-    expect(BACKGROUND_PRESETS).toHaveLength(6)
+  it('ships eleven effects with distinct construction, not eleven gradients', () => {
+    expect(BACKGROUND_PRESETS).toHaveLength(11)
     const kinds = BACKGROUND_PRESETS.map((preset) => preset.kind)
-    expect(new Set(kinds).size).toBe(6)
+    expect(new Set(kinds).size).toBe(11)
     // Each effect must differ from the others in its defaults, or it is the same scene under a new name.
     const signatures = BACKGROUND_PRESETS.map((preset) => JSON.stringify(preset.defaults))
-    expect(new Set(signatures).size).toBe(6)
+    expect(new Set(signatures).size).toBe(11)
+  })
+
+  it('offers the five CP51 scenes, each painting its own markup', () => {
+    const added = ['rose-vines', 'smoke-drift', 'light-rays', 'bokeh-lights', 'storm-clouds'] as const
+    for (const kind of added) {
+      expect(presetFor(kind)?.label).toBeTruthy()
+      const { container } = render(h(BackgroundLayer, { background: normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind }) }))
+      const layer = container.querySelector(`[data-background="${kind}"]`)!
+      // A scene with no painted child is an empty rectangle, which is how a backdrop ends up "not working".
+      expect(layer.querySelector('.bg-field, .bg-bokeh')).not.toBeNull()
+    }
   })
 
   it('defaults to a disabled backdrop so existing overlays look unchanged', () => {

@@ -15,7 +15,7 @@ describe('legacy theme migration', () => {
       const migrated = migrateThemeId(id)
       expect(THEME_ORDER).toContain(migrated)
     }
-    // The four current ids pass through untouched.
+    // The current ids pass through untouched.
     for (const id of THEME_ORDER) expect(migrateThemeId(id)).toBe(id)
   })
 
@@ -65,15 +65,16 @@ describe('legacy theme migration', () => {
     ;(overlay.theme as { id: string }).id = 'thorn-rose'
 
     const loaded = normalizeOverlay(overlay)
-    expect(loaded.theme.id).toBe('obsidian')
+    // CP51: the botanical identity is back, so this lands on its successor rather than a neutral stand-in.
+    expect(loaded.theme.id).toBe('rose-thorn')
     expect(loaded.elements).toHaveLength(1)
     expect(loaded.elements[0].decoration).toBeDefined()
   })
 })
 
 describe('theme presets after CP20', () => {
-  it('ships four distinct presets with complete palettes', () => {
-    expect(THEME_ORDER).toHaveLength(4)
+  it('ships five distinct presets with complete palettes', () => {
+    expect(THEME_ORDER).toHaveLength(5)
     for (const id of THEME_ORDER) {
       const theme = THEMES[id]
       expect(theme.palette.surface.base).toMatch(/^#[0-9a-f]{6}$/i)

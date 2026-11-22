@@ -136,8 +136,12 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .left-panel { border-right: 1px solid var(--line); }
 .right-panel { border-left: 1px solid var(--line); }
 .panel-scroll { overflow-y: auto; min-height: 0; scrollbar-color: #363636 transparent; scrollbar-width: thin; }
-.panel-tabs { height: 49px; flex: 0 0 49px; display: flex; align-items: stretch; border-bottom: 1px solid var(--line); padding: 0 6px; }
-.panel-tabs button { flex: 1; border: 0; border-bottom: 2px solid transparent; background: none; color: #a1a1a1; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; padding: 0 4px; }
+/* CP51: with a fourth tab (Background) the labels no longer fit the rail, and `flex: 1` + nowrap text pushed the
+   last tab past the panel border. The strip now scrolls horizontally, so no tab can escape the rail and no label
+   is truncated; the scrollbar is hidden because it is a 49px strip, not a document. */
+.panel-tabs { height: 49px; flex: 0 0 49px; display: flex; align-items: stretch; border-bottom: 1px solid var(--line); padding: 0 6px; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.panel-tabs::-webkit-scrollbar { display: none; }
+.panel-tabs button { flex: 1 1 auto; border: 0; border-bottom: 2px solid transparent; background: none; color: #a1a1a1; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 5px; cursor: pointer; padding: 0 6px; white-space: nowrap; }
 .panel-tabs button.active { color: #e4e4e4; border-bottom-color: var(--accent); }
 .panel-tabs button svg { width: 13px; }
 .panel-tabs button span { font-size: 9px; color: #dcdcdc; background: #373737; border-radius: 6px; padding: 2px 5px; }

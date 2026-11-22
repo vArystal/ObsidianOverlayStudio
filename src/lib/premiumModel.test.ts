@@ -4,9 +4,9 @@ import { normalizeOverlay } from './storage'
 import { DECORATION_PRESETS, LEGACY_THEME_MAP, THEMES, THEME_ORDER, migrateThemeId, resolveDecoration } from './themes'
 
 describe('CP20 theme system', () => {
-  it('offers exactly four presets with a full palette each', () => {
-    expect(Object.keys(THEMES).sort()).toEqual(['aurora', 'monolith', 'nocturne', 'obsidian'])
-    expect(THEME_ORDER).toEqual(['obsidian', 'nocturne', 'aurora', 'monolith'])
+  it('offers five presets with a full palette each', () => {
+    expect(Object.keys(THEMES).sort()).toEqual(['aurora', 'monolith', 'nocturne', 'obsidian', 'rose-thorn'])
+    expect(THEME_ORDER).toEqual(['obsidian', 'nocturne', 'aurora', 'monolith', 'rose-thorn'])
     for (const id of THEME_ORDER) {
       const theme = THEMES[id]
       expect(theme.palette.surface.base).toMatch(/^#[0-9a-f]{6}$/i)
@@ -16,13 +16,13 @@ describe('CP20 theme system', () => {
     }
   })
 
-  it('keeps the four presets structurally distinct, not just recoloured', () => {
+  it('keeps the five presets structurally distinct, not just recoloured', () => {
     const shapes = THEME_ORDER.map((id) => {
       const { chrome, pattern } = THEMES[id]
       return `${chrome.radius}|${chrome.borderWidth}|${chrome.texture}|${pattern}`
     })
-    expect(new Set(shapes).size).toBe(4)
-    expect(new Set(THEME_ORDER.map((id) => THEMES[id].palette.surface.base)).size).toBe(4)
+    expect(new Set(shapes).size).toBe(5)
+    expect(new Set(THEME_ORDER.map((id) => THEMES[id].palette.surface.base)).size).toBe(5)
   })
 
   it('never ships purple and never ships pure black surfaces', () => {
@@ -41,8 +41,9 @@ describe('CP20 theme system', () => {
   })
 
   it('migrates every retired theme id to a live preset', () => {
-    expect(LEGACY_THEME_MAP['thorn-rose']).toBe('obsidian')
-    expect(migrateThemeId('thorn-rose')).toBe('obsidian')
+    // CP51: Rose & Thorn is live again, so the botanical id maps to it instead of a neutral stand-in.
+    expect(LEGACY_THEME_MAP['thorn-rose']).toBe('rose-thorn')
+    expect(migrateThemeId('thorn-rose')).toBe('rose-thorn')
     expect(migrateThemeId('royal-persian')).toBe('obsidian')
     expect(migrateThemeId('persian-turquoise')).toBe('aurora')
     expect(migrateThemeId('imperial-night')).toBe('monolith')
@@ -58,7 +59,7 @@ describe('CP20 theme system', () => {
     ;(overlay.theme as { id: string }).id = 'thorn-rose'
     // normalizeOverlay is the real load path, so the assertion runs through it rather than a cast.
     const migrated = normalizeOverlay(overlay)
-    expect(migrated.theme.id).toBe('obsidian')
+    expect(migrated.theme.id).toBe('rose-thorn')
     expect(migrated.elements[0].props.text).toBe('unchanged')
     expect(migrated.elements).toHaveLength(1)
   })

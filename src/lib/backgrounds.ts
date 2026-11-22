@@ -24,9 +24,10 @@ const base = {
 }
 
 /**
- * Six backdrops with genuinely different construction: layered light, refracted liquid, discrete particles, a
- * perspective lattice, star field with parallax depth, and slow colour drift. They are CSS-only on purpose:
- * compositor work on transform and opacity costs no per-frame JavaScript, needs no cleanup and cannot leak.
+ * Eleven backdrops with genuinely different construction: layered light, refracted liquid, discrete particles, a
+ * perspective lattice, star field with parallax depth, slow colour drift, climbing briar, charcoal smoke, a fan of
+ * rays, depth bokeh and a storm with a lightning bloom. They are CSS-only on purpose: compositor work on transform
+ * and opacity costs no per-frame JavaScript, needs no cleanup and cannot leak.
  */
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   {
@@ -70,6 +71,41 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     blurb: 'Three fields of colour breathing out of phase',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur'],
     defaults: { ...base, primary: '#0c0d10', secondary: '#191a1f', accent: '#8a93a6', opacity: 0.86, speed: 0.6, intensity: 0.5, blur: 0 },
+  },
+  {
+    kind: 'rose-vines',
+    label: 'Rose Vines',
+    blurb: 'Briar stems climbing through rose light',
+    controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
+    defaults: { ...base, primary: '#150a10', secondary: '#241016', accent: '#d9647f', opacity: 0.9, speed: 0.85, intensity: 0.55, blur: 6, scale: 1.1 },
+  },
+  {
+    kind: 'smoke-drift',
+    label: 'Smoke Drift',
+    blurb: 'Charcoal smoke folding through the frame',
+    controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
+    defaults: { ...base, primary: '#0b0d10', secondary: '#1b2026', accent: '#8f9aa6', opacity: 0.8, speed: 0.55, intensity: 0.5, blur: 24, scale: 1.05 },
+  },
+  {
+    kind: 'light-rays',
+    label: 'Light Rays',
+    blurb: 'A soft fan of light opening from above',
+    controls: ['primary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
+    defaults: { ...base, primary: '#0a0b0e', accent: '#ffe6bf', opacity: 0.55, speed: 0.4, intensity: 0.5, blur: 12, scale: 1 },
+  },
+  {
+    kind: 'bokeh-lights',
+    label: 'Bokeh Lights',
+    blurb: 'Out-of-focus points of light with real depth',
+    controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'density', 'blur'],
+    defaults: { ...base, primary: '#0a0a0c', secondary: '#1a1418', accent: '#f0c9b4', opacity: 0.88, speed: 0.6, intensity: 0.45, density: 0.5, blur: 0 },
+  },
+  {
+    kind: 'storm-clouds',
+    label: 'Storm Clouds',
+    blurb: 'Layered cloud with a slow lightning bloom',
+    controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
+    defaults: { ...base, primary: '#0a0c10', secondary: '#1c222b', accent: '#cfe0ff', opacity: 0.95, speed: 0.5, intensity: 0.45, blur: 18, scale: 1.15 },
   },
 ]
 

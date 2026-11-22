@@ -10,9 +10,9 @@ import type {
 /**
  * CP20 theme system.
  *
- * Four presets, built as distinct objects rather than four tints of one card. Each owns a full palette
+ * Five presets, built as distinct objects rather than five tints of one card. Each owns a full palette
  * (surfaces, accents, borders, text, states, depth) plus chrome: the geometry and material that make a
- * widget read as Obsidian, Nocturne, Aurora or Monolith before any colour is considered.
+ * widget read as Obsidian, Nocturne, Aurora, Monolith or Rose & Thorn before any colour is considered.
  *
  * Nothing here is purple and nothing is pure black: the deepest surface is #0a0b0d.
  */
@@ -51,6 +51,17 @@ const monolithPalette: ThemePalette = {
   text: { primary: '#ffffff', secondary: '#c9ccce', muted: '#9aa0a4', inverse: '#0c0d0e' },
   state: { hover: 'rgba(255,255,255,.08)', selected: 'rgba(255,255,255,.14)', disabled: 'rgba(255,255,255,.30)' },
   depth: { raised: '0 2px 0 rgba(255,255,255,.07), 0 14px 34px rgba(0,0,0,.5)', floating: '0 30px 70px rgba(0,0,0,.6)', inset: 'inset 0 2px 0 rgba(255,255,255,.08)', glow: 'rgba(255,255,255,.16)' },
+}
+
+// CP51: rose and thorn, restored as a real palette rather than a tinted Obsidian: briar surfaces with a rose
+// accent and a sage thorn for the secondary marks, a porcelain rule, and a vine arabesque in the material.
+const roseThornPalette: ThemePalette = {
+  surface: { base: '#150f11', raised: '#1e1619', sunken: '#100a0c', overlay: 'rgba(21,15,17,.93)' },
+  accent: { base: '#d9647f', soft: '#a8bb95', strong: '#f4cfd7' },
+  border: { hairline: 'rgba(217,100,127,.24)', strong: 'rgba(217,100,127,.42)', focus: '#f4cfd7' },
+  text: { primary: '#f6ecef', secondary: '#d3c2c7', muted: '#a48f95', inverse: '#150c10' },
+  state: { hover: 'rgba(217,100,127,.12)', selected: 'rgba(217,100,127,.20)', disabled: 'rgba(246,236,239,.28)' },
+  depth: { raised: '0 1px 0 rgba(244,207,215,.08), 0 12px 34px rgba(0,0,0,.5)', floating: '0 26px 64px rgba(0,0,0,.6)', inset: 'inset 0 1px 0 rgba(244,207,215,.10)', glow: 'rgba(217,100,127,.30)' },
 }
 
 function theme(
@@ -99,23 +110,32 @@ export const THEMES: Record<ThemeId, OverlayTheme> = {
     radius: 0, borderWidth: 2, texture: 'grid', uppercaseLabels: true,
     innerBorder: true, cornerOrnaments: false, panelOpacity: 0.88,
   }, 'diamonds'),
+
+  // Botanical, back on purpose: briar-dark surfaces, a rose accent, a sage thorn, soft corners with corner
+  // ornaments and the vine arabesque in the material. The retired CP19 artwork is not returning: this is a
+  // palette and geometry only, so it renders identically in the editor and in OBS.
+  'rose-thorn': theme('rose-thorn', 'Rose & Thorn', 'گل و خار', roseThornPalette, {
+    radius: 20, borderWidth: 1, texture: 'grain', uppercaseLabels: false,
+    innerBorder: true, cornerOrnaments: true, panelOpacity: 0.78,
+  }, 'eslimi'),
 }
 
-/** Gallery order: the four presets as offered in the editor. */
-export const THEME_ORDER: ThemeId[] = ['obsidian', 'nocturne', 'aurora', 'monolith']
+/** Gallery order: the presets as offered in the editor. */
+export const THEME_ORDER: ThemeId[] = ['obsidian', 'nocturne', 'aurora', 'monolith', 'rose-thorn']
 
 export const DEFAULT_THEME: OverlayTheme = THEMES.obsidian
 
 /**
- * Where each retired theme goes. Thorn & Rose has no replacement that pretends to be botanical, so saved
- * overlays land on Obsidian, which keeps their composition, widgets and text intact with a neutral stage.
+ * Where each retired theme goes. `thorn-rose` is the only one with a live successor, so saved botanical overlays
+ * finally land on Rose & Thorn instead of a neutral stand-in; the rest keep their composition on the closest
+ * surviving palette.
  */
 export const LEGACY_THEME_MAP: Record<LegacyThemeId, ThemeId> = {
   'royal-persian': 'obsidian',
   'persian-turquoise': 'aurora',
   'imperial-night': 'monolith',
   'minimal-esports': 'obsidian',
-  'thorn-rose': 'obsidian',
+  'thorn-rose': 'rose-thorn',
 }
 
 export function isThemeId(id: unknown): id is ThemeId {

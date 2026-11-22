@@ -27,6 +27,21 @@ function field(count: number, seed: number) {
 }
 
 /**
+ * Scenes built from stacked gradient bands, and how many bands each one paints. Keeping the count here means a
+ * scene is either fully constructed or absent, never half-rendered because a branch was forgotten.
+ */
+const BAND_SCENES: Partial<Record<string, number>> = {
+  'aurora-flow': 3,
+  'ambient-gradient': 3,
+  'liquid-light': 4,
+  'rose-vines': 4,
+  'smoke-drift': 4,
+  'storm-clouds': 3,
+  'light-rays': 1,
+}
+const BAND_NAMES = ['band-a', 'band-b', 'band-c', 'band-d'] as const
+
+/**
  * The single implementation behind both the editor canvas and the OBS runtime. It is a sibling of the element
  * stage children rather than a layer: no pointer events, no selection, no coordinate space of its own.
  * Everything it animates is transform or opacity, so the compositor does the work and no JavaScript runs per frame.
@@ -35,8 +50,11 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
   const animated = isAnimated(background, reducedMotion)
   const motes = useMemo(() => field(Math.round(14 + background.density * 66), 20260101), [background.density])
   const stars = useMemo(() => field(Math.round(26 + background.density * 64), 77003), [background.density])
+  const bokeh = useMemo(() => field(Math.round(16 + background.density * 40), 41089), [background.density])
 
   if (!background.enabled || background.kind === 'none') return null
+
+  const bands = BAND_SCENES[background.kind] ?? 0
 
   const style = {
     ...backgroundCssVars(background),
@@ -50,12 +68,10 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
       data-background={background.kind}
       aria-hidden="true"
     >
-      {(background.kind === 'aurora-flow' || background.kind === 'ambient-gradient' || background.kind === 'liquid-light') && (
+      {bands > 0 && (
         <div className="bg-field">
-          <span className="bg-band band-a" />
-          <span className="bg-band band-b" />
-          <span className="bg-band band-c" />
-          {background.kind === 'liquid-light' && <span className="bg-band band-d" />}
+          {BAND_NAMES.slice(0, bands).map((name) => <span key={name} className={`bg-band ${name}`} />)}
+          {background.kind === 'light-rays' && <span className="bg-band band-rays" />}
         </div>
       )}
       {background.kind === 'cinematic-particles' && (
@@ -65,6 +81,26 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
               key={index}
               className="bg-mote"
               style={{ left: `${mote.x}%`, top: `${mote.y}%`, width: mote.size * 3, height: mote.size * 3, animationDelay: `${mote.delay}s`, opacity: 0.18 + mote.depth * 0.5 }}
+            />
+          ))}
+        </div>
+      )}
+      {background.kind === 'bokeh-lights' && (
+        <div className="bg-bokeh">
+          {/* Big soft discs, not points: the depth comes from size and opacity, which the compositor animates. */}
+          {bokeh.map((light, index) => (
+            <span
+              key={index}
+              className="bg-bokeh-dot"
+              style={{
+                left: `${light.x}%`,
+                top: `${light.y}%`,
+                width: 8 + light.size * 22,
+                height: 8 + light.size * 22,
+                animationDelay: `${light.delay}s`,
+                animationDuration: `${(18 + light.depth * 34).toFixed(1)}s`,
+                opacity: 0.16 + light.depth * 0.4,
+              }}
             />
           ))}
         </div>

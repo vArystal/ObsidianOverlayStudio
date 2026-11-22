@@ -34,7 +34,7 @@ export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornam
 export type IdleAnimationType = 'none' | 'shimmer' | 'glow' | 'float' | 'sparkle'
 export type AnimationDirection = 'up' | 'down' | 'left' | 'right'
 export type TextDirection = 'ltr' | 'rtl' | 'auto'
-export type ThemeId = 'obsidian' | 'nocturne' | 'aurora' | 'monolith'
+export type ThemeId = 'obsidian' | 'nocturne' | 'aurora' | 'monolith' | 'rose-thorn'
 export type DecorationPresetId = 'none' | 'royal-panel' | 'turquoise-panel' | 'imperial-card' | 'esports-line' | 'ornamental-frame' | 'thorn-vine'
 
 export interface OverlayAnimation {
@@ -155,7 +155,19 @@ export interface LiveIntegrationConfig {
   channelName: string
 }
 
-export type BackgroundKind = 'none' | 'aurora-flow' | 'liquid-light' | 'cinematic-particles' | 'neon-grid' | 'deep-space' | 'ambient-gradient'
+export type BackgroundKind =
+  | 'none'
+  | 'aurora-flow'
+  | 'liquid-light'
+  | 'cinematic-particles'
+  | 'neon-grid'
+  | 'deep-space'
+  | 'ambient-gradient'
+  | 'rose-vines'
+  | 'smoke-drift'
+  | 'light-rays'
+  | 'bokeh-lights'
+  | 'storm-clouds'
 
 /**
  * The overlay's global backdrop. It lives on the document, never in `elements`, so it cannot be dragged,
