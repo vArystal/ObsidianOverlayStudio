@@ -10,7 +10,7 @@ import type { CommunityPerson, OverlayElement, WidgetActivity } from '../../type
 import { useLiveData } from '../LiveDataProvider'
 import { fontStack } from '../../lib/typography'
 import {
-  PHASE_TEXT, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, widgetSnapshot,
+  PHASE_TEXT, buildCalendarMonth, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, widgetSnapshot,
 } from '../../lib/widgetData'
 import type { WidgetPhase, WidgetSnapshot } from '../../lib/widgetData'
 import { useNow } from './now'
@@ -230,6 +230,43 @@ function ClockWidget({ element }: { element: OverlayElement }) {
   )
 }
 
+/**
+ * The month grid. A shared minute ticker is enough: only the date rolls the grid over, and the widget reads the
+ * same clock in the editor and in OBS, so no backend and no hand-set dates are involved.
+ */
+function CalendarWidget({ element }: { element: OverlayElement }) {
+  const now = useNow(60_000)
+  const month = buildCalendarMonth(new Date(now), {
+    weekStart: str(element, 'weekStart', 'monday') === 'sunday' ? 'sunday' : 'monday',
+    timeZone: str(element, 'timeZone'),
+  })
+  const accent = str(element, 'accentColor', '#e8e8e6')
+  const markToday = bool(element, 'highlightToday', true)
+  return (
+    <Shell element={element} className="widget-calendar">
+      {bool(element, 'showLabel', true) && <Kicker element={element} />}
+      <strong className="widget-calendar-title">{month.title}</strong>
+      <div className="widget-calendar-grid">
+        {bool(element, 'showWeekdays', true) && (
+          <div className="widget-calendar-weekdays" aria-hidden="true">
+            {month.weekdays.map((label) => <span key={label}>{label}</span>)}
+          </div>
+        )}
+        <div className="widget-calendar-days">
+          {month.weeks.flat().map((cell) => (
+            <span
+              key={cell.key}
+              className={`widget-calendar-day${cell.inMonth ? '' : ' is-outside'}${cell.inMonth && cell.isToday && markToday ? ' is-today' : ''}`}
+              data-today={cell.isToday ? 'true' : undefined}
+              style={cell.inMonth && cell.isToday && markToday ? { color: accent, borderColor: accent } : undefined}
+            >{cell.day}</span>
+          ))}
+        </div>
+      </div>
+    </Shell>
+  )
+}
+
 interface SocialRow { label: string; handle: string }
 
 /** `links` is one row per line, `Label @handle` or `Label|handle`. Blank lines and bare handles are tolerated. */
@@ -270,6 +307,7 @@ const REGISTRY: Record<string, (props: { element: OverlayElement }) => ReactNode
   recentSubscribers: RecentSubscribersWidget,
   activityFeed: ActivityFeedWidget,
   clock: ClockWidget,
+  calendar: CalendarWidget,
   socialLinks: SocialLinksWidget,
 }
 

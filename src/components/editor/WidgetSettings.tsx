@@ -83,6 +83,15 @@ export function WidgetSettings({ element, onProp, onReplaceProps, alerts, onAler
               {hasKey('hour12') && <ToggleRow label="12-hour clock" checked={bool(element, 'hour12')} onChange={(value) => onProp('hour12', value)} />}
               {hasKey('showSeconds') && <ToggleRow label="Show seconds" checked={bool(element, 'showSeconds', true)} onChange={(value) => onProp('showSeconds', value)} />}
               {hasKey('timeZone') && <Row label="Time zone" hint="IANA name such as Europe/Berlin. Leave blank for the viewer’s zone; an invalid name falls back to it instead of breaking the source."><input value={str(element, 'timeZone')} placeholder="Europe/Berlin" onChange={(event) => onProp('timeZone', event.target.value)} /></Row>}
+              {hasKey('weekStart') && (
+                <Row label="Week starts on" hint="Only the column order changes; the month itself is the viewer’s.">
+                  <select value={str(element, 'weekStart', 'monday')} onChange={(event) => onProp('weekStart', event.target.value)}>
+                    <option value="monday">Monday</option><option value="sunday">Sunday</option>
+                  </select>
+                </Row>
+              )}
+              {hasKey('showWeekdays') && <ToggleRow label="Show weekday labels" checked={bool(element, 'showWeekdays', true)} onChange={(value) => onProp('showWeekdays', value)} />}
+              {hasKey('highlightToday') && <ToggleRow label="Mark today" description="Rings the current date in the accent colour." checked={bool(element, 'highlightToday', true)} onChange={(value) => onProp('highlightToday', value)} />}
             </div>
           )}
 

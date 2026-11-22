@@ -23,7 +23,7 @@ if (!SITE) await new Promise((resolve) => server.listen(PORT, resolve))
 
 const AXE = readFileSync('/tmp/axe.min.js', 'utf8')
 const STORAGE = 'obsidian-overlays-v1'
-const WIDGETS = ['streamTitle', 'liveStatus', 'streamCategory', 'streamDuration', 'subscriberCount', 'recentFollowers', 'recentSubscribers', 'activityFeed', 'clock', 'socialLinks']
+const WIDGETS = ['streamTitle', 'liveStatus', 'streamCategory', 'streamDuration', 'subscriberCount', 'recentFollowers', 'recentSubscribers', 'activityFeed', 'clock', 'calendar', 'socialLinks']
 const report = { site: ORIGIN, checks: {}, screenshots: [] }
 
 const browser = await pw.chromium.launch({ args: ['--force-color-profile=srgb'] })

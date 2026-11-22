@@ -113,6 +113,69 @@ export function formatClock(date: Date, options: ClockOptions = {}): string {
   return new Intl.DateTimeFormat(undefined, format).format(date)
 }
 
+export interface CalendarCell { key: string; day: number; inMonth: boolean; isToday: boolean }
+
+export interface CalendarMonth {
+  /** Localised "November 2026". */
+  title: string
+  /** Seven short weekday labels, already rotated for the chosen first day. */
+  weekdays: string[]
+  /** Always six rows, so the widget does not resize when a month needs only five. */
+  weeks: CalendarCell[][]
+}
+
+export interface CalendarOptions { weekStart?: 'monday' | 'sunday'; timeZone?: string }
+
+const pad2 = (value: number) => String(value).padStart(2, '0')
+const dayKey = (year: number, monthIndex: number, day: number) => `${year}-${pad2(monthIndex + 1)}-${pad2(day)}`
+
+/**
+ * The calendar date in `timeZone` as plain numbers. Formatting the date first, rather than reading `getMonth()`,
+ * is what keeps a widget set to another zone on the right day — and an invalid zone falls back to the viewer’s
+ * zone instead of throwing, the same rule the clock follows.
+ */
+export function calendarDateParts(date: Date, timeZone = ''): { year: number; month: number; day: number } {
+  const format = (zone?: string) => new Intl.DateTimeFormat('en-US', {
+    year: 'numeric', month: 'numeric', day: 'numeric', ...(zone ? { timeZone: zone } : {}),
+  })
+  let parts: Intl.DateTimeFormatPart[]
+  try { parts = format(timeZone).formatToParts(date) } catch { parts = format().formatToParts(date) }
+  const pick = (type: Intl.DateTimeFormatPartTypes) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  return { year: pick('year'), month: pick('month') - 1, day: pick('day') }
+}
+
+/**
+ * One month laid out as whole weeks. Dates are built in UTC on purpose: the grid is a calendar of day numbers, and
+ * a local-midnight stride would skip or repeat a day across a DST boundary.
+ */
+export function buildCalendarMonth(date: Date, options: CalendarOptions = {}): CalendarMonth {
+  const { weekStart = 'monday', timeZone = '' } = options
+  const today = calendarDateParts(date, timeZone)
+  const firstOfMonth = Date.UTC(today.year, today.month, 1)
+  const offset = weekStart === 'sunday' ? new Date(firstOfMonth).getUTCDay() : (new Date(firstOfMonth).getUTCDay() + 6) % 7
+  const todayKey = dayKey(today.year, today.month, today.day)
+  const weeks: CalendarCell[][] = []
+  for (let row = 0; row < 6; row += 1) {
+    const week: CalendarCell[] = []
+    for (let column = 0; column < 7; column += 1) {
+      const current = new Date(firstOfMonth + (row * 7 + column - offset) * 86_400_000)
+      const year = current.getUTCFullYear()
+      const month = current.getUTCMonth()
+      const day = current.getUTCDate()
+      const key = dayKey(year, month, day)
+      week.push({ key, day, inMonth: month === today.month && year === today.year, isToday: key === todayKey })
+    }
+    weeks.push(week)
+  }
+  const at = (index: number) => new Date(Date.UTC(today.year, today.month, 1 + index))
+  const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'short', timeZone: 'UTC' })
+  // Anchor labels on a known week starting Sunday, then rotate, so every row header names the same column as its day.
+  const sundayFirst = [4, 5, 6, 7, 8, 9, 10].map((day) => weekdayFormat.format(new Date(Date.UTC(2024, 0, day))))
+  const weekdays = weekStart === 'sunday' ? sundayFirst : [...sundayFirst.slice(1), sundayFirst[0]]
+  const title = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(at(14))
+  return { title, weekdays, weeks }
+}
+
 /** Counts are shown as-is; a null count is never coerced to 0. */
 export function formatCount(value: number | null, suffix = ''): string {
   return typeof value === 'number' && Number.isFinite(value) ? `${value}${suffix}` : ''

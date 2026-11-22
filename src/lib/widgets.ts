@@ -18,7 +18,7 @@ export type WidgetControlGroup =
 export type WidgetIcon =
   | 'text' | 'image' | 'shape' | 'container' | 'frame' | 'capture' | 'webcam' | 'chat' | 'alert' | 'goal'
   | 'counter' | 'countdown' | 'viewer' | 'followers' | 'follower' | 'supporter' | 'title' | 'status'
-  | 'category' | 'duration' | 'subscribers' | 'activity' | 'clock' | 'links'
+  | 'category' | 'duration' | 'subscribers' | 'activity' | 'clock' | 'links' | 'calendar'
 
 export interface WidgetDefinition {
   type: ElementType
@@ -132,6 +132,17 @@ export const WIDGETS: WidgetDefinition[] = [
       label: '', color: '#f6f6f4', backgroundColor: '#121214', backgroundOpacity: 0.72, borderColor: '#2a2a2e',
       borderWidth: 1, radius: 16, shadow: true, fontSize: 22, fontWeight: 700, fontFamily: 'inter',
       hour12: false, showSeconds: true, timeZone: '', showLabel: false,
+    },
+  },
+  {
+    type: 'calendar', label: 'Calendar', group: 'Content', icon: 'calendar', width: 360, height: 400,
+    blurb: 'The current month as a grid, today ringed in the accent colour', controls: ['content', 'typography', 'colors', 'surface'],
+    data: 'local', availability: 'available',
+    note: 'Built from the viewer’s clock, so it needs no backend. The month and “today” follow the time zone you set.',
+    defaults: {
+      label: 'THIS MONTH', showLabel: true, color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214',
+      backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 18,
+      fontWeight: 600, fontFamily: 'inter', weekStart: 'monday', showWeekdays: true, highlightToday: true, timeZone: '',
     },
   },
   {

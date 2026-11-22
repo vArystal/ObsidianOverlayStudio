@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LiveOverlayEvent } from '../types'
 import type { LiveDataState } from '../components/LiveDataProvider'
 import {
-  connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, toActivity, widgetSnapshot,
+  buildCalendarMonth, calendarDateParts, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, toActivity, widgetSnapshot,
 } from './widgetData'
 
 const base: LiveDataState = {
@@ -77,6 +77,43 @@ describe('formatting', () => {
     expect(formatClock(date, { hour12: false, showSeconds: false, timeZone: 'UTC' })).toMatch(/^\d{2}:30$/)
     expect(() => formatClock(date, { timeZone: 'Asia/Tehrn' })).not.toThrow()
     expect(formatClock(date, { timeZone: 'Asia/Tehrn' })).toMatch(/\d{2}:\d{2}/)
+  })
+})
+
+describe('calendar grid', () => {
+  // Fixed dates and an explicit UTC zone so the grid is the same in every time zone the suite runs in.
+  const november = new Date('2026-11-05T10:30:00Z')
+
+  it('lays a month out as six full weeks and flags only the real month days', () => {
+    const month = buildCalendarMonth(november, { weekStart: 'monday', timeZone: 'UTC' })
+    expect(month.weeks).toHaveLength(6)
+    expect(month.weeks.every((week) => week.length === 7)).toBe(true)
+    expect(month.title).toBe('November 2026')
+    // 1 November 2026 is a Sunday, so a Monday-first month opens with the last week of October.
+    expect(month.weeks[0].map((cell) => cell.day)).toEqual([26, 27, 28, 29, 30, 31, 1])
+    expect(month.weeks[0].filter((cell) => cell.inMonth)).toHaveLength(1)
+    expect(month.weeks.flat().filter((cell) => cell.inMonth)).toHaveLength(30)
+  })
+
+  it('moves the weekday labels with the chosen first day and marks today once', () => {
+    const monday = buildCalendarMonth(november, { weekStart: 'monday', timeZone: 'UTC' })
+    const sunday = buildCalendarMonth(november, { weekStart: 'sunday', timeZone: 'UTC' })
+    expect(monday.weekdays).toHaveLength(7)
+    expect(monday.weekdays[0]).not.toBe(sunday.weekdays[0])
+    expect(monday.weeks[0][6].key).toBe('2026-11-01')
+    expect(sunday.weeks[0][0].key).toBe('2026-11-01')
+    const today = sunday.weeks.flat().filter((cell) => cell.isToday)
+    expect(today).toHaveLength(1)
+    expect(today[0]).toMatchObject({ key: '2026-11-05', day: 5, inMonth: true })
+  })
+
+  it('reads the date in the chosen zone and falls back instead of throwing on a bad one', () => {
+    // 23:30 UTC is already the next day in Tokyo, which is the whole reason the zone exists.
+    const late = new Date('2026-11-05T23:30:00Z')
+    expect(calendarDateParts(late, 'UTC')).toEqual({ year: 2026, month: 10, day: 5 })
+    expect(calendarDateParts(late, 'Asia/Tokyo')).toEqual({ year: 2026, month: 10, day: 6 })
+    expect(() => buildCalendarMonth(late, { timeZone: 'Asia/Tehran-ish' })).not.toThrow()
+    expect(buildCalendarMonth(late, { timeZone: 'Asia/Tehran-ish' }).weeks.flat()).toHaveLength(42)
   })
 })
 

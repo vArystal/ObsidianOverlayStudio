@@ -12,7 +12,7 @@ export const ELEMENT_LABELS: Record<ElementType, string> = {
   // CP24 widgets. Labels here are the layer names; the library reads its own copy from the widget registry.
   streamTitle: 'Stream Title', liveStatus: 'Live Status', streamCategory: 'Stream Category', streamDuration: 'Stream Duration',
   subscriberCount: 'Active Subscribers', recentFollowers: 'Recent Followers', recentSubscribers: 'Recent Subscribers',
-  activityFeed: 'Recent Activity', clock: 'Clock', socialLinks: 'Social Links',
+  activityFeed: 'Recent Activity', clock: 'Clock', socialLinks: 'Social Links', calendar: 'Calendar',
 }
 
 const uid = (prefix = 'item') => `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`

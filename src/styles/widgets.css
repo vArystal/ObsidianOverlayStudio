@@ -50,6 +50,25 @@
 .widget-glyph { font-size: .9em; width: 1.1em; text-align: center; flex: 0 0 auto; }
 .widget-social-rows .widget-row { justify-content: space-between; gap: .8em; }
 
+/* Calendar: a seven-column grid that fits its shell, so a resized widget never clips a column. Cells use the
+   inherited text colour; only "today" takes the accent, and it is a ring rather than a fill so the number stays
+   legible on any backdrop. */
+.widget-calendar-title { font-size: .92em; font-weight: 700; letter-spacing: .01em; }
+.widget-calendar-grid { display: flex; flex-direction: column; gap: .28em; flex: 1 1 auto; min-height: 0; }
+.widget-calendar-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .18em; }
+.widget-calendar-weekdays > span {
+  font-size: .52em; letter-spacing: .08em; text-transform: uppercase; opacity: .6;
+  text-align: center; white-space: nowrap; overflow: hidden;
+}
+.widget-calendar-days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .18em; flex: 1 1 auto; min-height: 0; }
+.widget-calendar-day {
+  display: flex; align-items: center; justify-content: center; min-width: 0;
+  font-size: .64em; line-height: 1; font-variant-numeric: tabular-nums;
+  border: 1px solid transparent; border-radius: .42em; aspect-ratio: 1 / 1;
+}
+.widget-calendar-day.is-outside { opacity: .32; }
+.widget-calendar-day.is-today { font-weight: 700; }
+
 .static-motion .widget-status-dot.is-pulsing, .calm-motion .widget-status-dot.is-pulsing { animation: none; }
 
 /* Library additions: search field and availability badges, monochrome like the rest of the studio. */

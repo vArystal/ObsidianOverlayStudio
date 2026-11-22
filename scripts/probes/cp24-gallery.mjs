@@ -22,7 +22,7 @@ const server = createServer((req, res) => {
 if (!SITE) await new Promise((resolve) => server.listen(PORT, resolve))
 
 const STORAGE = 'obsidian-overlays-v1'
-const WIDGETS = ['streamTitle', 'liveStatus', 'streamCategory', 'streamDuration', 'subscriberCount', 'recentFollowers', 'recentSubscribers', 'activityFeed', 'clock', 'socialLinks']
+const WIDGETS = ['streamTitle', 'liveStatus', 'streamCategory', 'streamDuration', 'subscriberCount', 'recentFollowers', 'recentSubscribers', 'activityFeed', 'clock', 'calendar', 'socialLinks']
 const browser = await pw.chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 })
 const out = { site: ORIGIN }

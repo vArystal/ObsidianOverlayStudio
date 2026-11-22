@@ -28,6 +28,7 @@ export type ElementType =
   // CP24 local widgets
   | 'clock'
   | 'socialLinks'
+  | 'calendar'
 
 
 export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornamental'

@@ -146,6 +146,26 @@ describe('local widgets', () => {
     expect(container.querySelector('.widget-metric')?.textContent).not.toBe(first)
   })
 
+  it('renders a calendar grid whose today cell follows the widget’s own time zone', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-05T10:30:00Z'))
+    const element = createElement('calendar')
+    element.props.timeZone = 'UTC'
+    element.props.weekStart = 'monday'
+    const { container } = mount(element, liveState({ configured: false, state: 'disconnected' }))
+    expect(screen.getByText('November 2026')).toBeTruthy()
+    expect(container.querySelectorAll('.widget-calendar-day')).toHaveLength(42)
+    const today = container.querySelectorAll('.widget-calendar-day[data-today="true"]')
+    expect(today).toHaveLength(1)
+    expect(today[0].textContent).toBe('5')
+    expect(today[0].className).toContain('is-today')
+    // The ring is decoration, so turning it off must drop the class without removing the date.
+    element.props.highlightToday = false
+    const plain = mount(element, liveState({ configured: false, state: 'disconnected' }))
+    expect(plain.container.querySelectorAll('.widget-calendar-day.is-today')).toHaveLength(0)
+    expect(plain.container.querySelectorAll('.widget-calendar-day[data-today="true"]')).toHaveLength(1)
+  })
+
   it('parses social links in both accepted shapes and degrades to an empty state', () => {
     expect(parseSocialLinks('Kick @arystal\nInstagram|arystal\n\nYouTube')).toEqual([
       { label: 'Kick', handle: '@arystal' },

@@ -45,5 +45,6 @@ export const ENUM_VALUES: Record<string, readonly string[]> = {
   exit: ['none', 'fade', 'slide', 'scale', 'pop', 'ornamental'],
   fit: ['contain', 'cover', 'fill'],
   shape: ['rectangle', 'ellipse', 'rounded'],
+  weekStart: ['monday', 'sunday'],
   scrolling: ['true', 'false'],
 }
