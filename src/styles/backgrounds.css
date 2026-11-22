@@ -31,6 +31,9 @@
 .overlay-background.has-blur .bg-nebula {
   filter: blur(var(--bg-blur, 14px));
 }
+/* Glass diffuses its colour masses only when the author asks for more blur; at 0 the gradient falloff is the
+   softness, which keeps the common case free of a per-frame filter pass. */
+.overlay-background.has-blur .bg-glass-blob { filter: blur(var(--bg-blur, 14px)); }
 .bg-aurora-flow .bg-field,
 .bg-ambient-gradient .bg-field,
 .bg-liquid-light .bg-field,
@@ -295,6 +298,82 @@
   animation: bg-flash calc(var(--bg-duration-slow, 26s) * .5) linear infinite;
 }
 
+/* ---------------------------------------------------------------- L. Frosted Glass
+   Six saturated masses painted as soft radial falloffs (no filter pass), blended with screen so overlaps read as
+   light mixing rather than as stacked shapes. A sheet of glass sits on top: a cool frost veil, a diagonal sheen
+   that crosses the frame, a grain pass for the surface, and a bordered pane whose rim catches the light. The
+   colour is derived from the accent by mixing it with three inks, so the scene is full of colour while still
+   belonging to the theme it was painted for. */
+.bg-glass { position: absolute; inset: 0; overflow: hidden; }
+.bg-glass-field { position: absolute; inset: -12%; }
+.bg-glass-blob {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: radial-gradient(circle at 38% 34%,
+    color-mix(in srgb, currentColor 88%, #fff) 0%,
+    color-mix(in srgb, currentColor 62%, transparent) 34%,
+    color-mix(in srgb, currentColor 22%, transparent) 62%,
+    transparent 78%);
+  mix-blend-mode: screen;
+  will-change: transform;
+  backface-visibility: hidden;
+  animation: bg-glass-drift var(--bg-duration-slow, 26s) ease-in-out infinite alternate;
+}
+/* Hue comes from the theme accent bent toward one ink, so a near-neutral style still yields a spectrum. */
+.bg-glass-blob.ink-a { color: color-mix(in oklab, var(--bg-accent, #ff3fa4) 46%, #ff2f8c); }
+.bg-glass-blob.ink-b { color: color-mix(in oklab, var(--bg-accent, #ff3fa4) 36%, #3a63ff); }
+.bg-glass-blob.ink-c { color: color-mix(in oklab, var(--bg-accent, #ff3fa4) 32%, #12e0bd); }
+.bg-glass-blob.ink-d { color: color-mix(in oklab, var(--bg-accent, #ff3fa4) 40%, #ffb03a); }
+
+.bg-glass-frost {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(168deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.03) 26%, color-mix(in srgb, var(--bg-secondary, #2a0b3f) 30%, transparent) 64%, rgba(3,4,8,.26) 100%),
+    radial-gradient(92% 70% at 14% 2%, rgba(255,255,255,.15), transparent 62%),
+    radial-gradient(70% 62% at 88% 100%, rgba(0,0,0,.26), transparent 64%);
+  opacity: calc(.42 + var(--bg-intensity, .7) * .5);
+}
+.bg-glass-sheen {
+  position: absolute;
+  inset: -60% -50%;
+  background: linear-gradient(104deg, transparent 38%, rgba(255,255,255,.10) 45%, rgba(255,255,255,.30) 50%, rgba(255,255,255,.08) 55%, transparent 64%);
+  mix-blend-mode: screen;
+  opacity: calc(.2 + var(--bg-intensity, .7) * .5);
+  animation: bg-glass-sheen var(--bg-duration, 12s) ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.bg-glass-grain {
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  mix-blend-mode: overlay;
+  background-image: radial-gradient(rgba(255,255,255,.9) .6px, transparent .7px);
+  background-size: 3px 3px;
+}
+.bg-glass-frame {
+  position: absolute;
+  inset: 5.5% 5%;
+  border-radius: clamp(10px, 2.4vw, 34px);
+  border: 1px solid rgba(255,255,255,.2);
+  background: linear-gradient(142deg, rgba(255,255,255,.12) 0%, rgba(255,255,255,.02) 38%, rgba(255,255,255,.06) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.5),
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    inset 0 -50px 100px rgba(0,0,0,.24),
+    0 24px 80px rgba(0,0,0,.3);
+}
+/* One diagonal seam, so the sheet reads as a pane of glass rather than a rounded card. */
+.bg-glass-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(118deg, transparent 48.4%, rgba(255,255,255,.18) 49.8%, rgba(255,255,255,.02) 50.4%, transparent 51.6%);
+}
+
 /* ---------------------------------------------------------------- motion
    Transform and opacity only. translate3d keeps each actor on its own compositor layer. */
 /* CP53: amplitudes were doubled. A 3% drift over a 58s cycle is two pixels a second on a 1920 canvas, which is
@@ -321,6 +400,16 @@
 @keyframes bg-rays-sweep { from { transform: rotate(-12deg) scale(1); opacity: .18; } to { transform: rotate(12deg) scale(1.14); opacity: .85; } }
 @keyframes bg-bokeh-float { from { transform: translate3d(-3vw, 4vh, 0) scale(.88); } to { transform: translate3d(3.5vw, -6vh, 0) scale(1.22); } }
 @keyframes bg-storm-roll { from { transform: translate3d(-7%, 0, 0) scale(1.04); } to { transform: translate3d(7%, -6%, 0) scale(1.24); } }
+@keyframes bg-glass-drift {
+  from { transform: translate3d(-5%, 5%, 0) scale(.9) rotate(-2deg); }
+  to { transform: translate3d(8%, -8%, 0) scale(1.22) rotate(3deg); }
+}
+@keyframes bg-glass-sheen {
+  0% { transform: translate3d(-34%, 0, 0) rotate(.001deg); opacity: 0; }
+  16% { opacity: .9; }
+  62% { opacity: .6; }
+  100% { transform: translate3d(34%, 0, 0) rotate(.001deg); opacity: 0; }
+}
 @keyframes bg-flash {
   0%, 88%, 100% { opacity: 0; }
   89% { opacity: .55; }

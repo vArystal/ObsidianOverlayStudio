@@ -51,6 +51,7 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
   const motes = useMemo(() => field(Math.round(14 + background.density * 66), 20260101), [background.density])
   const stars = useMemo(() => field(Math.round(26 + background.density * 64), 77003), [background.density])
   const bokeh = useMemo(() => field(Math.round(16 + background.density * 40), 41089), [background.density])
+  const glass = useMemo(() => field(Math.round(5 + background.density * 4), 60317), [background.density])
 
   if (!background.enabled || background.kind === 'none') return null
 
@@ -103,6 +104,36 @@ export const BackgroundLayer = memo(function BackgroundLayer({ background, reduc
               }}
             />
           ))}
+        </div>
+      )}
+      {background.kind === 'frosted-glass' && (
+        <div className="bg-glass">
+          {/* The colour is painted, not filtered: six soft masses blended with screen, then a sheet of glass
+              laid over them. Blur is left to the gradient falloff so the scene costs no filter pass per frame. */}
+          <div className="bg-glass-field">
+            {glass.map((blob, index) => {
+              const size = 24 + blob.size * 34
+              return (
+                <span
+                  key={index}
+                  className={`bg-glass-blob ink-${'abcd'[index % 4]}`}
+                  style={{
+                    left: `${blob.x}%`,
+                    top: `${blob.y}%`,
+                    width: `${size}vmax`,
+                    height: `${size}vmax`,
+                    animationDelay: `${blob.delay}s`,
+                    animationDuration: `${(16 + blob.depth * 26).toFixed(1)}s`,
+                    opacity: 0.42 + blob.depth * 0.4,
+                  }}
+                />
+              )
+            })}
+          </div>
+          <span className="bg-glass-frost" />
+          <span className="bg-glass-sheen" />
+          <span className="bg-glass-grain" />
+          <span className="bg-glass-frame" />
         </div>
       )}
       {background.kind === 'neon-grid' && (

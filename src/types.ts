@@ -170,6 +170,7 @@ export type BackgroundKind =
   | 'light-rays'
   | 'bokeh-lights'
   | 'storm-clouds'
+  | 'frosted-glass'
 
 /**
  * The overlay's global backdrop. It lives on the document, never in `elements`, so it cannot be dragged,

@@ -10,13 +10,28 @@ import { decodeOverlaySnapshot, encodeOverlaySnapshot, normalizeOverlay } from '
 import { THEMES, THEME_ORDER, getTheme } from './themes'
 
 describe('CP21 background engine', () => {
-  it('ships eleven effects with distinct construction, not eleven gradients', () => {
-    expect(BACKGROUND_PRESETS).toHaveLength(11)
+  it('ships twelve effects with distinct construction, not twelve gradients', () => {
+    expect(BACKGROUND_PRESETS).toHaveLength(12)
     const kinds = BACKGROUND_PRESETS.map((preset) => preset.kind)
-    expect(new Set(kinds).size).toBe(11)
+    expect(new Set(kinds).size).toBe(12)
     // Each effect must differ from the others in its defaults, or it is the same scene under a new name.
     const signatures = BACKGROUND_PRESETS.map((preset) => JSON.stringify(preset.defaults))
-    expect(new Set(signatures).size).toBe(11)
+    expect(new Set(signatures).size).toBe(12)
+  })
+
+  it('builds the frosted glass scene from colour masses under a sheet of glass', () => {
+    const preset = presetFor('frosted-glass')!
+    expect(preset.label).toBe('Frosted Glass')
+    expect(preset.controls).toContain('density')
+    const { container } = render(h(BackgroundLayer, { background: normalizeBackground({ ...preset.defaults, kind: 'frosted-glass', enabled: true }) }))
+    const layer = container.querySelector('[data-background="frosted-glass"]')!
+    expect(layer.querySelectorAll('.bg-glass-blob').length).toBeGreaterThanOrEqual(5)
+    // The pane, its frost, the sheen and the grain are what make it glass rather than loose colour.
+    for (const part of ['.bg-glass-frost', '.bg-glass-sheen', '.bg-glass-grain', '.bg-glass-frame']) {
+      expect(layer.querySelector(part), part).not.toBeNull()
+    }
+    const raised = render(h(BackgroundLayer, { background: normalizeBackground({ ...preset.defaults, kind: 'frosted-glass', enabled: true, density: 1 }) }))
+    expect(raised.container.querySelectorAll('.bg-glass-blob').length).toBeGreaterThan(layer.querySelectorAll('.bg-glass-blob').length)
   })
 
   it('offers the five CP51 scenes, each painting its own markup', () => {

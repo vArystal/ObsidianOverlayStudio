@@ -24,10 +24,11 @@ const base = {
 }
 
 /**
- * Eleven backdrops with genuinely different construction: layered light, refracted liquid, discrete particles, a
+ * Twelve backdrops with genuinely different construction: layered light, refracted liquid, discrete particles, a
  * perspective lattice, star field with parallax depth, slow colour drift, climbing briar, charcoal smoke, a fan of
- * rays, depth bokeh and a storm with a lightning bloom. They are CSS-only on purpose: compositor work on transform
- * and opacity costs no per-frame JavaScript, needs no cleanup and cannot leak.
+ * rays, depth bokeh, a storm with a lightning bloom and a frosted glass sheet over saturated colour. They are
+ * CSS-only on purpose: compositor work on transform and opacity costs no per-frame JavaScript, needs no cleanup and
+ * cannot leak.
  */
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
   {
@@ -106,6 +107,14 @@ export const BACKGROUND_PRESETS: BackgroundPreset[] = [
     blurb: 'Heavy cloud banks with a lightning bloom',
     controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'scale'],
     defaults: { ...base, primary: '#070b13', secondary: '#1e2c3f', accent: '#c6ddff', opacity: 0.96, speed: 0.85, intensity: 0.55, blur: 10, scale: 1.14 },
+  },
+  {
+    kind: 'frosted-glass',
+    label: 'Frosted Glass',
+    blurb: 'Saturated light diffusing through a sheet of glass',
+    // No scale: the panes are fixed to the frame, so a zoom knob here would do nothing.
+    controls: ['primary', 'secondary', 'accent', 'opacity', 'speed', 'intensity', 'blur', 'density'],
+    defaults: { ...base, primary: '#07030c', secondary: '#2a0b3f', accent: '#ff3fa4', opacity: 0.96, speed: 0.9, intensity: 0.7, density: 0.55, blur: 0 },
   },
 ]
 
