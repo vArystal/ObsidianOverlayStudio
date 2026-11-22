@@ -83,7 +83,17 @@
   display: block; height: .72em; border: 1px solid currentColor; border-radius: .18em;
   background: currentColor; opacity: .12; transition: opacity .6s ease, background-color .6s ease;
 }
-.widget-hype-seg.is-on { opacity: .95; }
+@keyframes hype-seg-fill {
+  from { opacity: 0; transform: scaleX(.15); filter: brightness(2.4); }
+  to { opacity: .95; transform: scaleX(1); filter: brightness(1); }
+}
+/* A segment that turns lit plays once, delayed by its position, so a burst of chat reads as a wave travelling along
+   the bar rather than twelve cells switching at the same instant. `both` holds the lit state after the run. */
+.widget-hype-seg.is-on {
+  opacity: .95; transform-origin: left center;
+  animation: hype-seg-fill .38s cubic-bezier(.2, .9, .25, 1) both;
+  animation-delay: calc(var(--seg-index, 0) * 45ms);
+}
 .widget-hype-note { font-size: .55em; opacity: .62; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* A meter is the one widget where the animation is the reading, so a calm-motion viewer still gets the bar. */

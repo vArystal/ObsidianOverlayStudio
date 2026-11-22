@@ -297,7 +297,9 @@ function HypeMeterWidget({ element }: { element: OverlayElement }) {
           <span
             key={index}
             className={`widget-hype-seg${index < filled ? ' is-on' : ''}`}
-            style={index < filled ? { background: accent, borderColor: accent } : undefined}
+            // The index is handed to CSS so the segments that just lit up cascade left to right instead of
+            // snapping on together; a freshly lit segment starts after the ones before it.
+            style={index < filled ? { background: accent, borderColor: accent, '--seg-index': index } as CSSProperties : undefined}
           />
         ))}
       </div>

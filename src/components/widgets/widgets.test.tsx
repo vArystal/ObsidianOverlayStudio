@@ -182,6 +182,9 @@ describe('local widgets', () => {
     const lit = container.querySelectorAll('.widget-hype-seg.is-on')
     expect(lit.length).toBeGreaterThan(0)
     expect(lit.length).toBeLessThan(12)
+    // Each lit segment carries its own index, which is what makes the fill cascade rather than flick on at once.
+    expect(lit[0].getAttribute('style')).toContain('--seg-index: 0')
+    expect(lit[lit.length - 1].getAttribute('style')).toContain(`--seg-index: ${lit.length - 1}`)
     expect(screen.getByText('12 in the last 60s')).toBeTruthy()
 
     // The same overlay a minute later has no messages in its window, so the meter has emptied itself.
