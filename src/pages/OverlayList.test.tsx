@@ -43,6 +43,23 @@ describe('template gallery', () => {
     expect(chat.props.textColor).toBe(palette.text.primary)
     expect(chat.props.backgroundColor).toBe(palette.surface.base)
   })
+
+  it('builds the stream layout with capture, webcam, title and chat', () => {
+    render(<MemoryRouter><OverlayList /></MemoryRouter>)
+    fireEvent.click(screen.getByRole('button', { name: 'Start from Stream Layout' }))
+    const created = loadOverlays().find((overlay) => overlay.name === 'Stream Layout')
+    expect(created).toBeTruthy()
+    expect(created!.elements.map((element) => element.type)).toEqual(['capture', 'webcam', 'text', 'chat'])
+    // Guide regions must stay out of output until the streamer places the real capture behind them.
+    const byType = Object.fromEntries(created!.elements.map((element) => [element.type, element]))
+    expect(byType.capture.includeInOutput).toBe(false)
+    expect(byType.webcam.includeInOutput).toBe(false)
+    expect(byType.chat.includeInOutput).toBe(true)
+    // No two regions overlap: chat sits clear of the capture box and the webcam box sits inside it.
+    expect(byType.chat.x).toBeGreaterThanOrEqual(byType.capture.width)
+    expect(byType.webcam.x + byType.webcam.width).toBeLessThanOrEqual(byType.capture.width)
+    expect(byType.webcam.y + byType.webcam.height).toBeLessThanOrEqual(byType.capture.height)
+  })
 })
 
 describe('card thumbnails', () => {

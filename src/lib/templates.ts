@@ -15,6 +15,8 @@ export interface OverlayTemplate {
   blurb: string
   themeId: ThemeId
   background: BackgroundKind
+  /** `starter` is the shared title/panel/chat scene; `stream` is a full broadcast layout with capture regions. */
+  layout?: 'starter' | 'stream'
 }
 
 export const OVERLAY_TEMPLATES: OverlayTemplate[] = [
@@ -53,6 +55,14 @@ export const OVERLAY_TEMPLATES: OverlayTemplate[] = [
     themeId: 'monolith',
     background: 'neon-grid',
   },
+  {
+    id: 'stream-layout',
+    name: 'Stream Layout',
+    blurb: 'Full broadcast frame: game capture, webcam box, title bar and chat, all in Rose & Thorn',
+    themeId: 'rose-thorn',
+    background: 'rose-vines',
+    layout: 'stream',
+  },
 ]
 
 /**
@@ -87,13 +97,13 @@ function themedPanel(theme: OverlayTheme) {
   return panel
 }
 
-function themedChat(theme: OverlayTheme) {
+function themedChat(theme: OverlayTheme, box = { x: 1240, y: 88, width: 580, height: 640 }) {
   const chat = createElement('chat', 1)
   chat.name = 'Kick chat'
-  chat.x = 1240
-  chat.y = 88
-  chat.width = 580
-  chat.height = 640
+  chat.x = box.x
+  chat.y = box.y
+  chat.width = box.width
+  chat.height = box.height
   chat.props = {
     ...chat.props,
     textColor: theme.palette.text.primary,
@@ -105,8 +115,50 @@ function themedChat(theme: OverlayTheme) {
 }
 
 /**
- * Every template is the same three layers in the same place — a title, a panel and a chat column — so the gallery
- * compares palettes, not layouts. All of it is ordinary editable work once it lands in the editor.
+ * Webcam and capture are guide regions: they carry a labelled box the streamer lines OBS up behind, so they are
+ * excluded from output by default. Their border is themed here, because the props default to 0px and an invisible
+ * guide box would make the layout look empty.
+ */
+function themedCapture(theme: OverlayTheme) {
+  const capture = createElement('capture', 0)
+  capture.name = 'Game capture'
+  capture.x = 0
+  capture.y = 0
+  capture.width = 1420
+  capture.height = 800
+  capture.props = {
+    ...capture.props,
+    borderColor: theme.palette.accent.base,
+    borderWidth: theme.chrome.borderWidth > 0 ? theme.chrome.borderWidth : 1,
+    fillColor: theme.palette.surface.sunken,
+    fillOpacity: 0.18,
+  }
+  return capture
+}
+
+function themedWebcam(theme: OverlayTheme) {
+  const webcam = createElement('webcam', 1)
+  webcam.name = 'Webcam frame'
+  webcam.x = 48
+  webcam.y = 500
+  webcam.width = 400
+  webcam.height = 225
+  webcam.props = {
+    ...webcam.props,
+    shape: 'rounded',
+    borderRadius: theme.chrome.radius,
+    borderWidth: theme.chrome.borderWidth > 0 ? theme.chrome.borderWidth : 1,
+    borderColor: theme.palette.accent.base,
+    fillColor: theme.palette.surface.base,
+    fillOpacity: theme.chrome.panelOpacity,
+  }
+  return webcam
+}
+
+/**
+ * The five palette starters are the same three layers in the same place, so the gallery compares palettes rather
+ * than layouts. The stream template opts into a broadcast arrangement instead: capture region at the back, webcam
+ * inset over its lower-left, a title bar above it and chat down the right.
  */
 export function buildTemplate(template: OverlayTemplate): Overlay {
   const overlay = createEmptyOverlay(template.name)
@@ -126,6 +178,17 @@ export function buildTemplate(template: OverlayTemplate): Overlay {
     fontSize: 64,
     textAlign: 'left',
     direction: 'ltr',
+  }
+  if (template.layout === 'stream') {
+    title.name = 'Stream title'
+    title.x = 48
+    title.y = 32
+    title.width = 900
+    title.height = 84
+    title.props = { ...title.props, fontSize: 44 }
+    const chat = themedChat(theme, { x: 1460, y: 32, width: 420, height: 736 })
+    overlay.elements = [themedCapture(theme), themedWebcam(theme), title, chat]
+    return overlay
   }
   overlay.elements = [title, themedPanel(theme), themedChat(theme)]
   return overlay

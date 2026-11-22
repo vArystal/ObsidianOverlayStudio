@@ -111,7 +111,8 @@ svg { width: 18px; height: 18px; stroke-width: 1.8; flex: 0 0 auto; }
 .template-gallery-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
 .template-gallery-head h2 { font-size: 12px; margin: 0; }
 .template-gallery-head span { color: #8f8f8f; font-size: 11px; }
-.template-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+/* Three across, two rows: six presets read as a grid instead of a row with a stray card on the end. */
+.template-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .template-card { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 8px; border: 1px solid #272727; border-radius: 10px; background: #151515; text-align: left; cursor: pointer; transition: transform .16s ease, border-color .16s ease; }
 .template-card:hover { transform: translateY(-2px); border-color: #3d3d3d; }
 .template-card:focus-visible { outline: 2px solid var(--accent-bright); outline-offset: 2px; }
@@ -449,7 +450,6 @@ html.runtime-root, body.runtime-root, body.runtime-root #root { width: 100%; hei
   .is-previewing .editor-panel { display: none; }
   .library-page { padding: 45px 20px; }
   .library-hero { align-items: flex-start; }
-  .template-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (max-width: 650px) {
