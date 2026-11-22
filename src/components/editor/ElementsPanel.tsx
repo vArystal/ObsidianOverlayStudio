@@ -12,6 +12,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Flame,
   Frame,
   RadioTower,
   UserPlus,
@@ -45,7 +46,7 @@ const ICONS: Record<WidgetIcon, typeof TextCursorInput> = {
   webcam: Camera, chat: MessageSquare, alert: BellRing, goal: CircleDollarSign, counter: AlignJustify,
   countdown: Clock3, viewer: RadioTower, followers: UserPlus, follower: UserRound, supporter: UserRound,
   title: TextCursorInput, status: RadioTower, category: Gamepad2, duration: Clock3, subscribers: UserPlus,
-  activity: AlignJustify, clock: Clock3, links: UserRound, calendar: CalendarDays,
+  activity: AlignJustify, clock: Clock3, links: UserRound, calendar: CalendarDays, hype: Flame,
 }
 
 interface ElementsPanelProps {

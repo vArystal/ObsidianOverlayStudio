@@ -29,6 +29,7 @@ export type ElementType =
   | 'clock'
   | 'socialLinks'
   | 'calendar'
+  | 'hypeMeter'
 
 
 export type AnimationType = 'none' | 'fade' | 'slide' | 'scale' | 'pop' | 'ornamental'

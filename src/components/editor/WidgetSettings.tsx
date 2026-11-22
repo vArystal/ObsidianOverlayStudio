@@ -92,6 +92,14 @@ export function WidgetSettings({ element, onProp, onReplaceProps, alerts, onAler
               )}
               {hasKey('showWeekdays') && <ToggleRow label="Show weekday labels" checked={bool(element, 'showWeekdays', true)} onChange={(value) => onProp('showWeekdays', value)} />}
               {hasKey('highlightToday') && <ToggleRow label="Mark today" description="Rings the current date in the accent colour." checked={bool(element, 'highlightToday', true)} onChange={(value) => onProp('highlightToday', value)} />}
+              {hasKey('windowSeconds') && (
+                <Row label="Chat window" hint="Messages are counted over this trailing window; a longer window reacts more slowly but is steadier.">
+                  <select value={String(num(element, 'windowSeconds', 60))} onChange={(event) => onProp('windowSeconds', Number(event.target.value))}>
+                    {[30, 60, 120, 300].map((seconds) => <option key={seconds} value={seconds}>{seconds} seconds</option>)}
+                  </select>
+                </Row>
+              )}
+              {hasKey('showRate') && <ToggleRow label="Show per-minute rate" description="Off leaves the meter and its level word, without the number." checked={bool(element, 'showRate', true)} onChange={(value) => onProp('showRate', value)} />}
             </div>
           )}
 

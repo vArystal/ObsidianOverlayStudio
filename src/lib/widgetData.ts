@@ -113,6 +113,50 @@ export function formatClock(date: Date, options: ClockOptions = {}): string {
   return new Intl.DateTimeFormat(undefined, format).format(date)
 }
 
+export type HypeLevel = 'quiet' | 'warming' | 'hot' | 'blazing'
+
+/** The meter is full at this many messages per minute; the bands below are fractions of it. */
+export const HYPE_FULL_RATE = 40
+
+export const HYPE_LABELS: Record<HypeLevel, string> = {
+  quiet: 'Quiet',
+  warming: 'Warming up',
+  hot: 'Hot',
+  blazing: 'Blazing',
+}
+
+export interface ChatHype {
+  /** Chat lines inside the window. */
+  count: number
+  /** Messages per minute, so the number means the same thing at every window length. */
+  rate: number
+  /** 0–1 meter fill, kept unrounded so the bar can creep rather than step. */
+  fraction: number
+  level: HypeLevel
+}
+
+/**
+ * Chat energy over a trailing window. This is the one number in the studio that is derived rather than reported, so
+ * it is computed from real message timestamps only: an unparseable or future timestamp is skipped instead of being
+ * counted, and a window with nothing in it is a genuine zero, not a placeholder.
+ */
+export function chatHype(messages: { createdAt?: string | null }[], now: number, windowMs: number): ChatHype {
+  const window = Number.isFinite(windowMs) && windowMs > 0 ? windowMs : 60_000
+  let count = 0
+  for (const message of messages ?? []) {
+    const at = Date.parse(String(message?.createdAt ?? ''))
+    if (!Number.isFinite(at)) continue
+    const age = now - at
+    if (age >= 0 && age < window) count += 1
+  }
+  const rate = count * (60_000 / window)
+  const fraction = Math.max(0, Math.min(1, rate / HYPE_FULL_RATE))
+  const level: HypeLevel = rate >= HYPE_FULL_RATE ? 'blazing'
+    : rate >= HYPE_FULL_RATE * 0.45 ? 'hot'
+      : rate >= HYPE_FULL_RATE * 0.2 ? 'warming' : 'quiet'
+  return { count, rate, fraction, level }
+}
+
 export interface CalendarCell { key: string; day: number; inMonth: boolean; isToday: boolean }
 
 export interface CalendarMonth {

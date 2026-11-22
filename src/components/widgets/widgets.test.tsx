@@ -166,6 +166,33 @@ describe('local widgets', () => {
     expect(plain.container.querySelectorAll('.widget-calendar-day[data-today="true"]')).toHaveLength(1)
   })
 
+  it('measures chat hype from real messages and decays when chat stops', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-11-05T10:30:00Z'))
+    const chat = (count: number) => Array.from({ length: count }, (_, index) => ({
+      id: `m${index}`, username: `viewer${index}`, content: `hello ${index}`, avatar: null, usernameColor: null,
+      badges: [], createdAt: new Date(Date.now() - index * 2_000 - 500).toISOString(), test: false,
+    }))
+    const element = createElement('hypeMeter')
+    const { container } = mount(element, liveState({ messages: chat(12) }))
+    expect(screen.getByText('CHAT HYPE')).toBeTruthy()
+    // 12 lines inside the default 60s window is 12 a minute: warming, with the segments partly lit.
+    expect(container.querySelector('.widget-hype-rate')?.getAttribute('data-rate')).toBe('12')
+    expect(container.querySelector('.widget-hype-level')?.textContent).toBe('Warming up')
+    const lit = container.querySelectorAll('.widget-hype-seg.is-on')
+    expect(lit.length).toBeGreaterThan(0)
+    expect(lit.length).toBeLessThan(12)
+    expect(screen.getByText('12 in the last 60s')).toBeTruthy()
+
+    // The same overlay a minute later has no messages in its window, so the meter has emptied itself.
+    const stale = mount(element, liveState({ messages: chat(12) }))
+    act(() => { vi.advanceTimersByTime(120_000) })
+    expect(stale.container.querySelector('.widget-hype-rate')?.getAttribute('data-rate')).toBe('0')
+    expect(stale.container.querySelector('.widget-hype-level')?.textContent).toBe('Quiet')
+    expect(stale.container.querySelectorAll('.widget-hype-seg.is-on')).toHaveLength(0)
+    expect(screen.getAllByText('Waiting for chat').length).toBeGreaterThan(0)
+  })
+
   it('parses social links in both accepted shapes and degrades to an empty state', () => {
     expect(parseSocialLinks('Kick @arystal\nInstagram|arystal\n\nYouTube')).toEqual([
       { label: 'Kick', handle: '@arystal' },

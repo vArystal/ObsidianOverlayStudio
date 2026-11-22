@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LiveOverlayEvent } from '../types'
 import type { LiveDataState } from '../components/LiveDataProvider'
 import {
-  buildCalendarMonth, calendarDateParts, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, toActivity, widgetSnapshot,
+  HYPE_FULL_RATE, buildCalendarMonth, calendarDateParts, chatHype, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, toActivity, widgetSnapshot,
 } from './widgetData'
 
 const base: LiveDataState = {
@@ -114,6 +114,46 @@ describe('calendar grid', () => {
     expect(calendarDateParts(late, 'Asia/Tokyo')).toEqual({ year: 2026, month: 10, day: 6 })
     expect(() => buildCalendarMonth(late, { timeZone: 'Asia/Tehran-ish' })).not.toThrow()
     expect(buildCalendarMonth(late, { timeZone: 'Asia/Tehran-ish' }).weeks.flat()).toHaveLength(42)
+  })
+})
+
+describe('chat hype', () => {
+  const now = Date.parse('2026-11-05T10:30:00.000Z')
+  const burst = (count: number, stepMs: number) => Array.from({ length: count }, (_, index) => ({
+    createdAt: new Date(now - index * stepMs - 1000).toISOString(),
+  }))
+
+  it('measures messages per minute and turns that into a level', () => {
+    expect(chatHype([], now, 60_000)).toMatchObject({ count: 0, rate: 0, fraction: 0, level: 'quiet' })
+    expect(chatHype(burst(1, 5_000), now, 60_000)).toMatchObject({ count: 1, rate: 1, level: 'quiet' })
+    expect(chatHype(burst(12, 4_000), now, 60_000)).toMatchObject({ count: 12, rate: 12, level: 'warming' })
+    expect(chatHype(burst(25, 2_000), now, 60_000)).toMatchObject({ count: 25, level: 'hot' })
+    const blazing = chatHype(burst(HYPE_FULL_RATE + 5, 900), now, 60_000)
+    expect(blazing.level).toBe('blazing')
+    expect(blazing.fraction).toBe(1)
+    expect(chatHype(burst(20, 1_000), now, 60_000).fraction).toBeCloseTo(0.5, 1)
+  })
+
+  it('keeps the number meaningful at every window length', () => {
+    // Six lines in thirty seconds is twelve a minute, not six: the rate does not shrink with the window.
+    expect(chatHype(burst(6, 4_000), now, 30_000).rate).toBe(12)
+    expect(chatHype(burst(6, 4_000), now, 30_000).rate).toBe(chatHype(burst(12, 4_000), now, 60_000).rate)
+    // A long window deliberately dilutes a short burst, which is what makes the meter settle after a spike.
+    expect(chatHype(burst(12, 2_000), now, 300_000).rate).toBeCloseTo(2.4, 5)
+  })
+
+  it('counts only the window, and never a timestamp it cannot read', () => {
+    const messages = [
+      { createdAt: new Date(now - 90_000).toISOString() },
+      { createdAt: new Date(now - 5_000).toISOString() },
+      { createdAt: 'not a date' },
+      { createdAt: '' },
+      {},
+      { createdAt: new Date(now + 60_000).toISOString() },
+    ]
+    expect(chatHype(messages, now, 60_000)).toMatchObject({ count: 1, rate: 1 })
+    expect(() => chatHype(messages, now, 0)).not.toThrow()
+    expect(chatHype(messages, now, Number.NaN).count).toBe(1)
   })
 })
 

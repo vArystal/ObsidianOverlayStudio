@@ -18,7 +18,7 @@ export type WidgetControlGroup =
 export type WidgetIcon =
   | 'text' | 'image' | 'shape' | 'container' | 'frame' | 'capture' | 'webcam' | 'chat' | 'alert' | 'goal'
   | 'counter' | 'countdown' | 'viewer' | 'followers' | 'follower' | 'supporter' | 'title' | 'status'
-  | 'category' | 'duration' | 'subscribers' | 'activity' | 'clock' | 'links' | 'calendar'
+  | 'category' | 'duration' | 'subscribers' | 'activity' | 'clock' | 'links' | 'calendar' | 'hype'
 
 export interface WidgetDefinition {
   type: ElementType
@@ -121,6 +121,17 @@ export const WIDGETS: WidgetDefinition[] = [
       backgroundOpacity: 0.72, borderColor: '#2a2a2e', borderWidth: 1, radius: 18, shadow: true, includeChat: true,
       includeFollows: true, includeSubs: true, emptyText: 'Waiting for the first event', fontSize: 22, fontWeight: 500,
       fontFamily: 'inter', showTimestamps: true,
+    },
+  },
+  {
+    type: 'hypeMeter', label: 'Chat hype meter', group: 'Community', icon: 'hype', width: 420, height: 172,
+    blurb: 'Messages per minute, measured from real chat and drawn as a meter',
+    controls: ['content', 'typography', 'colors', 'surface'], data: 'kick', availability: 'requires-kick',
+    note: 'Counts the chat lines Kick actually delivered in the window you choose. Without a channel it stays at zero instead of inventing buzz.',
+    defaults: {
+      label: 'CHAT HYPE', showLabel: true, showRate: true, windowSeconds: 60, emptyText: 'Waiting for chat',
+      color: '#f6f6f4', accentColor: '#e8e8e6', backgroundColor: '#121214', backgroundOpacity: 0.72,
+      borderColor: '#2a2a2e', borderWidth: 1, radius: 16, shadow: true, fontSize: 20, fontWeight: 600, fontFamily: 'inter',
     },
   },
   /* ----------------------------------------------------------------- local */

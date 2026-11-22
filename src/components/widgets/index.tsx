@@ -10,7 +10,7 @@ import type { CommunityPerson, OverlayElement, WidgetActivity } from '../../type
 import { useLiveData } from '../LiveDataProvider'
 import { fontStack } from '../../lib/typography'
 import {
-  PHASE_TEXT, buildCalendarMonth, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, widgetSnapshot,
+  HYPE_LABELS, PHASE_TEXT, buildCalendarMonth, chatHype, connectionPhase, dataPhase, fieldPhase, formatClock, formatCount, formatDuration, widgetSnapshot,
 } from '../../lib/widgetData'
 import type { WidgetPhase, WidgetSnapshot } from '../../lib/widgetData'
 import { useNow } from './now'
@@ -267,6 +267,47 @@ function CalendarWidget({ element }: { element: OverlayElement }) {
   )
 }
 
+/**
+ * Chat hype. Nothing is stored or guessed: the rate is read from the live chat the provider already holds, over a
+ * trailing window, and re-measured every two seconds so the meter settles on its own when chat goes quiet. That
+ * decay is the whole idea — a bar that only ever fills is a counter, not a meter.
+ */
+function HypeMeterWidget({ element }: { element: OverlayElement }) {
+  const live = useLiveData()
+  // Two seconds is fast enough to feel live and slow enough that the meter is not a strobe.
+  const now = useNow(2000)
+  const windowSeconds = clamp(Math.round(num(element, 'windowSeconds', 60)), 15, 300)
+  const hype = chatHype(live.messages, now, windowSeconds * 1000)
+  const accent = str(element, 'accentColor', '#e8e8e6')
+  const segments = 12
+  const filled = Math.round(hype.fraction * segments)
+  const rate = Math.round(hype.rate)
+  return (
+    <Shell element={element} className="widget-hype">
+      {bool(element, 'showLabel', true) && <Kicker element={element} />}
+      <div className="widget-hype-head">
+        <span className="widget-hype-rate" style={{ color: accent }} data-rate={rate}>
+          {rate}
+          {bool(element, 'showRate', true) && <small> /min</small>}
+        </span>
+        <span className="widget-hype-level" data-level={hype.level}>{HYPE_LABELS[hype.level]}</span>
+      </div>
+      <div className="widget-hype-meter" role="img" aria-label={`${HYPE_LABELS[hype.level]}: ${rate} messages per minute`}>
+        {Array.from({ length: segments }, (_, index) => (
+          <span
+            key={index}
+            className={`widget-hype-seg${index < filled ? ' is-on' : ''}`}
+            style={index < filled ? { background: accent, borderColor: accent } : undefined}
+          />
+        ))}
+      </div>
+      <span className="widget-hype-note">
+        {hype.count > 0 ? `${hype.count} in the last ${windowSeconds}s` : str(element, 'emptyText', 'Waiting for chat')}
+      </span>
+    </Shell>
+  )
+}
+
 interface SocialRow { label: string; handle: string }
 
 /** `links` is one row per line, `Label @handle` or `Label|handle`. Blank lines and bare handles are tolerated. */
@@ -308,6 +349,7 @@ const REGISTRY: Record<string, (props: { element: OverlayElement }) => ReactNode
   activityFeed: ActivityFeedWidget,
   clock: ClockWidget,
   calendar: CalendarWidget,
+  hypeMeter: HypeMeterWidget,
   socialLinks: SocialLinksWidget,
 }
 
