@@ -98,7 +98,7 @@ describe('one stage renderer', () => {
   it('pauses the animated background when staticMotion is on, in both modes', () => {
     // Defect 3: the runtime ignored staticMotion for the backdrop, so a "static" source still moved.
     const overlay = { ...createEmptyOverlay('Static backdrop'), staticMotion: true }
-    overlay.background = { ...normalizeBackground(undefined), enabled: true, kind: 'aurora-flow' }
+    overlay.background = { ...normalizeBackground(undefined), enabled: true, kind: 'aurora-mesh' }
     for (const mode of ['editor', 'runtime'] as const) {
       const view = render(stage(overlay, mode, { staticElements: true, reducedMotion: true }))
       const layer = view.container.querySelector('.overlay-background')

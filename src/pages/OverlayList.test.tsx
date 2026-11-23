@@ -30,7 +30,7 @@ describe('template gallery', () => {
     expect(created).toBeTruthy()
     expect(created!.theme.id).toBe('rose-thorn')
     expect(created!.background.enabled).toBe(true)
-    expect(created!.background.kind).toBe('rose-vines')
+    expect(created!.background.kind).toBe('fluid-ink')
     // Title, panel and chat: the scene has to show the palette, not just declare it.
     expect(created!.elements.map((element) => element.type)).toEqual(['text', 'container', 'chat'])
     const [title, panel, chat] = created!.elements
@@ -65,12 +65,12 @@ describe('template gallery', () => {
 describe('card thumbnails', () => {
   it('paints the saved animated scene behind the element marks, frozen', () => {
     const overlay = createEmptyOverlay('Scene card')
-    overlay.background = { ...overlay.background, enabled: true, kind: 'neon-grid' }
+    overlay.background = { ...overlay.background, enabled: true, kind: 'reactive-grid' }
     saveOverlay(overlay)
     const { container } = render(<MemoryRouter><OverlayList /></MemoryRouter>)
     const layer = container.querySelector('.thumbnail-stage .overlay-background') as HTMLElement | null
     expect(layer).toBeTruthy()
-    expect(layer!.className).toContain('bg-neon-grid')
+    expect(layer!.className).toContain('bg-reactive-grid')
     // Frozen: the dashboard must not run dozens of scenes at once.
     expect(layer!.className).toContain('is-still')
   })

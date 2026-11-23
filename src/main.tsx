@@ -5,6 +5,7 @@ import { OverlayList } from './pages/OverlayList'
 import { OverlayEditor } from './pages/OverlayEditor'
 import { OverlayRuntime } from './pages/OverlayRuntime'
 import { Integrations } from './pages/Integrations'
+import { MotionGallery } from './pages/MotionGallery'
 import './styles/fonts.css'
 // CP41: sheets are ordered tokens -> components -> families. A later sheet may extend a token, never redefine it.
 import './styles/tokens.css'
@@ -18,6 +19,8 @@ import './styles/alerts.css'
 import './styles/motion.css'
 import './styles/integrations-receipts.css'
 import './styles/backgrounds.css'
+import './styles/motion-backgrounds.css'
+import './styles/motion-gallery.css'
 // CP20 design system, loaded last: it owns tokens, typography roles and component states.
 import './styles/cp20.css'
 
@@ -26,6 +29,7 @@ const router = createHashRouter([
   { path: '/overlays', element: <OverlayList /> },
   { path: '/overlays/editor/:id', element: <OverlayEditor /> },
   { path: '/integrations', element: <Integrations /> },
+  { path: '/motion', element: <MotionGallery /> },
   { path: '/overlay/:publicId', element: <OverlayRuntime /> },
   { path: '*', element: <Navigate to="/overlays" replace /> },
 ])

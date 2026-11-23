@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Aperture, Layers3, Link2 } from 'lucide-react'
+import { Aperture, Layers3, Link2, Sparkles } from 'lucide-react'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
@@ -17,6 +17,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
           <Link className={location.pathname.startsWith('/integrations') ? 'active' : ''} to="/integrations">
             <Link2 size={17} /> Integrations
+          </Link>
+          <Link className={location.pathname.startsWith('/motion') ? 'active' : ''} to="/motion">
+            <Sparkles size={17} /> Motion
           </Link>
         </nav>
         <div className="local-badge"><span /> LOCAL WORKSPACE</div>

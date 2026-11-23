@@ -2,57 +2,52 @@ import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { createElement as h } from 'react'
 import {
-  BACKGROUND_PRESETS, DEFAULT_BACKGROUND, backgroundCssVars, isAnimated, normalizeBackground, presetFor, themeBackground,
+  BACKGROUND_PRESETS, DEFAULT_BACKGROUND, isAnimated, motionConfigFor, normalizeBackground, presetFor, themeBackground,
 } from './backgrounds'
 import { BackgroundLayer } from '../components/BackgroundLayer'
 import { createEmptyOverlay, createElement } from './elements'
 import { decodeOverlaySnapshot, encodeOverlaySnapshot, normalizeOverlay } from './storage'
 import { THEMES, THEME_ORDER, getTheme } from './themes'
+import { VARIANTS } from '../motion/catalog'
+import { VARIANT_IDS } from '../motion/types'
 
-describe('CP21 background engine', () => {
-  it('ships twelve effects with distinct construction, not twelve gradients', () => {
-    expect(BACKGROUND_PRESETS).toHaveLength(12)
-    const kinds = BACKGROUND_PRESETS.map((preset) => preset.kind)
-    expect(new Set(kinds).size).toBe(12)
-    // Each effect must differ from the others in its defaults, or it is the same scene under a new name.
-    const signatures = BACKGROUND_PRESETS.map((preset) => JSON.stringify(preset.defaults))
-    expect(new Set(signatures).size).toBe(12)
+describe('motion backdrop document model', () => {
+  it('ships ten constructed variants, each with a full preset set', () => {
+    expect(BACKGROUND_PRESETS).toHaveLength(10)
+    expect(VARIANTS.map((variant) => variant.id)).toEqual([...VARIANT_IDS])
+    expect(new Set(BACKGROUND_PRESETS.map((preset) => preset.kind)).size).toBe(10)
+    for (const variant of VARIANTS) {
+      expect(variant.presets, variant.id).toHaveLength(5)
+      // Five distinct moods, not five names for the same palette.
+      expect(new Set(variant.presets.map((preset) => preset.colors.join(''))).size, variant.id).toBe(5)
+      // Every default must satisfy the schema it is declared in.
+      for (const spec of variant.params) {
+        expect(spec.default, `${variant.id}.${spec.key}`).toBeDefined()
+        if (spec.type === 'number') {
+          expect(Number(spec.default)).toBeGreaterThanOrEqual(spec.min ?? 0)
+          expect(Number(spec.default)).toBeLessThanOrEqual(spec.max ?? 1)
+        }
+        if (spec.type === 'enum') expect(spec.values).toContain(spec.default)
+      }
+    }
   })
 
-  it('builds the frosted glass scene from colour masses under a sheet of glass', () => {
-    const preset = presetFor('frosted-glass')!
-    expect(preset.label).toBe('Frosted Glass')
-    expect(preset.controls).toContain('density')
-    const { container } = render(h(BackgroundLayer, { background: normalizeBackground({ ...preset.defaults, kind: 'frosted-glass', enabled: true }) }))
-    const layer = container.querySelector('[data-background="frosted-glass"]')!
-    expect(layer.querySelectorAll('.bg-glass-blob').length).toBeGreaterThanOrEqual(5)
-    // The pane, its frost, the sheen and the grain are what make it glass rather than loose colour.
-    for (const part of ['.bg-glass-frost', '.bg-glass-sheen', '.bg-glass-grain', '.bg-glass-frame']) {
-      expect(layer.querySelector(part), part).not.toBeNull()
-    }
-    const raised = render(h(BackgroundLayer, { background: normalizeBackground({ ...preset.defaults, kind: 'frosted-glass', enabled: true, density: 1 }) }))
-    expect(raised.container.querySelectorAll('.bg-glass-blob').length).toBeGreaterThan(layer.querySelectorAll('.bg-glass-blob').length)
-  })
-
-  it('offers the five CP51 scenes, each painting its own markup', () => {
-    const added = ['rose-vines', 'smoke-drift', 'light-rays', 'bokeh-lights', 'storm-clouds'] as const
-    for (const kind of added) {
-      expect(presetFor(kind)?.label).toBeTruthy()
-      const { container } = render(h(BackgroundLayer, { background: normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind }) }))
-      const layer = container.querySelector(`[data-background="${kind}"]`)!
-      // A scene with no painted child is an empty rectangle, which is how a backdrop ends up "not working".
-      expect(layer.querySelector('.bg-field, .bg-bokeh')).not.toBeNull()
-    }
+  it('resolves every legacy scene name to a variant', () => {
+    expect(normalizeBackground({ kind: 'neon-grid' }).kind).toBe('reactive-grid')
+    expect(normalizeBackground({ kind: 'rose-vines' }).kind).toBe('fluid-ink')
+    expect(normalizeBackground({ kind: 'frosted-glass' }).kind).toBe('liquid-glass')
+    expect(normalizeBackground({ kind: 'bokeh-lights' }).kind).toBe('css-orbs')
+    // `none` is not a scene: an enabled backdrop always paints something.
+    expect(normalizeBackground({ enabled: true, kind: 'none' }).kind).toBe(DEFAULT_BACKGROUND.kind)
   })
 
   it('defaults to a disabled backdrop so existing overlays look unchanged', () => {
     expect(DEFAULT_BACKGROUND.enabled).toBe(false)
     expect(normalizeBackground(undefined).enabled).toBe(false)
-    const overlay = createEmptyOverlay('Fresh')
-    expect(overlay.background.enabled).toBe(false)
+    expect(createEmptyOverlay('Fresh').background.enabled).toBe(false)
   })
 
-  it('survives invalid configuration without throwing or rendering garbage', () => {
+  it('coerces invalid configuration without throwing or rendering garbage', () => {
     const broken = normalizeBackground({ kind: 'not-a-real-effect', opacity: 9, speed: -4, blur: 'x', primary: 'red', density: 99, scale: 42 })
     expect(broken.kind).toBe(DEFAULT_BACKGROUND.kind)
     expect(broken.opacity).toBe(1)
@@ -63,24 +58,42 @@ describe('CP21 background engine', () => {
     expect(broken.scale).toBe(1.6)
   })
 
+  it('validates every variant param against its schema, and drops unknown keys', () => {
+    const bg = normalizeBackground({ kind: 'aurora-mesh', params: { points: 99, warp: -3, glow: 'nope', bogus: 7 } })
+    expect(bg.params).toEqual({ points: 9, warp: 0, glow: 0.7, contrast: 0.95 })
+    expect(bg.params).not.toHaveProperty('bogus')
+    // Enum params fall back instead of rendering a string the shader does not know.
+    expect(normalizeBackground({ kind: 'dither-print', params: { pattern: 'triangles' } }).params?.pattern).toBe('bayer-8')
+    expect(normalizeBackground({ kind: 'reactive-grid', params: { shape: 'hex' } }).params?.shape).toBe('hex')
+  })
+
   it('stays independent of the theme in both directions', () => {
     const bg = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind: 'deep-space', accent: '#ff0000' })
     const before = JSON.stringify(bg)
     for (const id of THEME_ORDER) expect(getTheme(id)).toBeTruthy()
     expect(JSON.stringify(bg)).toBe(before)
-    // And a theme change on an overlay leaves its background byte-identical.
     const overlay = createEmptyOverlay('Themed')
     overlay.background = bg
     const switched = normalizeOverlay({ ...overlay, theme: THEMES.nocturne })
     expect(switched.background).toEqual(normalizeBackground(bg))
   })
 
-  it('round-trips through a published snapshot', () => {
+  it('round-trips through a published snapshot, params included', () => {
     const overlay = createEmptyOverlay('Snapshot')
-    overlay.background = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind: 'neon-grid', speed: 1.4, accent: '#22d3ee' })
+    overlay.background = normalizeBackground({
+      ...DEFAULT_BACKGROUND,
+      enabled: true,
+      kind: 'living-patterns',
+      speed: 1.4,
+      accent: '#22d3ee',
+      params: { mode: 'maze', feed: 0.03, kill: 0.061, detail: 0.8 },
+      seed: 4242,
+    })
     const decoded = decodeOverlaySnapshot(encodeOverlaySnapshot(overlay))
-    expect(decoded?.background.kind).toBe('neon-grid')
+    expect(decoded?.background.kind).toBe('living-patterns')
     expect(decoded?.background.speed).toBeCloseTo(1.4)
+    expect(decoded?.background.params?.mode).toBe('maze')
+    expect(decoded?.background.seed).toBe(4242)
     expect(decoded?.background.enabled).toBe(true)
   })
 
@@ -93,12 +106,36 @@ describe('CP21 background engine', () => {
     expect(loaded.elements).toHaveLength(0)
   })
 
-  it('renders the scene for every effect and nothing when disabled', () => {
+  it('maps the document record onto a renderer config', () => {
+    const bg = normalizeBackground({
+      ...DEFAULT_BACKGROUND,
+      kind: 'contour-lines',
+      primary: '#010101',
+      secondary: '#020202',
+      accent: '#03f0c0',
+      speed: 1.5,
+      params: { lines: 30, ridged: true },
+    })
+    const config = motionConfigFor(bg)
+    expect(config.colors).toEqual(['#010101', '#020202', '#03f0c0'])
+    expect(config.params.lines).toBe(30)
+    expect(config.params.ridged).toBe(true)
+    expect(config.speed).toBe(1.5)
+  })
+})
+
+describe('motion backdrop rendering', () => {
+  it('renders every variant, and nothing when disabled', () => {
     for (const preset of BACKGROUND_PRESETS) {
-      const { container, unmount } = render(h(BackgroundLayer, { background: normalizeBackground({ ...preset.defaults, kind: preset.kind, enabled: true }) }))
+      const background = normalizeBackground({ ...preset.defaults, kind: preset.kind, enabled: true })
+      const { container, unmount } = render(h(BackgroundLayer, { background }))
       const layer = container.querySelector(`[data-background="${preset.kind}"]`)
-      expect(layer).not.toBeNull()
+      expect(layer, preset.kind).not.toBeNull()
       expect(layer!.getAttribute('aria-hidden')).toBe('true')
+      // The poster is painted from the palette before any renderer exists: no empty rectangle, no layout shift.
+      const surface = layer!.querySelector('.mb-root') as HTMLElement | null
+      expect(surface, `${preset.kind} surface`).not.toBeNull()
+      expect(surface!.style.backgroundImage).toContain('gradient')
       unmount()
       expect(container.querySelector('.overlay-background')).toBeNull()
     }
@@ -110,7 +147,6 @@ describe('CP21 background engine', () => {
   it('never takes pointer events and never joins the layer list', () => {
     const { container } = render(h(BackgroundLayer, { background: normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true }) }))
     const layer = container.querySelector('.overlay-background')!
-    // The style tag carries pointer-events: none; the markup must also not be a focusable/interactive node.
     expect(layer.getAttribute('tabindex')).toBeNull()
     expect(layer.querySelectorAll('button, a, input')).toHaveLength(0)
     const overlay = createEmptyOverlay('Layers')
@@ -120,68 +156,43 @@ describe('CP21 background engine', () => {
     overlay.elements.forEach((element) => expect(element.id).not.toBe('background'))
   })
 
-  it('honours pause and reduced motion, and keeps intensity/speed mapped to durations', () => {
-    const bg = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, speed: 2, paused: false })
+  it('honours pause and reduced motion, with an honest animated flag', () => {
+    const bg = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, paused: false })
     expect(isAnimated(bg, false)).toBe(true)
     expect(isAnimated({ ...bg, paused: true }, false)).toBe(false)
     expect(isAnimated(bg, true)).toBe(false)
-    const fast = backgroundCssVars(bg)
-    const slow = backgroundCssVars({ ...bg, speed: 0.5 })
-    expect(parseFloat(fast['--bg-duration'])).toBeLessThan(parseFloat(slow['--bg-duration']))
-    expect(fast['--bg-opacity']).toBe(String(bg.opacity))
-  })
-
-  it('exposes only the controls an effect actually reads', () => {
-    const particle = presetFor('cinematic-particles')!
-    expect(particle.controls).not.toContain('blur')
-    expect(particle.controls).toContain('density')
-    const grid = presetFor('neon-grid')!
-    expect(grid.controls).not.toContain('density')
-    expect(grid.controls).toContain('scale')
+    const { container: paused } = render(h(BackgroundLayer, { background: { ...bg, paused: true } }))
+    expect(paused.querySelector('.overlay-background')!.className).toContain('is-still')
+    const { container: running } = render(h(BackgroundLayer, { background: bg }))
+    expect(running.querySelector('.overlay-background')!.className).toContain('is-animated')
   })
 })
 
 /**
- * CP53: the scenes moved too slowly to read as motion, and they kept their own palette when the overlay changed
- * style. Both are assertions about the contract, not about taste: a cycle longer than the time someone watches a
- * preview is a still image, and a themed overlay must not sit on another theme's colours.
+ * The palette is no longer a per-scene constant: it comes from the theme the overlay already uses. Variant, params
+ * and motion are preserved, so a theme switch changes the colour of the scene, not the scene.
  */
-describe('CP53 backdrop motion and style', () => {
-  it('keeps every cycle short enough to read as movement', () => {
-    for (const preset of BACKGROUND_PRESETS) {
-      const vars = backgroundCssVars(normalizeBackground({ ...preset.defaults, kind: preset.kind, enabled: true }))
-      expect(parseFloat(vars['--bg-duration']), `${preset.kind} base cycle`).toBeLessThanOrEqual(20)
-      expect(parseFloat(vars['--bg-duration-slow']), `${preset.kind} slow cycle`).toBeLessThanOrEqual(45)
-      expect(parseFloat(vars['--bg-duration-fast']), `${preset.kind} fast cycle`).toBeLessThanOrEqual(12)
-    }
-  })
-
-  it('takes the three scene colours from the style, keeping the scene and its motion', () => {
-    const bg = normalizeBackground({ ...DEFAULT_BACKGROUND, enabled: true, kind: 'rose-vines', speed: 1.3, paused: true })
+describe('themed backdrops', () => {
+  it('takes the three colours from the style and keeps the variant, params and motion', () => {
+    const bg = normalizeBackground({
+      ...DEFAULT_BACKGROUND,
+      enabled: true,
+      kind: 'fluid-ink',
+      speed: 1.3,
+      paused: true,
+      params: { splats: 6, turbulence: 1.8 },
+      preset: 'custom',
+    })
     const theme = THEMES['rose-thorn']
     const themed = themeBackground(bg, theme)
-    expect(themed.kind).toBe('rose-vines')
+    expect(themed.kind).toBe('fluid-ink')
     expect(themed.speed).toBe(1.3)
     expect(themed.paused).toBe(true)
-    expect(themed.primary).toBe(theme.palette.surface.sunken)
-    expect(themed.secondary).toBe(theme.palette.surface.raised)
-    expect(themed.accent).toBe(theme.palette.accent.base)
+    expect(themed.params).toEqual(bg.params)
+    expect(themed.preset).toBe('custom')
+    expect(themed.primary.toLowerCase()).toBe(theme.palette.surface.sunken.toLowerCase())
+    expect(themed.secondary.toLowerCase()).toBe(theme.palette.surface.raised.toLowerCase())
+    expect(themed.accent.toLowerCase()).toBe(theme.palette.accent.base.toLowerCase())
     expect(themed.accent).not.toBe(bg.accent)
-  })
-})
-
-/**
- * CP43: there is no "no scene" state to get stuck in. `none` is not a registered scene, so any stored `none` resolves
- * to a real one, and an enabled background therefore always paints something.
- */
-describe('a stored scene name always resolves to a real scene', () => {
-  it('turns a stored "none" into a real scene', () => {
-    const fixed = normalizeBackground({ enabled: true, kind: 'none' })
-    expect(fixed.kind).toBe('aurora-flow')
-    expect(fixed.enabled).toBe(true)
-  })
-
-  it('keeps a registered scene exactly as stored', () => {
-    expect(normalizeBackground({ enabled: true, kind: 'neon-grid' }).kind).toBe('neon-grid')
   })
 })

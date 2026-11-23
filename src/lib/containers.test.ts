@@ -99,12 +99,13 @@ describe('CP22 empty containers', () => {
     expect(first.props.fillColor).not.toBe('#ff0000')
   })
 
-  it('leaves the CP21 background configuration alone', () => {
+  it('keeps a stored background enabled while migrating its legacy scene name', () => {
     const overlay = createEmptyOverlay('Background intact')
-    overlay.background = { ...overlay.background, enabled: true, kind: 'aurora-flow' }
+    overlay.background = { ...overlay.background, enabled: true, kind: 'aurora-flow' as never, speed: 1.4 }
     const loaded = normalizeOverlay({ ...overlay, elements: [container()] })
-    expect(loaded.background.kind).toBe('aurora-flow')
+    expect(loaded.background.kind).toBe('aurora-mesh')
     expect(loaded.background.enabled).toBe(true)
+    expect(loaded.background.speed).toBe(1.4)
   })
 })
 

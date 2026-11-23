@@ -157,20 +157,23 @@ export interface LiveIntegrationConfig {
   channelName: string
 }
 
+/**
+ * A backdrop is now one of the ten motion variants, or off. Legacy names (`aurora-flow`, `neon-grid`, …) are still
+ * accepted when loading a stored overlay and are mapped by `normalizeBackground`; new documents only ever store a
+ * variant id, so there is exactly one backdrop system in the app.
+ */
 export type BackgroundKind =
   | 'none'
-  | 'aurora-flow'
-  | 'liquid-light'
-  | 'cinematic-particles'
-  | 'neon-grid'
+  | 'aurora-mesh'
+  | 'liquid-glass'
+  | 'particle-flow'
+  | 'fluid-ink'
+  | 'dither-print'
+  | 'contour-lines'
   | 'deep-space'
-  | 'ambient-gradient'
-  | 'rose-vines'
-  | 'smoke-drift'
-  | 'light-rays'
-  | 'bokeh-lights'
-  | 'storm-clouds'
-  | 'frosted-glass'
+  | 'reactive-grid'
+  | 'css-orbs'
+  | 'living-patterns'
 
 /**
  * The overlay's global backdrop. It lives on the document, never in `elements`, so it cannot be dragged,
@@ -189,6 +192,12 @@ export interface OverlayBackground {
   density: number
   scale: number
   paused: boolean
+  /** Variant-specific knobs, validated against the variant's schema. */
+  params?: Record<string, number | string | boolean>
+  /** The named preset the author last applied, for the inspector's dropdown. */
+  preset?: string
+  /** Seed for the deterministic field; changing it is a new composition, not a new animation. */
+  seed?: number
 }
 
 export interface CanvasSettings {
